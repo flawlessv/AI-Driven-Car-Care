@@ -1,0 +1,309 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSelector } from 'react-redux';
+import {
+  Table,
+  Button,
+  Space,
+  Modal,
+  message,
+  Tag,
+  Select,
+  Form,
+} from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import type { RootState } from '@/lib/store';
+import type { Vehicle } from '@/types/vehicle';
+import type { WorkOrder } from '@/types/workOrder';
+import WorkOrderForm from './components/WorkOrderForm';
+
+const statusText = {
+  pending: '待处理',
+  assigned: '已分配',
+  in_progress: '进行中',
+  pending_check: '待检查',
+  completed: '已完成',
+  cancelled: '已取消',
+};
+
+const statusColor = {
+  pending: 'orange',
+  assigned: 'blue',
+  in_progress: 'processing',
+  pending_check: 'purple',
+  completed: 'green',
+  cancelled: 'red',
+};
+
+const priorityText = {
+  low: '低',
+  medium: '中',
+  high: '高',
+  urgent: '紧急',
+};
+
+const priorityColor = {
+  low: 'green',
+  medium: 'blue',
+  high: 'orange',
+  urgent: 'red',
+};
+
+export default function WorkOrdersPage() {
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<WorkOrder[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<string>();
+  const [selectedVehicle, setSelectedVehicle] = useState<string>();
+  const [selectedPriority, setSelectedPriority] = useState<string>();
+  const [form] = Form.useForm();
+
+  const router = useRouter();
+  const user = useSelector((state: RootState) => state.auth.user);
+
+  useEffect(() => {
+    fetchVehicles();
+    fetchWorkOrders();
+  }, [selectedStatus, selectedVehicle, selectedPriority]);
+
+  const fetchVehicles = async () => {
+    try {
+      const response = await fetch('/api/vehicles');
+      const result = await response.json();
+      if (result.data?.data) {
+        setVehicles(result.data.data);
+      }
+    } catch (error) {
+      console.error('获取车辆列表失败:', error);
+      message.error('获取车辆列表失败');
+    }
+  };
+
+  const fetchWorkOrders = async () => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams();
+      if (selectedStatus) queryParams.append('status', selectedStatus);
+      if (selectedVehicle) queryParams.append('vehicle', selectedVehicle);
+      if (selectedPriority) queryParams.append('priority', selectedPriority);
+
+      const response = await fetch(`/api/work-orders?${queryParams}`);
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || '获取工单列表失败');
+      }
+
+      // 处理不同的数据结构
+      let workOrders = [];
+      if (Array.isArray(result.data)) {
+        workOrders = result.data;
+      } else if (result.data && Array.isArray(result.data.data)) {
+        workOrders = result.data.data;
+      } else {
+        console.error('工单数据格式错误:', result);
+        throw new Error('工单数据格式错误');
+      }
+
+      setData(workOrders);
+    } catch (error: any) {
+      console.error('获取工单列表失败:', error);
+      message.error(error.message || '获取工单列表失败');
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdd = () => {
+    form.resetFields();
+    setModalVisible(true);
+  };
+
+  const handleView = (record: WorkOrder) => {
+    router.push(`/dashboard/work-orders/${record._id}`);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      
+      const response = await fetch('/api/work-orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(values),
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        message.success('工单创建成功');
+        setModalVisible(false);
+        fetchWorkOrders();
+      } else {
+        message.error(result.message || '工单创建失败');
+      }
+    } catch (error) {
+      console.error('创建工单失败:', error);
+      message.error('工单创建失败');
+    }
+  };
+
+  const columns = [
+    {
+      title: '工单编号',
+      dataIndex: 'orderNumber',
+      render: (text: string, record: WorkOrder) => (
+        <Button
+          type="link"
+          onClick={() => handleView(record)}
+        >
+          {text}
+        </Button>
+      ),
+    },
+    {
+      title: '车辆',
+      dataIndex: ['vehicle'],
+      render: (vehicle: any) => (
+        <span>
+          {vehicle.brand} {vehicle.model}
+          <br />
+          {vehicle.licensePlate}
+        </span>
+      ),
+    },
+    {
+      title: '维修类型',
+      dataIndex: 'type',
+    },
+    {
+      title: '问题描述',
+      dataIndex: 'description',
+      ellipsis: true,
+    },
+    {
+      title: '优先级',
+      dataIndex: 'priority',
+      render: (priority: keyof typeof priorityText) => (
+        <Tag color={priorityColor[priority]}>
+          {priorityText[priority]}
+        </Tag>
+      ),
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      render: (status: keyof typeof statusText) => (
+        <Tag color={statusColor[status]}>
+          {statusText[status]}
+        </Tag>
+      ),
+    },
+    {
+      title: '技师',
+      dataIndex: ['technician', 'username'],
+      render: (text: string) => text || '-',
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'createdAt',
+      render: (date: string) => new Date(date).toLocaleString(),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      render: (_: any, record: WorkOrder) => (
+        <Button
+          type="link"
+          onClick={() => handleView(record)}
+        >
+          查看详情
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <div className="p-6">
+      <div className="mb-4 flex justify-between items-center">
+        <div className="flex gap-4">
+          <Select
+            allowClear
+            style={{ width: 200 }}
+            placeholder="选择车辆"
+            value={selectedVehicle}
+            onChange={setSelectedVehicle}
+          >
+            {vehicles.map(vehicle => (
+              <Select.Option key={vehicle._id} value={vehicle._id}>
+                {vehicle.brand} {vehicle.model} - {vehicle.licensePlate}
+              </Select.Option>
+            ))}
+          </Select>
+
+          <Select
+            allowClear
+            style={{ width: 120 }}
+            placeholder="状态"
+            value={selectedStatus}
+            onChange={setSelectedStatus}
+          >
+            {Object.entries(statusText).map(([key, text]) => (
+              <Select.Option key={key} value={key}>
+                {text}
+              </Select.Option>
+            ))}
+          </Select>
+
+          <Select
+            allowClear
+            style={{ width: 120 }}
+            placeholder="优先级"
+            value={selectedPriority}
+            onChange={setSelectedPriority}
+          >
+            {Object.entries(priorityText).map(([key, text]) => (
+              <Select.Option key={key} value={key}>
+                {text}
+              </Select.Option>
+            ))}
+          </Select>
+        </div>
+
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={handleAdd}
+        >
+          创建工单
+        </Button>
+      </div>
+
+      <Table
+        columns={columns}
+        dataSource={data}
+        rowKey="_id"
+        loading={loading}
+      />
+
+      <Modal
+        title="创建工单"
+        open={modalVisible}
+        onOk={handleSubmit}
+        onCancel={() => setModalVisible(false)}
+        width={800}
+      >
+        <WorkOrderForm
+          form={form}
+          vehicles={vehicles || []}
+          mode="create"
+        />
+      </Modal>
+    </div>
+  );
+} 

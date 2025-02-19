@@ -1,0 +1,88 @@
+import mongoose from 'mongoose';
+import { hash } from 'bcryptjs';
+
+export const USER_ROLES = {
+  ADMIN: 'admin',
+  STAFF: 'staff',
+  TECHNICIAN: 'technician',
+  CUSTOMER: 'customer',
+} as const;
+
+export const USER_STATUS = {
+  ACTIVE: 'active',
+  INACTIVE: 'inactive',
+} as const;
+
+const userSchema = new mongoose.Schema({
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  phone: String,
+  role: {
+    type: String,
+    enum: Object.values(USER_ROLES),
+    default: USER_ROLES.CUSTOMER,
+  },
+  status: {
+    type: String,
+    enum: Object.values(USER_STATUS),
+    default: USER_STATUS.ACTIVE,
+  },
+  // 技师特有字段
+  specialties: {
+    type: [String],
+    default: [],
+  },
+  workExperience: {
+    type: Number,
+    default: 0,
+  },
+  certifications: {
+    type: [String],
+    default: [],
+  },
+  rating: {
+    type: Number,
+    default: 0,
+  },
+  totalOrders: {
+    type: Number,
+    default: 0,
+  },
+  completedOrders: {
+    type: Number,
+    default: 0,
+  },
+  notes: String,
+}, {
+  timestamps: true,
+});
+
+// 创建用户前加密密码
+userSchema.pre('save', async function(next) {
+  if (this.isModified('password')) {
+    this.password = await hash(this.password, 10);
+  }
+  next();
+});
+
+let User;
+
+if (mongoose.models && mongoose.models.User) {
+  User = mongoose.models.User;
+} else {
+  User = mongoose.model('User', userSchema);
+}
+
+export default User; 

@@ -1,0 +1,220 @@
+import { NextRequest } from 'next/server';
+import { connectDB } from '@/lib/mongodb';
+import { authMiddleware, checkRole } from '@/lib/auth';
+import WorkOrder from '@/models/workOrder';
+import Vehicle from '@/models/vehicle';
+import {
+  successResponse,
+  createdResponse,
+  errorResponse,
+  validationErrorResponse,
+} from '@/lib/api-response';
+import { validateWorkOrder, recordWorkOrderProgress } from '@/lib/work-order-utils';
+import { startOfMonth, endOfMonth, subMonths, format } from 'date-fns';
+
+// 获取工单列表
+export async function GET(request: NextRequest) {
+  try {
+    // 验证用户权限
+    const authResult = await checkRole(['admin', 'staff', 'customer'])(request);
+    if (!authResult.success) {
+      return errorResponse(authResult.message, 401);
+    }
+
+    await connectDB();
+
+    const searchParams = request.nextUrl.searchParams;
+    const status = searchParams.get('status');
+    const vehicle = searchParams.get('vehicle');
+    const technician = searchParams.get('technician');
+    const customer = searchParams.get('customer');
+    const page = parseInt(searchParams.get('page') || '1');
+    const pageSize = parseInt(searchParams.get('pageSize') || '10');
+
+    // 构建查询条件
+    const query: any = {};
+    
+    // 根据用户角色过滤
+    if (authResult.user.role === 'customer') {
+      query.customer = authResult.user._id;
+    } else if (authResult.user.role === 'technician') {
+      query.technician = authResult.user._id;
+    } else if (customer) {
+      query.customer = customer;
+    }
+
+    if (status) query.status = status;
+    if (vehicle) query.vehicle = vehicle;
+    if (technician) query.technician = technician;
+
+    // 如果是请求统计数据
+    const isStatistics = searchParams.get('statistics') === 'true';
+
+    if (isStatistics) {
+      // 获取基础统计数据
+      const totalCount = await WorkOrder.countDocuments(query);
+      const completedCount = await WorkOrder.countDocuments({
+        ...query,
+        status: 'completed',
+      });
+      const completionRate = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
+      // 获取平均评分
+      const ratingResult = await WorkOrder.aggregate([
+        { $match: { ...query, rating: { $exists: true } } },
+        { $group: { _id: null, averageRating: { $avg: '$rating' } } },
+      ]);
+      const averageRating = ratingResult[0]?.averageRating || 0;
+
+      // 获取状态分布
+      const statusDistribution = await WorkOrder.aggregate([
+        { $match: query },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+        { $project: { name: '$_id', value: '$count', _id: 0 } },
+      ]);
+
+      // 获取优先级分布
+      const priorityDistribution = await WorkOrder.aggregate([
+        { $match: query },
+        { $group: { _id: '$priority', count: { $sum: 1 } } },
+        { $project: { name: '$_id', value: '$count', _id: 0 } },
+      ]);
+
+      // 获取最近6个月的月度统计
+      const monthlyStats = [];
+      for (let i = 0; i < 6; i++) {
+        const date = subMonths(new Date(), i);
+        const start = startOfMonth(date);
+        const end = endOfMonth(date);
+        
+        const monthCount = await WorkOrder.countDocuments({
+          ...query,
+          createdAt: { $gte: start, $lte: end },
+        });
+        
+        const monthCompleted = await WorkOrder.countDocuments({
+          ...query,
+          status: 'completed',
+          createdAt: { $gte: start, $lte: end },
+        });
+
+        monthlyStats.unshift({
+          month: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+          count: monthCount,
+          completed: monthCompleted,
+        });
+      }
+
+      return successResponse({
+        totalCount,
+        completedCount,
+        completionRate,
+        averageRating,
+        statusDistribution,
+        priorityDistribution,
+        monthlyStats,
+      });
+    }
+
+    // 获取总数
+    const total = await WorkOrder.countDocuments(query);
+
+    // 获取工单列表
+    const workOrders = await WorkOrder.find(query)
+      .populate('vehicle', 'plateNumber brand model')
+      .populate('customer', 'username')
+      .populate('technician', 'username')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize);
+
+    return successResponse({
+      data: workOrders,
+      pagination: {
+        current: page,
+        pageSize,
+        total
+      }
+    });
+  } catch (error: any) {
+    console.error('获取工单列表失败:', error);
+    return errorResponse(error.message);
+  }
+}
+
+// 创建工单
+export async function POST(request: NextRequest) {
+  try {
+    // 验证用户权限
+    const authResult = await checkRole(['admin', 'staff', 'customer'])(request);
+    if (!authResult.success) {
+      return errorResponse(authResult.message, 401);
+    }
+
+    await connectDB();
+
+    const data = await request.json();
+    
+    // 生成工单编号
+    const today = new Date();
+    const yearMonth = format(today, 'yyyyMM');
+    
+    // 获取当月最后一个工单编号
+    const lastOrder = await WorkOrder.findOne({
+      orderNumber: new RegExp(`^WO${yearMonth}`)
+    }).sort({ orderNumber: -1 });
+
+    let sequence = 1;
+    if (lastOrder) {
+      const lastSequence = parseInt(lastOrder.orderNumber.slice(-4));
+      sequence = lastSequence + 1;
+    }
+
+    // 生成新的工单编号 (格式: WO2024030001)
+    const orderNumber = `WO${yearMonth}${String(sequence).padStart(4, '0')}`;
+    
+    // 添加创建者和客户信息
+    const workOrderData = {
+      ...data,
+      orderNumber,
+      createdBy: authResult.user._id,
+      customer: authResult.user.role === 'customer' 
+        ? authResult.user._id 
+        : undefined,
+      status: 'pending',
+      createdAt: today
+    };
+
+    // 如果不是客户创建,需要根据车辆找到车主
+    if (authResult.user.role !== 'customer') {
+      const vehicle = await Vehicle.findById(data.vehicle);
+      if (!vehicle) {
+        return errorResponse('车辆不存在', 404);
+      }
+      workOrderData.customer = vehicle.owner;
+    }
+
+    // 验证数据
+    const errors = validateWorkOrder(workOrderData);
+    if (errors.length > 0) {
+      return validationErrorResponse(errors);
+    }
+
+    // 创建工单
+    const workOrder = await WorkOrder.create(workOrderData);
+
+    // 记录工单进度
+    await recordWorkOrderProgress(
+      workOrder._id,
+      'pending',
+      authResult.user._id,
+      '工单已创建'
+    );
+
+    return successResponse(workOrder);
+
+  } catch (error: any) {
+    console.error('创建工单失败:', error);
+    return errorResponse(error.message || '创建工单失败');
+  }
+} 

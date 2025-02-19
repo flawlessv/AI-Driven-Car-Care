@@ -1,0 +1,220 @@
+import { NextRequest } from 'next/server';
+import { connectDB } from '@/lib/mongodb';
+import { authMiddleware } from '@/lib/auth';
+import WorkOrder from '@/models/workOrder';
+import WorkOrderProgress from '@/models/workOrderProgress';
+import {
+  successResponse,
+  errorResponse,
+  validationErrorResponse,
+} from '@/lib/api-response';
+import {
+  validateWorkOrder,
+  isValidStatusTransition,
+  checkWorkOrderPermission,
+  recordWorkOrderProgress,
+  updateVehicleStatusByWorkOrder,
+  updateTechnicianStats,
+} from '@/lib/work-order-utils';
+
+// 获取工单详情
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return errorResponse('未授权访问', 401);
+    }
+
+    await connectDB();
+
+    const workOrder = await WorkOrder.findById(params.id)
+      .populate('vehicle', 'brand model licensePlate')
+      .populate('customer', 'username email phone')
+      .populate('technician', 'username email phone')
+      .populate('createdBy', 'username');
+
+    if (!workOrder) {
+      return errorResponse('工单不存在', 404);
+    }
+
+    // 获取工单进度历史
+    const progress = await WorkOrderProgress.find({ workOrder: params.id })
+      .populate({
+        path: 'operator',
+        select: 'username'
+      })
+      .sort({ timestamp: -1 });
+
+    console.log('获取到的进度历史:', progress);  // 添加日志
+
+    return successResponse({
+      workOrder,
+      progress,
+    });
+  } catch (error: any) {
+    console.error('获取工单详情失败:', error);
+    return errorResponse(error.message || '获取工单详情失败');
+  }
+}
+
+// 更新工单
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return errorResponse('未授权访问', 401);
+    }
+
+    await connectDB();
+
+    const workOrder = await WorkOrder.findById(params.id);
+    if (!workOrder) {
+      return errorResponse('工单不存在', 404);
+    }
+
+    const data = await request.json();
+    console.log('收到的更新数据:', data);
+    
+    if (data.status) {
+      // 使用 handleStatusChange 函数创建进度记录
+      await handleStatusChange(
+        params.id,
+        data.status,
+        authResult.user,
+        data.progressNotes
+      );
+
+      // 更新工单状态
+      workOrder.status = data.status;
+      await workOrder.save();
+    }
+
+    // 获取更新后的进度记录
+    const progress = await WorkOrderProgress.find({ workOrder: params.id })
+      .populate('operator', 'username')
+      .sort({ timestamp: -1 });
+
+    console.log('更新后的进度记录:', progress);
+
+    return successResponse({
+      message: '工单更新成功',
+      workOrder,
+      progress
+    });
+
+  } catch (error: any) {
+    console.error('更新工单失败:', error);
+    return errorResponse(error.message || '更新工单失败');
+  }
+}
+
+// 删除工单
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await authMiddleware(request);
+    if (!user) {
+      return errorResponse('未授权访问', 401);
+    }
+
+    // 只有管理员可以删除工单
+    if (user.role !== 'admin') {
+      return errorResponse('无权删除工单', 403);
+    }
+
+    await connectDB();
+
+    const workOrder = await WorkOrder.findById(params.id);
+    if (!workOrder) {
+      return errorResponse('工单不存在', 404);
+    }
+
+    // 如果工单状态不是 pending 或 cancelled，不允许删除
+    if (!['pending', 'cancelled'].includes(workOrder.status)) {
+      return errorResponse('只能删除待处理或已取消的工单');
+    }
+
+    await workOrder.deleteOne();
+
+    // 删除相关的进度记录
+    await WorkOrderProgress.deleteMany({ workOrder: params.id });
+
+    return successResponse({
+      message: '工单删除成功',
+    });
+  } catch (error: any) {
+    console.error('删除工单失败:', error);
+    return errorResponse(error.message);
+  }
+}
+
+// 检查是否可以变更状态
+function canChangeStatus(userRole: string, currentStatus: string, newStatus: string): boolean {
+  const statusFlow = {
+    admin: ['pending', 'assigned', 'in_progress', 'pending_check', 'completed', 'cancelled'],
+    staff: ['pending', 'assigned', 'in_progress', 'pending_check', 'completed', 'cancelled'],
+    technician: ['assigned', 'in_progress', 'pending_check'],
+    customer: ['pending', 'cancelled']
+  };
+
+  // 获取用户角色可操作的状态列表
+  const allowedStatuses = statusFlow[userRole as keyof typeof statusFlow] || [];
+
+  // 检查当前状态和目标状态是否在允许列表中
+  return allowedStatuses.includes(currentStatus) && allowedStatuses.includes(newStatus);
+}
+
+// 获取状态变更默认说明
+function getDefaultStatusChangeNote(status: string): string {
+  const statusNotes = {
+    pending: '工单已创建',
+    assigned: '工单已分配',
+    in_progress: '维修开始',
+    pending_check: '等待验收',
+    completed: '维修完成',
+    cancelled: '工单已取消'
+  };
+
+  return statusNotes[status as keyof typeof statusNotes] || '状态已更新';
+}
+
+// 修改 handleStatusChange 函数
+const handleStatusChange = async (workOrderId: string, status: string, user: any, notes?: string) => {
+  try {
+    console.log('创建进度记录:', {
+      workOrder: workOrderId,
+      status,
+      note: notes,
+      operator: user._id,
+      timestamp: new Date()
+    });
+
+    // 创建状态历史记录
+    const progress = await WorkOrderProgress.create({
+      workOrder: workOrderId,
+      status,
+      note: notes,
+      operator: user._id,
+      timestamp: new Date()
+    });
+
+    // 获取包含用户信息的进度记录
+    const populatedProgress = await WorkOrderProgress.findById(progress._id)
+      .populate('operator', 'username');
+
+    console.log('创建的进度记录:', populatedProgress);
+
+    return populatedProgress;
+  } catch (error) {
+    console.error('创建进度记录失败:', error);
+    throw error;
+  }
+}; 

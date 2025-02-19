@@ -3,25 +3,47 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "concurrently \"next dev\" \"open-cli http://localhost:3000\"",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "migrate-vehicle-owners": "node scripts/migrate-vehicle-owner.js"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "next": "15.1.6"
+    "@ant-design/icons": "^5.3.0",
+    "@ant-design/plots": "^2.1.13",
+    "@reduxjs/toolkit": "^2.1.0",
+    "antd": "^5.13.2",
+    "bcryptjs": "^2.4.3",
+    "date-fns": "^3.3.1",
+    "dotenv": "^16.4.7",
+    "framer-motion": "^11.0.3",
+    "jose": "^5.2.0",
+    "js-cookie": "^3.0.5",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.1.1",
+    "next": "14.1.0",
+    "next-auth": "^4.24.11",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-redux": "^9.1.0",
+    "recharts": "^2.12.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "postcss": "^8",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/js-cookie": "^3.0.6",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.11.5",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "autoprefixer": "^10.4.17",
+    "concurrently": "^9.1.2",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "14.1.0",
+    "open-cli": "^8.0.0",
+    "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
-    "eslint": "^9",
-    "eslint-config-next": "15.1.6",
-    "@eslint/eslintrc": "^3"
+    "typescript": "^5.3.3"
   }
 }
