@@ -30,4 +30,12 @@ export interface RegisterForm extends LoginForm {
 export interface AuthResponse {
   user: UserResponse;
   token: string;
+}
+
+export interface RegisterData {
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  role: 'admin' | 'staff' | 'technician' | 'customer';
 } 

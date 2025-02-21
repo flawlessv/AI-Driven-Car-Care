@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Form, Input, Button, Card, message } from 'antd';
+import { Form, Input, Button, Card, message, Select } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '../../../lib/store';
@@ -21,7 +21,10 @@ export default function RegisterPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          ...values,
+          role: values.role,
+        }),
       });
 
       const data = await response.json();
@@ -120,6 +123,23 @@ export default function RegisterPage() {
               prefix={<LockOutlined />}
               placeholder="确认密码"
               autoComplete="new-password"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="role"
+            rules={[
+              { required: true, message: '请选择角色' },
+            ]}
+          >
+            <Select
+              placeholder="请选择角色"
+              options={[
+                { value: 'customer', label: '客户' },
+                { value: 'staff', label: '员工' },
+                { value: 'technician', label: '技师' },
+                { value: 'admin', label: '管理员' }
+              ]}
             />
           </Form.Item>
 
