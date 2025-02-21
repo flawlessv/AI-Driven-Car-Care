@@ -202,7 +202,7 @@ export default function Home() {
       <nav className="fixed top-0 left-0 right-0 z-40 bg-black bg-opacity-50 backdrop-blur-lg">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <div className="text-xl font-bold">汽车保养管理系统</div>
+            <div className="text-xl font-bold">伟佳汽车保养管理系统</div>
             <div className="flex space-x-8">
               <a href="#services" className="text-gray-300 hover:text-white transition-colors">服务项目</a>
               <a href="#process" className="text-gray-300 hover:text-white transition-colors">服务流程</a>

@@ -49,7 +49,7 @@ export default function RegisterPage() {
             注册账号
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            汽车保养管理系统
+            伟佳汽车保养管理系统
           </p>
         </div>
 
