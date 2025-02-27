@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Form, Input, Button, message, Divider } from 'antd';
 import { useRouter } from 'next/navigation';
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 
 interface RegisterFormData {
@@ -11,6 +11,7 @@ interface RegisterFormData {
   email: string;
   password: string;
   confirmPassword: string;
+  phone: string;
 }
 
 export default function RegisterForm() {
@@ -76,6 +77,20 @@ export default function RegisterForm() {
           <Input
             prefix={<MailOutlined className="text-blue-400" />}
             placeholder="请输入邮箱"
+            className="input-base"
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="phone"
+          rules={[
+            { required: true, message: '请输入手机号' },
+            { pattern: /^1[3-9]\d{9}$/, message: '请输入有效的手机号码' }
+          ]}
+        >
+          <Input
+            prefix={<PhoneOutlined className="text-blue-400" />}
+            placeholder="请输入手机号"
             className="input-base"
           />
         </Form.Item>

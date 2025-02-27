@@ -35,6 +35,7 @@ export interface AuthResponse {
 export interface RegisterData {
   username: string;
   email: string;
+  phone: string;
   password: string;
   confirmPassword: string;
   role: 'admin' | 'staff' | 'technician' | 'customer';

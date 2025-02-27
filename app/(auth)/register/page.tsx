@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Form, Input, Button, Card, message, Select } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '../../../lib/store';
 import { RegisterData } from '../../../types/user';
@@ -59,20 +59,18 @@ export default function RegisterPage() {
         <Form
           name="register"
           onFinish={onFinish}
-          size="large"
+          layout="vertical"
         >
           <Form.Item
             name="username"
             rules={[
               { required: true, message: '请输入用户名' },
-              { min: 3, message: '用户名至少3个字符' },
-              { max: 20, message: '用户名最多20个字符' },
+              { min: 2, message: '用户名长度不能小于2位' }
             ]}
           >
             <Input
               prefix={<UserOutlined />}
-              placeholder="用户名"
-              autoComplete="username"
+              placeholder="请输入用户名"
             />
           </Form.Item>
 
@@ -80,13 +78,25 @@ export default function RegisterPage() {
             name="email"
             rules={[
               { required: true, message: '请输入邮箱' },
-              { type: 'email', message: '请输入有效的邮箱地址' },
+              { type: 'email', message: '请输入有效的邮箱地址' }
             ]}
           >
             <Input
               prefix={<MailOutlined />}
-              placeholder="邮箱"
-              autoComplete="email"
+              placeholder="请输入邮箱"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="phone"
+            rules={[
+              { required: true, message: '请输入手机号' },
+              { pattern: /^1[3-9]\d{9}$/, message: '请输入有效的手机号码' }
+            ]}
+          >
+            <Input
+              prefix={<PhoneOutlined />}
+              placeholder="请输入手机号"
             />
           </Form.Item>
 
@@ -94,13 +104,12 @@ export default function RegisterPage() {
             name="password"
             rules={[
               { required: true, message: '请输入密码' },
-              { min: 6, message: '密码至少6个字符' },
+              { min: 6, message: '密码长度不能小于6位' }
             ]}
           >
             <Input.Password
               prefix={<LockOutlined />}
-              placeholder="密码"
-              autoComplete="new-password"
+              placeholder="请输入密码"
             />
           </Form.Item>
 
@@ -122,7 +131,6 @@ export default function RegisterPage() {
             <Input.Password
               prefix={<LockOutlined />}
               placeholder="确认密码"
-              autoComplete="new-password"
             />
           </Form.Item>
 

@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '../../../lib/mongodb';
 import { getUserModel } from '../../../lib/db/models';
-import { hash } from 'bcryptjs';
 import {
   successResponse,
   errorResponse,
@@ -12,7 +11,7 @@ const VALID_ROLES = ['admin', 'staff', 'technician', 'customer'];
 
 export async function POST(request: NextRequest) {
   try {
-    let { username, password, email, role } = await request.json();
+    let { username, password, email, role, phone } = await request.json();
     
     // 清理输入数据
     username = username?.trim();
@@ -20,9 +19,10 @@ export async function POST(request: NextRequest) {
     
     console.log('注册请求参数:', { 
       username, 
-      email, 
+      email,
+      phone,
       role,
-      hasPassword: !!password
+      passwordLength: password?.length
     });
 
     // 验证必填字段
@@ -50,49 +50,34 @@ export async function POST(request: NextRequest) {
       return errorResponse('用户名或邮箱已存在', 400);
     }
 
-    // 创建新用户
-    console.log('开始加密密码...');
-    const hashedPassword = await hash(password, 10);
-    console.log('密码加密完成，长度:', hashedPassword.length);
-
+    // 创建新用户 - 直接使用原始密码，让 mongoose 中间件处理加密
     const userData = {
       username,
-      password: hashedPassword,
+      password,  // 使用原始密码
       email,
+      phone,
       role: role || 'customer',
       status: 'active'
     };
 
-    console.log('创建用户数据:', { 
-      ...userData, 
-      password: password ? `长度: ${password.length}` : '未提供',
-      passwordLength: hashedPassword.length 
-    });
-
     const user = await User.create(userData);
-    console.log('用户创建成功:', { 
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-      passwordLength: user.password.length
-    });
-
-    // 验证创建的用户密码是否正确保存
+    
+    // 验证保存后的密码
     const savedUser = await User.findById(user._id).select('+password');
-    console.log('验证保存的用户数据:', {
+    console.log('保存后的用户数据:', {
       _id: savedUser._id,
-      username: savedUser.username,
-      passwordLength: savedUser.password.length,
-      passwordMatches: savedUser.password === hashedPassword
+      passwordLength: savedUser.password?.length
     });
 
-    // 返回用户信息（不包含密码）
-    const userWithoutPassword = user.toObject();
-    delete userWithoutPassword.password;
-
-    return successResponse(userWithoutPassword);
+    return successResponse({
+      message: '注册成功',
+      data: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
   } catch (error: any) {
     console.error('注册失败:', error);
     return errorResponse(error.message || '注册失败');

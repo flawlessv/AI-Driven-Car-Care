@@ -7,7 +7,7 @@ export interface IUser {
   username: string;
   password: string;
   email: string;
-  phone: string;
+  phone?: string;
   role: string;
   status: string;
   specialties?: string[];
@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema<UserDocument>({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   email: { type: String, required: true },
-  phone: { type: String, required: true },
+  phone: { type: String },
   role: { type: String, required: true, enum: Object.values(USER_ROLES) },
   status: { type: String, required: true, enum: Object.values(USER_STATUS), default: USER_STATUS.ACTIVE },
   specialties: [String],
