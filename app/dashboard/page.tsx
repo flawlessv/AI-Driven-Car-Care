@@ -59,67 +59,233 @@ interface DashboardStats {
   }[];
 }
 
+// 将 getStatusColor 移到组件外部作为工具函数
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'completed':
+      return 'success';
+    case 'in_progress':
+      return 'processing';
+    case 'pending':
+      return 'warning';
+    case 'cancelled':
+      return 'default';
+    default:
+      return 'default';
+  }
+};
+
+
+// 添加类型和状态的映射
+const TYPE_MAP = {
+  regular: '常规保养',
+  repair: '维修',
+  inspection: '检查'
+};
+
+const STATUS_MAP = {
+  pending: '待处理',
+  in_progress: '进行中',
+  completed: '已完成',
+  cancelled: '已取消'
+};
+
+const formatVehicleInfo = (vehicle: any) => {
+  if (!vehicle) return '未知车辆';
+  
+  const brand = vehicle.brand || '';
+  const model = vehicle.model || '';
+  const licensePlate = vehicle.licensePlate || '';
+  
+  return (
+    <>
+      <span className="font-medium">{brand} {model}</span>
+      {licensePlate && <span className="text-gray-500 ml-2">({licensePlate})</span>}
+    </>
+  );
+};
+
 const DashboardPage = () => {
   const router = useRouter();
   const { user } = useSelector((state: RootState) => state.auth);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentMaintenance, setRecentMaintenance] = useState<any[]>([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
     dayjs().subtract(30, 'days'),
     dayjs(),
   ]);
 
   useEffect(() => {
-    fetchDashboardStats();
+    const fetchAllData = async () => {
+      try {
+        setLoading(true);
+        const [startDate, endDate] = dateRange;
+
+        // 并行请求所有数据
+        const [statsResponse, maintenanceResponse, appointmentsResponse] = await Promise.all([
+          // 获取仪表盘统计数据
+          fetch(`/api/dashboard/stats?startDate=${startDate.format('YYYY-MM-DD')}&endDate=${endDate.format('YYYY-MM-DD')}`),
+          // 获取最近保养记录
+          fetch('/api/maintenance/recent'),
+          // 获取即将到来的预约
+          fetch('/api/appointments/upcoming')
+        ]);
+
+        // 处理统计数据
+        const statsResult = await statsResponse.json();
+        if (!statsResponse.ok) {
+          throw new Error(statsResult.message || '获取统计数据失败');
+        }
+
+        // 处理保养记录
+        const maintenanceResult = await maintenanceResponse.json();
+        if (!maintenanceResponse.ok) {
+          throw new Error(maintenanceResult.message || '获取保养记录失败');
+        }
+
+        // 处理预约数据
+        const appointmentsResult = await appointmentsResponse.json();
+        if (!appointmentsResponse.ok) {
+          throw new Error(appointmentsResult.message || '获取预约数据失败');
+        }
+
+        // 更新所有状态
+        setStats(statsResult.data);
+        setRecentMaintenance(maintenanceResult.data);
+        setUpcomingAppointments(appointmentsResult.data);
+
+      } catch (error) {
+        console.error('获取数据失败:', error);
+        message.error('获取数据失败: ' + (error as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllData();
   }, [dateRange]);
-
-  const fetchDashboardStats = async () => {
-    try {
-      setLoading(true);
-      const [startDate, endDate] = dateRange;
-      
-      console.log('请求日期范围:', {
-        startDate: startDate.format('YYYY-MM-DD'),
-        endDate: endDate.format('YYYY-MM-DD')
-      });
-
-      const response = await fetch(
-        `/api/dashboard/stats?startDate=${startDate.format('YYYY-MM-DD')}&endDate=${endDate.format('YYYY-MM-DD')}`
-      );
-      
-      console.log('API响应状态:', response.status);
-      const result = await response.json();
-      console.log('API返回数据:', result);
-
-      if (!response.ok) {
-        throw new Error(result.message || '获取数据失败');
-      }
-
-      if (!result.data) {
-        throw new Error('返回数据格式错误');
-      }
-
-      // 处理嵌套的 data 结构
-      const statsData = result.data.data || result.data;
-      console.log('设置状态数据:', statsData);
-      
-      if (!statsData.overview) {
-        throw new Error('数据格式不正确');
-      }
-
-      setStats(statsData);
-    } catch (error) {
-      console.error('获取仪表盘数据失败:', error);
-      message.error('获取数据失败: ' + (error as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <Spin size="large" tip="加载中..." />
+      <div className="dashboard-container">
+        <Spin spinning={loading} tip="Loading...">
+          <div className="dashboard-content">
+            <div className="welcome-section mb-6">
+              <h1 className="text-2xl font-bold mb-2">欢迎回来, {user?.name || '用户'}</h1>
+              <p className="text-gray-600">这里是您的汽车保养管理中心</p>
+            </div>
+
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="我的车辆"
+                    value={3}
+                    prefix={<CarOutlined />}
+                    suffix="辆"
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="待处理保养"
+                    value={2}
+                    prefix={<ToolOutlined />}
+                    suffix="项"
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="预约服务"
+                    value={1}
+                    prefix={<ClockCircleOutlined />}
+                    suffix="个"
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="未读消息"
+                    value={5}
+                    prefix={<BellOutlined />}
+                    suffix="条"
+                  />
+                </Card>
+              </Col>
+            </Row>
+
+            <Row gutter={[16, 16]} className="mt-6">
+              <Col xs={24} lg={12}>
+                <Card 
+                  title="最近保养记录" 
+                  extra={
+                    <Button type="link" onClick={() => router.push('/dashboard/maintenance')}>
+                      查看全部
+                    </Button>
+                  }
+                >
+                  <List
+                    dataSource={recentMaintenance}
+                    renderItem={item => (
+                      <List.Item>
+                        <div className="w-full flex justify-between items-center">
+                          <div>
+                            <div className="font-medium">
+                              {formatVehicleInfo(item.vehicle)}
+                            </div>
+                            <div className="text-gray-500 text-sm">
+                              {TYPE_MAP[item.type as keyof typeof TYPE_MAP] || item.type} - {' '}
+                              {dayjs(item.startDate).format('YYYY-MM-DD')}
+                            </div>
+                          </div>
+                          <Tag color={getStatusColor(item.status)}>
+                            {STATUS_MAP[item.status as keyof typeof STATUS_MAP] || item.status}
+                          </Tag>
+                        </div>
+                      </List.Item>
+                    )}
+                    locale={{
+                      emptyText: <Empty description="暂无保养记录" />
+                    }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} lg={12}>
+                <Card 
+                  title="即将到来的预约" 
+                  extra={
+                    <Button type="link" onClick={() => router.push('/appointments')}>
+                      查看全部
+                    </Button>
+                  }
+                >
+                  <List
+                    dataSource={upcomingAppointments}
+                    renderItem={item => (
+                      <List.Item>
+                        <div className="w-full">
+                          <div className="font-medium">{item.vehicleName}</div>
+                          <div className="text-gray-500 text-sm">
+                            {item.service}
+                          </div>
+                          <div className="text-gray-400 text-sm">
+                            预约时间: {item.date}
+                          </div>
+                        </div>
+                      </List.Item>
+                    )}
+                  />
+                </Card>
+              </Col>
+            </Row>
+          </div>
+        </Spin>
       </div>
     );
   }
@@ -219,164 +385,124 @@ const DashboardPage = () => {
     },
   ];
 
-  const recentMaintenance = [
-    {
-      id: 1,
-      vehicleName: '奥迪A6L',
-      type: '常规保养',
-      date: '2024-03-15',
-      status: '已完成',
-    },
-    {
-      id: 2,
-      vehicleName: '宝马5系',
-      type: '维修',
-      date: '2024-03-14',
-      status: '进行中',
-    },
-    {
-      id: 3,
-      vehicleName: '奔驰C级',
-      type: '年检',
-      date: '2024-03-13',
-      status: '待处理',
-    },
-  ];
-
-  const upcomingAppointments = [
-    {
-      id: 1,
-      vehicleName: '奥迪A6L',
-      service: '机油更换',
-      date: '2024-03-20 14:30',
-    },
-    {
-      id: 2,
-      vehicleName: '宝马5系',
-      service: '轮胎更换',
-      date: '2024-03-22 10:00',
-    },
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case '已完成':
-        return 'success';
-      case '进行中':
-        return 'processing';
-      case '待处理':
-        return 'warning';
-      default:
-        return 'default';
-    }
-  };
-
   return (
     <div className="dashboard-container">
-      <div className="welcome-section mb-6">
-        <h1 className="text-2xl font-bold mb-2">欢迎回来, {user?.name || '用户'}</h1>
-        <p className="text-gray-600">这里是您的汽车保养管理中心</p>
-      </div>
+      <Spin spinning={loading} tip="Loading...">
+        <div className="dashboard-content">
+          <div className="welcome-section mb-6">
+            <h1 className="text-2xl font-bold mb-2">欢迎回来, {user?.name || '用户'}</h1>
+            <p className="text-gray-600">这里是您的汽车保养管理中心</p>
+          </div>
 
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="我的车辆"
-              value={3}
-              prefix={<CarOutlined />}
-              suffix="辆"
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="待处理保养"
-              value={2}
-              prefix={<ToolOutlined />}
-              suffix="项"
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="预约服务"
-              value={1}
-              prefix={<ClockCircleOutlined />}
-              suffix="个"
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="未读消息"
-              value={5}
-              prefix={<BellOutlined />}
-              suffix="条"
-            />
-          </Card>
-        </Col>
-      </Row>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} lg={6}>
+              <Card>
+                <Statistic
+                  title="我的车辆"
+                  value={3}
+                  prefix={<CarOutlined />}
+                  suffix="辆"
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card>
+                <Statistic
+                  title="待处理保养"
+                  value={2}
+                  prefix={<ToolOutlined />}
+                  suffix="项"
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card>
+                <Statistic
+                  title="预约服务"
+                  value={1}
+                  prefix={<ClockCircleOutlined />}
+                  suffix="个"
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card>
+                <Statistic
+                  title="未读消息"
+                  value={5}
+                  prefix={<BellOutlined />}
+                  suffix="条"
+                />
+              </Card>
+            </Col>
+          </Row>
 
-      <Row gutter={[16, 16]} className="mt-6">
-        <Col xs={24} lg={12}>
-          <Card 
-            title="最近保养记录" 
-            extra={
-              <Button type="link" onClick={() => router.push('/dashboard/maintenance')}>
-                查看全部
-              </Button>
-            }
-          >
-            <List
-              dataSource={recentMaintenance}
-              renderItem={item => (
-                <List.Item>
-                  <div className="w-full flex justify-between items-center">
-                    <div>
-                      <div className="font-medium">{item.vehicleName}</div>
-                      <div className="text-gray-500 text-sm">
-                        {item.type} - {item.date}
+          <Row gutter={[16, 16]} className="mt-6">
+            <Col xs={24} lg={12}>
+              <Card 
+                title="最近保养记录" 
+                extra={
+                  <Button type="link" onClick={() => router.push('/dashboard/maintenance')}>
+                    查看全部
+                  </Button>
+                }
+              >
+                <List
+                  dataSource={recentMaintenance}
+                  renderItem={item => (
+                    <List.Item>
+                      <div className="w-full flex justify-between items-center">
+                        <div>
+                          <div className="font-medium">
+                            {formatVehicleInfo(item.vehicle)}
+                          </div>
+                          <div className="text-gray-500 text-sm">
+                            {TYPE_MAP[item.type as keyof typeof TYPE_MAP] || item.type} - {' '}
+                            {dayjs(item.startDate).format('YYYY-MM-DD')}
+                          </div>
+                        </div>
+                        <Tag color={getStatusColor(item.status)}>
+                          {STATUS_MAP[item.status as keyof typeof STATUS_MAP] || item.status}
+                        </Tag>
                       </div>
-                    </div>
-                    <Tag color={getStatusColor(item.status)}>{item.status}</Tag>
-                  </div>
-                </List.Item>
-              )}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} lg={12}>
-          <Card 
-            title="即将到来的预约" 
-            extra={
-              <Button type="link" onClick={() => router.push('/appointments')}>
-                查看全部
-              </Button>
-            }
-          >
-            <List
-              dataSource={upcomingAppointments}
-              renderItem={item => (
-                <List.Item>
-                  <div className="w-full">
-                    <div className="font-medium">{item.vehicleName}</div>
-                    <div className="text-gray-500 text-sm">
-                      {item.service}
-                    </div>
-                    <div className="text-gray-400 text-sm">
-                      预约时间: {item.date}
-                    </div>
-                  </div>
-                </List.Item>
-              )}
-            />
-          </Card>
-        </Col>
-      </Row>
+                    </List.Item>
+                  )}
+                  locale={{
+                    emptyText: <Empty description="暂无保养记录" />
+                  }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} lg={12}>
+              <Card 
+                title="即将到来的预约" 
+                extra={
+                  <Button type="link" onClick={() => router.push('/appointments')}>
+                    查看全部
+                  </Button>
+                }
+              >
+                <List
+                  dataSource={upcomingAppointments}
+                  renderItem={item => (
+                    <List.Item>
+                      <div className="w-full">
+                        <div className="font-medium">{item.vehicleName}</div>
+                        <div className="text-gray-500 text-sm">
+                          {item.service}
+                        </div>
+                        <div className="text-gray-400 text-sm">
+                          预约时间: {item.date}
+                        </div>
+                      </div>
+                    </List.Item>
+                  )}
+                />
+              </Card>
+            </Col>
+          </Row>
+        </div>
+      </Spin>
     </div>
   );
 };

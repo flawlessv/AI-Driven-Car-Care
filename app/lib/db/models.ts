@@ -61,8 +61,127 @@ userSchema.statics.findByUsername = function(username: string) {
   return this.findOne({ username });
 };
 
-// 获取用户模型
+// 维护记录接口
+export interface IMaintenance {
+  vehicle: mongoose.Types.ObjectId;
+  technician: mongoose.Types.ObjectId;
+  type: 'regular' | 'repair' | 'inspection';
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  startDate: Date;
+  createdAt: Date;
+}
+
+// 预约接口
+export interface IAppointment {
+  vehicle: mongoose.Types.ObjectId;
+  service: mongoose.Types.ObjectId;
+  date: Date;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  createdAt: Date;
+}
+
+// 维护记录文档接口
+export interface MaintenanceDocument extends IMaintenance, Document {}
+
+// 预约文档接口
+export interface AppointmentDocument extends IAppointment, Document {}
+
+// 维护记录 Schema
+const maintenanceSchema = new mongoose.Schema<MaintenanceDocument>({
+  vehicle: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Vehicle',
+    required: true
+  },
+  technician: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  type: {
+    type: String,
+    required: true,
+    enum: ['regular', 'repair', 'inspection']
+  },
+  status: {
+    type: String,
+    required: true,
+    enum: ['pending', 'in_progress', 'completed', 'cancelled'],
+    default: 'pending'
+  },
+  startDate: {
+    type: Date,
+    required: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+// 预约 Schema
+const appointmentSchema = new mongoose.Schema<AppointmentDocument>({
+  vehicle: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Vehicle',
+    required: true
+  },
+  service: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Service',
+    required: true
+  },
+  date: {
+    type: Date,
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'confirmed', 'completed', 'cancelled'],
+    default: 'pending'
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+// 修改导出函数的写法
+export function getMaintenanceModel(): Model<MaintenanceDocument> {
+  try {
+    console.log('正在获取 Maintenance 模型...');
+    const modelName = 'Maintenance';
+    const model = mongoose.models[modelName] || mongoose.model<MaintenanceDocument>(modelName, maintenanceSchema);
+    console.log('Maintenance 模型获取成功:', !!model);
+    return model;
+  } catch (error) {
+    console.error('获取 Maintenance 模型失败:', error);
+    throw error;
+  }
+}
+
+export function getAppointmentModel(): Model<AppointmentDocument> {
+  try {
+    console.log('正在获取 Appointment 模型...');
+    const modelName = 'Appointment';
+    const model = mongoose.models[modelName] || mongoose.model<AppointmentDocument>(modelName, appointmentSchema);
+    console.log('Appointment 模型获取成功:', !!model);
+    return model;
+  } catch (error) {
+    console.error('获取 Appointment 模型失败:', error);
+    throw error;
+  }
+}
+
 export function getUserModel(): UserModel {
-  const modelName = 'User';
-  return (mongoose.models[modelName] || mongoose.model<UserDocument, UserModel>(modelName, userSchema)) as UserModel;
+  try {
+    console.log('正在获取 User 模型...');
+    const modelName = 'User';
+    const model = (mongoose.models[modelName] || mongoose.model<UserDocument, UserModel>(modelName, userSchema)) as UserModel;
+    console.log('User 模型获取成功:', !!model);
+    return model;
+  } catch (error) {
+    console.error('获取 User 模型失败:', error);
+    throw error;
+  }
 } 
