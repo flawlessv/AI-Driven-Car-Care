@@ -7,10 +7,8 @@ import {
   TeamOutlined,
   CalendarOutlined,
   UserOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
+  DashboardOutlined,
 } from '@ant-design/icons';
-import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useSelector } from 'react-redux';
@@ -20,16 +18,34 @@ const { Header, Content } = Layout;
 
 const menuItems = [
   {
+    key: 'dashboard',
+    icon: <DashboardOutlined />,
+    label: '仪表盘',
+    path: '/dashboard',
+  },
+  {
     key: 'appointments',
     icon: <CalendarOutlined />,
-    label: '在线预约',
-    path: '/appointments',
+    label: '预约管理',
+    path: '/dashboard/appointments',
+  },
+  {
+    key: 'maintenance',
+    icon: <ToolOutlined />,
+    label: '保养维修',
+    path: '/dashboard/maintenance',
+  },
+  {
+    key: 'vehicles',
+    icon: <CarOutlined />,
+    label: '车辆管理',
+    path: '/dashboard/vehicles',
   },
   {
     key: 'community',
     icon: <TeamOutlined />,
     label: '用户社区',
-    path: '/community',
+    path: '/dashboard/community',
   },
 ];
 
@@ -64,17 +80,31 @@ export default function MainLayout({
     router.push(path);
   };
 
+  const handleUserMenuClick = ({ key }: { key: string }) => {
+    switch (key) {
+      case 'profile':
+        router.push('/dashboard/profile');
+        break;
+      case 'settings':
+        router.push('/dashboard/settings');
+        break;
+      case 'logout':
+        // 处理登出逻辑
+        break;
+    }
+  };
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Header style={{ padding: 0, background: colorBgContainer }}>
         <div className="flex justify-between items-center px-4">
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold mr-8">
+            <Link href="/dashboard" className="text-xl font-bold mr-8">
               汽车保养系统
             </Link>
             <Menu
               mode="horizontal"
-              selectedKeys={[pathname.split('/')[1]]}
+              selectedKeys={[pathname.split('/')[2] || 'dashboard']}
               items={menuItems.map(item => ({
                 key: item.key,
                 icon: item.icon,
@@ -89,6 +119,7 @@ export default function MainLayout({
                 items: userMenu.map(item => ({
                   key: item.key,
                   label: item.label,
+                  onClick: () => handleUserMenuClick({ key: item.key }),
                 })),
               }}
               placement="bottomRight"

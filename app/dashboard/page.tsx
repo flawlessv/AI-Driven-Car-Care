@@ -260,7 +260,10 @@ const DashboardPage = () => {
                 <Card 
                   title="即将到来的预约" 
                   extra={
-                    <Button type="link" onClick={() => router.push('/appointments')}>
+                    <Button 
+                      type="link" 
+                      onClick={() => router.push('/dashboard/appointments')}
+                    >
                       查看全部
                     </Button>
                   }
@@ -477,7 +480,10 @@ const DashboardPage = () => {
               <Card 
                 title="即将到来的预约" 
                 extra={
-                  <Button type="link" onClick={() => router.push('/appointments')}>
+                  <Button 
+                    type="link" 
+                    onClick={() => router.push('/dashboard/appointments')}
+                  >
                     查看全部
                   </Button>
                 }

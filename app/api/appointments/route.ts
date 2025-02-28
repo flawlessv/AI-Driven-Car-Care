@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import Appointment from '@/models/appointment';
-import { connectDB } from '@/lib/db';
+import { connectDB } from '@/lib/mongodb';
 
 export async function GET() {
   try {
@@ -16,11 +16,12 @@ export async function GET() {
       data: appointments
     });
   } catch (error: any) {
-    console.error('Error fetching appointments:', error);
+    console.error('获取预约列表失败:', error);
     return NextResponse.json(
-      {
-        success: false,
-        message: error.message || '获取预约列表失败'
+      { 
+        success: false, 
+        message: '获取预约列表失败',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       },
       { status: 500 }
     );
