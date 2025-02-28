@@ -9,6 +9,7 @@ import {
   validationErrorResponse,
   forbiddenResponse,
 } from '../../lib/api-response';
+import { USER_ROLES } from '@/types/user';
 
 // 获取用户列表
 export async function GET(request: NextRequest) {
@@ -31,10 +32,10 @@ export async function GET(request: NextRequest) {
     const User = getUserModel();
 
     // 构建查询条件
-    const query: any = {};
-    if (role) {
-      query.role = role;
-    }
+    const query = role ? { role } : {};
+    
+    // 确保只返回有效角色的用户
+    query.role = { $in: Object.values(USER_ROLES) };
 
     console.log('查询条件:', query);
 

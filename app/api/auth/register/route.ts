@@ -5,9 +5,10 @@ import {
   successResponse,
   errorResponse,
 } from '../../../lib/api-response';
+import { USER_ROLES } from '@/types/user';
 
-// 定义有效的角色
-const VALID_ROLES = ['admin', 'staff', 'technician', 'customer'];
+// 定义有效的角色 - 使用 USER_ROLES 中定义的角色
+const VALID_ROLES = Object.values(USER_ROLES);
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,10 +54,10 @@ export async function POST(request: NextRequest) {
     // 创建新用户 - 直接使用原始密码，让 mongoose 中间件处理加密
     const userData = {
       username,
-      password,  // 使用原始密码
+      password,
       email,
       phone,
-      role: role || 'customer',
+      role: role || USER_ROLES.CUSTOMER,  // 默认为客户角色
       status: 'active'
     };
 

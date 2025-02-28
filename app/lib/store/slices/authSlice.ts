@@ -21,11 +21,7 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    loginStart: (state) => {
-      state.loading = true;
-      state.error = null;
-    },
-    loginSuccess: (state, action: PayloadAction<{ user: User; token: string }>) => {
+    login: (state, action: PayloadAction<{ user: User; token: string }>) => {
       state.loading = false;
       state.isAuthenticated = true;
       state.user = action.payload.user;
@@ -34,6 +30,10 @@ const authSlice = createSlice({
       if (typeof window !== 'undefined') {
         localStorage.setItem('token', action.payload.token);
       }
+    },
+    loginStart: (state) => {
+      state.loading = true;
+      state.error = null;
     },
     loginFailure: (state, action: PayloadAction<string>) => {
       state.loading = false;
@@ -65,8 +65,8 @@ const authSlice = createSlice({
 });
 
 export const {
+  login,
   loginStart,
-  loginSuccess,
   loginFailure,
   logout,
   updateUser,

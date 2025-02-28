@@ -8,10 +8,9 @@ import Link from 'next/link';
 
 interface RegisterFormData {
   username: string;
-  email: string;
   password: string;
-  confirmPassword: string;
-  phone: string;
+  email: string;
+  phone?: string;
 }
 
 export default function RegisterForm() {
@@ -29,13 +28,13 @@ export default function RegisterForm() {
         body: JSON.stringify(values),
       });
 
-      const result = await response.json();
+      const data = await response.json();
 
       if (response.ok) {
-        message.success('注册成功，请登录');
+        message.success('注册成功');
         router.push('/login');
       } else {
-        throw new Error(result.message || '注册失败');
+        message.error(data.message || '注册失败');
       }
     } catch (error) {
       console.error('Register error:', error);
@@ -57,7 +56,7 @@ export default function RegisterForm() {
           name="username"
           rules={[
             { required: true, message: '请输入用户名' },
-            { min: 2, message: '用户名长度不能小于2位' }
+            { min: 3, message: '用户名长度不能小于3位' }
           ]}
         >
           <Input
@@ -82,20 +81,6 @@ export default function RegisterForm() {
         </Form.Item>
 
         <Form.Item
-          name="phone"
-          rules={[
-            { required: true, message: '请输入手机号' },
-            { pattern: /^1[3-9]\d{9}$/, message: '请输入有效的手机号码' }
-          ]}
-        >
-          <Input
-            prefix={<PhoneOutlined className="text-blue-400" />}
-            placeholder="请输入手机号"
-            className="input-base"
-          />
-        </Form.Item>
-
-        <Form.Item
           name="password"
           rules={[
             { required: true, message: '请输入密码' },
@@ -110,23 +95,14 @@ export default function RegisterForm() {
         </Form.Item>
 
         <Form.Item
-          name="confirmPassword"
-          dependencies={['password']}
+          name="phone"
           rules={[
-            { required: true, message: '请确认密码' },
-            ({ getFieldValue }) => ({
-              validator(_, value) {
-                if (!value || getFieldValue('password') === value) {
-                  return Promise.resolve();
-                }
-                return Promise.reject(new Error('两次输入的密码不一致'));
-              },
-            }),
+            { pattern: /^1[3-9]\d{9}$/, message: '请输入有效的手机号码' }
           ]}
         >
-          <Input.Password
-            prefix={<LockOutlined className="text-blue-400" />}
-            placeholder="请确认密码"
+          <Input
+            prefix={<PhoneOutlined className="text-blue-400" />}
+            placeholder="请输入手机号码（选填）"
             className="input-base"
           />
         </Form.Item>
@@ -143,7 +119,6 @@ export default function RegisterForm() {
         </Form.Item>
       </Form>
 
-      {/* 添加分割线和登录链接 */}
       <div className="text-center">
         <Divider className="text-gray-300">
           <span className="text-gray-500 text-sm px-4">已有账号?</span>

@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Table, Button, Space, Select, message, Input } from 'antd';
+import { Table, Button, Space, Select, message, Input, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { SearchOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/lib/store';
 import type { User } from '@/types/user';
+import { ROLE_NAMES } from '@/types/user';
 
 const { Search } = Input;
 
@@ -151,14 +152,10 @@ export default function UsersPage() {
       title: '角色',
       dataIndex: 'role',
       key: 'role',
-      render: (role: string, record: User) => (
-        <Select
-          value={role}
-          style={{ width: 120 }}
-          onChange={(value) => handleRoleChange(value, record._id)}
-          disabled={currentUser?._id === record._id || currentUser?.role !== 'admin'}
-          options={roleOptions}
-        />
+      render: (role: keyof typeof ROLE_NAMES) => (
+        <Tag color={getRoleColor(role)}>
+          {ROLE_NAMES[role]}
+        </Tag>
       ),
     },
     {
@@ -196,6 +193,19 @@ export default function UsersPage() {
   const handleRoleFilterChange = (value: string) => {
     setRoleFilter(value);
     setCurrentPage(1);
+  };
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'red';
+      case 'technician':
+        return 'blue';
+      case 'customer':
+        return 'green';
+      default:
+        return 'default';
+    }
   };
 
   return (

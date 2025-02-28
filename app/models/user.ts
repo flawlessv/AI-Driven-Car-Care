@@ -1,12 +1,6 @@
 import mongoose from 'mongoose';
 import { hash } from 'bcryptjs';
-
-export const USER_ROLES = {
-  ADMIN: 'admin',
-  STAFF: 'staff',
-  TECHNICIAN: 'technician',
-  CUSTOMER: 'customer',
-} as const;
+import { USER_ROLES } from '@/types/user';
 
 export const USER_STATUS = {
   ACTIVE: 'active',
@@ -19,14 +13,15 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
-  password: {
-    type: String,
-    required: true,
-  },
+  name: String,
   email: {
     type: String,
     required: true,
     unique: true,
+  },
+  password: {
+    type: String,
+    required: true,
   },
   phone: String,
   role: {
@@ -36,8 +31,8 @@ const userSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: Object.values(USER_STATUS),
-    default: USER_STATUS.ACTIVE,
+    enum: ['active', 'inactive', 'suspended'],
+    default: 'active',
   },
   // 技师特有字段
   specialties: {
@@ -77,12 +72,6 @@ userSchema.pre('save', async function(next) {
   next();
 });
 
-let User;
-
-if (mongoose.models && mongoose.models.User) {
-  User = mongoose.models.User;
-} else {
-  User = mongoose.model('User', userSchema);
-}
+const User = mongoose.models.User || mongoose.model('User', userSchema);
 
 export default User; 
