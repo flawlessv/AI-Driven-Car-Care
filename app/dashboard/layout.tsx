@@ -1,6 +1,6 @@
 'use client';
 
-import { Layout, Menu, Avatar, Dropdown, Button, theme } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Button, theme, message } from 'antd';
 import {
   CarOutlined,
   ToolOutlined,
@@ -18,8 +18,9 @@ import {
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '@/lib/store';
+import { logout } from '@/lib/store/slices/authSlice';
 
 const { Header, Sider, Content } = Layout;
 
@@ -136,6 +137,7 @@ export default function DashboardLayout({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const router = useRouter();
+  const dispatch = useDispatch();
   const pathname = usePathname();
   const { user } = useSelector((state: RootState) => state.auth);
   const {
@@ -150,13 +152,35 @@ export default function DashboardLayout({
     }
   };
 
-  const handleUserMenuClick = ({ key }: { key: string }) => {
+  const handleUserMenuClick = async ({ key }: { key: string }) => {
     switch (key) {
       case 'home':
-        router.push('/home');
+        router.push('/');
         break;
       case 'logout':
-        // 处理登出逻辑
+        try {
+          // 1. 调用退出登录 API
+          const response = await fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'include', // 包含 cookies
+          });
+
+          if (!response.ok) {
+            throw new Error('退出登录失败');
+          }
+
+          // 2. 清除 Redux store 状态
+          dispatch(logout());
+
+          // 3. 显示成功消息
+          message.success('退出登录成功');
+
+          // 4. 跳转到登录页
+          window.location.href = '/login';
+        } catch (error) {
+          console.error('退出登录失败:', error);
+          message.error('退出登录失败，请重试');
+        }
         break;
     }
   };
