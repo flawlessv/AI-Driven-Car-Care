@@ -8,6 +8,7 @@ import {
   CalendarOutlined,
   UserOutlined,
   DashboardOutlined,
+  HomeOutlined,
 } from '@ant-design/icons';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -51,12 +52,9 @@ const menuItems = [
 
 const userMenu = [
   {
-    key: 'profile',
-    label: '个人信息',
-  },
-  {
-    key: 'settings',
-    label: '系统设置',
+    key: 'home',
+    icon: <HomeOutlined />,
+    label: '回到首页',
   },
   {
     key: 'logout',
@@ -76,17 +74,16 @@ export default function MainLayout({
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
 
+  console.log('Current user:', user);
+
   const handleMenuClick = (path: string) => {
     router.push(path);
   };
 
   const handleUserMenuClick = ({ key }: { key: string }) => {
     switch (key) {
-      case 'profile':
-        router.push('/dashboard/profile');
-        break;
-      case 'settings':
-        router.push('/dashboard/settings');
+      case 'home':
+        router.push('/');
         break;
       case 'logout':
         // 处理登出逻辑
@@ -118,6 +115,7 @@ export default function MainLayout({
               menu={{
                 items: userMenu.map(item => ({
                   key: item.key,
+                  icon: item.icon,
                   label: item.label,
                   onClick: () => handleUserMenuClick({ key: item.key }),
                 })),
@@ -126,7 +124,9 @@ export default function MainLayout({
             >
               <div className="flex items-center cursor-pointer">
                 <Avatar icon={<UserOutlined />} />
-                <span className="ml-2">{user?.name || '用户名'}</span>
+                <span className="ml-2">
+                  {user?.name || user?.username || '用户名'}
+                </span>
               </div>
             </Dropdown>
           </div>

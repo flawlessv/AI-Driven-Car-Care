@@ -13,6 +13,7 @@ import {
   AppstoreOutlined,
   BarChartOutlined,
   MessageOutlined,
+  HomeOutlined,
 } from '@ant-design/icons';
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -118,12 +119,9 @@ const menuItems = [
 
 const userMenu = [
   {
-    key: 'profile',
-    label: '个人信息',
-  },
-  {
-    key: 'settings',
-    label: '系统设置',
+    key: 'home',
+    icon: <HomeOutlined />,
+    label: '回到首页',
   },
   {
     key: 'logout',
@@ -144,9 +142,22 @@ export default function DashboardLayout({
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
 
+  console.log('Current user:', user);
+
   const handleMenuClick = (path: string) => {
     if (path) {
       router.push(path);
+    }
+  };
+
+  const handleUserMenuClick = ({ key }: { key: string }) => {
+    switch (key) {
+      case 'home':
+        router.push('/home');
+        break;
+      case 'logout':
+        // 处理登出逻辑
+        break;
     }
   };
 
@@ -214,14 +225,18 @@ export default function DashboardLayout({
                 menu={{
                   items: userMenu.map(item => ({
                     key: item.key,
+                    icon: item.icon,
                     label: item.label,
+                    onClick: () => handleUserMenuClick({ key: item.key }),
                   })),
                 }}
                 placement="bottomRight"
               >
                 <div className="flex items-center cursor-pointer">
                   <Avatar icon={<UserOutlined />} />
-                  <span className="ml-2">{user?.name || '用户名'}</span>
+                  <span className="ml-2">
+                    {user?.name || user?.username || '用户名'}
+                  </span>
                 </div>
               </Dropdown>
             </div>
