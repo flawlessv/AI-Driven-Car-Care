@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db-connect';
-import Customer from '@/models/customer';
-import MaintenanceRecord from '@/models/maintenance';
+import { connectDB } from '../../../../lib/mongodb';
+import Customer from '../../../../models/customer';
+import MaintenanceRecord from '../../../../models/maintenance';
 
 export async function GET(request: Request) {
   try {
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       );
     }
 
-    await dbConnect();
+    await connectDB();
 
     // 获取所有客户
     const customers = await Customer.find({});
