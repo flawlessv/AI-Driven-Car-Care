@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { authMiddleware } from '@/lib/auth';
-import MaintenanceRule from '@/models/maintenanceRule';
-import Vehicle from '@/models/vehicle';
+import MaintenanceRule from '../../../../models/maintenanceRule';
+import Vehicle from '../../../../models/vehicle';
 import {
   successResponse,
   createdResponse,

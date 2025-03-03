@@ -291,7 +291,7 @@ export default function VehicleFilesPage() {
               <Card>
                 <Statistic
                   title="车龄评分"
-                  value={selectedVehicle.healthScore.details.ageScore}
+                  value={selectedVehicle?.healthScore?.details?.ageScore ?? 0}
                   suffix="/20"
                 />
               </Card>
@@ -300,7 +300,7 @@ export default function VehicleFilesPage() {
               <Card>
                 <Statistic
                   title="里程评分"
-                  value={selectedVehicle.healthScore.details.mileageScore}
+                  value={selectedVehicle?.healthScore?.details?.mileageScore ?? 0}
                   suffix="/30"
                 />
               </Card>
@@ -309,7 +309,7 @@ export default function VehicleFilesPage() {
               <Card>
                 <Statistic
                   title="保养评分"
-                  value={selectedVehicle.healthScore.details.maintenanceScore}
+                  value={selectedVehicle?.healthScore?.details?.maintenanceScore ?? 0}
                   suffix="/30"
                 />
               </Card>
@@ -318,7 +318,7 @@ export default function VehicleFilesPage() {
               <Card>
                 <Statistic
                   title="状态评分"
-                  value={selectedVehicle.healthScore.details.statusScore}
+                  value={selectedVehicle?.healthScore?.details?.statusScore ?? 0}
                   suffix="/20"
                 />
               </Card>
@@ -326,9 +326,9 @@ export default function VehicleFilesPage() {
           </Row>
           <Card title="健康建议">
             <ul className="list-disc pl-4 space-y-2">
-              {selectedVehicle.healthScore.suggestions.map((suggestion, index) => (
+              {selectedVehicle?.healthScore?.suggestions?.map((suggestion, index) => (
                 <li key={index} className="text-gray-600">{suggestion}</li>
-              ))}
+              )) || <li className="text-gray-600">暂无健康建议</li>}
             </ul>
           </Card>
         </div>

@@ -2,7 +2,7 @@
 
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
-import ReduxProvider from '@/lib/store/provider';
+import ReduxProvider from '../lib/store/provider';
 
 export default function Providers({
   children,

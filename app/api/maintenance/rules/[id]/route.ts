@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { authMiddleware } from '@/lib/auth';
-import MaintenanceRule from '@/models/maintenanceRule';
-import Vehicle from '@/models/vehicle';
+import MaintenanceRule from '../../../../../models/maintenanceRule';
+import Vehicle from '../../../../../models/vehicle';
 import {
   successResponse,
   errorResponse,
@@ -15,8 +15,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await authMiddleware(request);
-    if (!user) {
+    const authResult = await authMiddleware(request);
+    if (!authResult.success || !authResult.user) {
       return errorResponse('未授权访问', 401);
     }
 
@@ -29,10 +29,10 @@ export async function GET(
       return errorResponse('维修规则不存在', 404);
     }
 
-    // 验证访问权限
-    if (user.role === 'customer') {
+    // 检查权限
+    if (authResult.user.role === 'customer') {
       const vehicle = await Vehicle.findById(rule.vehicle);
-      if (!vehicle || vehicle.owner.toString() !== user._id.toString()) {
+      if (!vehicle || vehicle.owner.toString() !== authResult.user._id.toString()) {
         return errorResponse('无权访问此维修规则', 403);
       }
     }

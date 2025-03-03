@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
 
     try {
       await vehicle.save();
-      return createdResponse({
+      return successResponse({
         data: vehicle,
         message: '车辆添加成功',
       });

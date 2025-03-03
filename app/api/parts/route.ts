@@ -78,12 +78,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await authMiddleware(request);
+    const {user} = await authMiddleware(request);
     if ('status' in user) return user;
 
     // 检查用户权限
-    if (user.role !== 'admin' && user.role !== 'staff') {
-      return errorResponse('没有权限添加配件', 403);
+    console.log(user, 'user123');
+    if (user.role !== 'admin') {
+      return errorResponse('没有权限添加配件1'+user.role, 403);
     }
 
     await connectDB();
@@ -138,7 +139,10 @@ export async function POST(request: NextRequest) {
 
     await part.save();
 
-    return createdResponse(part);
+    return successResponse({
+      data: part,
+      message: '配件添加成功'
+    });
   } catch (error: any) {
     console.error('创建配件失败:', error);
     return errorResponse(error.message || '创建配件失败');

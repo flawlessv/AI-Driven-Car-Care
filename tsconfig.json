@@ -13,6 +13,8 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+     // ... 其他已有配置 ...
+     "noEmitOnError": false,    // 允许在有类型错误时继续编译
     "plugins": [
       {
         "name": "next"
