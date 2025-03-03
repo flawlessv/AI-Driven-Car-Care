@@ -1,11 +1,10 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { authMiddleware } from '@/lib/auth';
-import MaintenanceRule from '../../../../models/maintenanceRule';
-import Vehicle from '../../../../models/vehicle';
+import { getMaintenanceRuleModel } from '@/models/maintenanceRule';
+import Vehicle from '@/models/vehicle';
 import {
   successResponse,
-  createdResponse,
   errorResponse,
   validationErrorResponse,
 } from '@/lib/api-response';
@@ -13,11 +12,12 @@ import {
 // 获取维修规则列表
 export async function GET(request: NextRequest) {
   try {
-    const user = await authMiddleware(request);
-    if (!user) {
+    const authResult = await authMiddleware(request);
+    if (!authResult.success || !authResult.user) {
       return errorResponse('未授权访问', 401);
     }
 
+    const user = authResult.user;
     await connectDB();
 
     // 根据用户角色过滤
@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
       query = { vehicle: { $in: vehicles.map(v => v._id) } };
     }
 
+    const MaintenanceRule = getMaintenanceRuleModel();
     const rules = await MaintenanceRule.find(query)
       .populate('vehicle', 'brand model licensePlate')
       .sort({ createdAt: -1 });
@@ -42,30 +43,32 @@ export async function GET(request: NextRequest) {
 // 创建维修规则
 export async function POST(request: NextRequest) {
   try {
-    const user = await authMiddleware(request);
-    if (!user) {
+    const authResult = await authMiddleware(request);
+    if (!authResult.success || !authResult.user) {
       return errorResponse('未授权访问', 401);
     }
 
+    const user = authResult.user;
     await connectDB();
 
     const data = await request.json();
+    const { vehicle: vehicleId, type, mileageInterval, timeInterval } = data;
 
     // 验证必填字段
-    if (!data.vehicle || !data.type) {
+    if (!vehicleId || !type) {
       return validationErrorResponse('车辆和提醒类型为必填项');
     }
 
     // 验证提醒类型和对应的参数
-    if ((data.type === 'mileage' || data.type === 'both') && !data.mileageInterval) {
+    if ((type === 'mileage' || type === 'both') && !mileageInterval) {
       return validationErrorResponse('里程提醒需要设置里程间隔');
     }
-    if ((data.type === 'time' || data.type === 'both') && !data.timeInterval) {
+    if ((type === 'time' || type === 'both') && !timeInterval) {
       return validationErrorResponse('时间提醒需要设置时间间隔');
     }
 
     // 验证车辆所有权
-    const vehicle = await Vehicle.findById(data.vehicle);
+    const vehicle = await Vehicle.findById(vehicleId);
     if (!vehicle) {
       return validationErrorResponse('车辆不存在');
     }
@@ -74,22 +77,28 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查是否已存在规则
-    const existingRule = await MaintenanceRule.findOne({ vehicle: data.vehicle });
+    const MaintenanceRule = getMaintenanceRuleModel();
+    const existingRule = await MaintenanceRule.findOne({ vehicle: vehicleId });
     if (existingRule) {
       return validationErrorResponse('该车辆已存在维修规则');
     }
 
     // 创建规则
     const rule = new MaintenanceRule({
-      ...data,
-      createdBy: user?._id || undefined
+      vehicle: vehicleId,
+      type,
+      mileageInterval,
+      timeInterval,
+      enabled: true,
+      createdBy: user._id
     });
 
     await rule.save();
+    await rule.populate('vehicle', 'brand model licensePlate');
 
-    return createdResponse({
+    return successResponse({
       data: rule,
-      message: '维修规则创建成功',
+      message: '维修规则创建成功'
     });
   } catch (error: any) {
     console.error('创建维修规则失败:', error);

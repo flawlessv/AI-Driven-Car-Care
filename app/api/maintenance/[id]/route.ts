@@ -32,6 +32,11 @@ interface MaintenancePart {
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    // 验证 ID 格式
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      return notFoundResponse('无效的维修记录ID');
+    }
+
     const user = await authMiddleware(request);
     if (!user) {
       return errorResponse('未授权访问', 401);
