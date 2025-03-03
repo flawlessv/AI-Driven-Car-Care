@@ -3,57 +3,58 @@ import mongoose from 'mongoose';
 const customerSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true,
+    required: [true, '请输入客户姓名'],
   },
   phone: {
     type: String,
-    required: true,
+    required: [true, '请输入联系电话'],
+    unique: true,
+    validate: {
+      validator: function(v: string) {
+        return /^1[3-9]\d{9}$/.test(v);
+      },
+      message: '请输入有效的手机号码'
+    }
   },
-  email: {
-    type: String,
-    required: true,
+  email: String,
+  address: String,
+  createdAt: {
+    type: Date,
+    default: Date.now
   },
-  type: {
-    type: String,
-    enum: ['individual', 'corporate', 'vip'],
-    default: 'individual',
-  },
-  address: {
-    type: String,
+  updatedAt: {
+    type: Date,
+    default: Date.now
   },
   vehicles: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vehicle',
+    ref: 'Vehicle'
   }],
   status: {
     type: String,
     enum: ['active', 'inactive'],
-    default: 'active',
+    default: 'active'
   },
-  notes: {
-    type: String,
-  },
-  lastVisit: {
-    type: Date,
-  },
-  totalSpent: {
-    type: Number,
-    default: 0,
-  },
-  visitCount: {
-    type: Number,
-    default: 0,
+  // 客户统计数据
+  stats: {
+    totalOrders: {
+      type: Number,
+      default: 0
+    },
+    totalSpending: {
+      type: Number,
+      default: 0
+    },
+    lastVisit: Date
   }
-}, {
-  timestamps: true
 });
 
-// 更新客户统计数据的方法
-customerSchema.methods.updateStats = async function(amount: number) {
-  this.totalSpent += amount;
-  this.visitCount += 1;
-  this.lastVisit = new Date();
-  await this.save();
-};
+// 更新时间中间件
+customerSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
 
-export default mongoose.models.Customer || mongoose.model('Customer', customerSchema); 
+const Customer = mongoose.models.Customer || mongoose.model('Customer', customerSchema);
+
+export default Customer; 

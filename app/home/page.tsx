@@ -3,6 +3,8 @@
 import { motion, useScroll, useSpring } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button, Modal } from 'antd';
+import AppointmentForm from './components/AppointmentForm';
 
 export default function Home() {
   const { scrollYProgress } = useScroll();
@@ -179,6 +181,12 @@ export default function Home() {
     }
   ];
 
+  const [appointmentModalVisible, setAppointmentModalVisible] = useState(false);
+
+  const handleAppointment = () => {
+    setAppointmentModalVisible(true);
+  };
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 text-white">
       {/* 进度条 */}
@@ -287,14 +295,14 @@ export default function Home() {
               >
                 了解服务
               </motion.a>
-              <motion.a
-                href="#booking"
+              <motion.button
+                onClick={handleAppointment}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="px-8 py-3 bg-white text-blue-900 rounded-full text-lg font-semibold hover:shadow-lg transition-all"
+                className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full text-lg font-semibold hover:shadow-lg transition-all text-white border-none cursor-pointer"
               >
                 立即预约
-              </motion.a>
+              </motion.button>
             </div>
           </motion.div>
         </div>
@@ -646,6 +654,30 @@ export default function Home() {
       >
         ↑
       </motion.button>
+
+      {/* 添加预约表单模态框 */}
+      <Modal
+        title={
+          <div className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+            预约服务
+          </div>
+        }
+        open={appointmentModalVisible}
+        onCancel={() => setAppointmentModalVisible(false)}
+        footer={null}
+        width={600}
+        className="appointment-modal"
+        closeIcon={
+          <span className="text-gray-400 hover:text-gray-600 transition-colors">
+            ×
+          </span>
+        }
+      >
+        <AppointmentForm
+          onSuccess={() => setAppointmentModalVisible(false)}
+          onCancel={() => setAppointmentModalVisible(false)}
+        />
+      </Modal>
     </main>
   );
 } 

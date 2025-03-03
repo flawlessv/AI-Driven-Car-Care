@@ -97,3 +97,70 @@ body {
   box-shadow: 0 0 15px rgba(66, 135, 245, 0.5);
   transform: translateY(-2px);
 }
+
+/* 添加全局样式 */
+.appointment-modal .ant-modal-content {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.appointment-modal .ant-modal-header {
+  background: transparent;
+  border-bottom: none;
+  padding: 24px 24px 0;
+}
+
+.appointment-form .ant-form-item {
+  margin-bottom: 24px;
+}
+
+.appointment-form .ant-input,
+.appointment-form .ant-select-selector,
+.appointment-form .ant-picker {
+  border-radius: 8px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  transition: all 0.3s ease;
+}
+
+.appointment-form .ant-input:hover,
+.appointment-form .ant-select-selector:hover,
+.appointment-form .ant-picker:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.appointment-form .ant-input:focus,
+.appointment-form .ant-select-selector:focus,
+.appointment-form .ant-picker-focused {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+.appointment-form .ant-form-item-label > label {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.appointment-form .ant-input::placeholder {
+  color: #9ca3af;
+}
+
+.appointment-form .ant-select-selection-placeholder {
+  color: #9ca3af;
+}
+
+.appointment-form .ant-picker-input > input::placeholder {
+  color: #9ca3af;
+}
+
+/* 添加渐变边框效果 */
+.appointment-form .ant-form-item:hover .ant-input,
+.appointment-form .ant-form-item:hover .ant-select-selector,
+.appointment-form .ant-form-item:hover .ant-picker {
+  background: linear-gradient(#fff, #fff) padding-box,
+              linear-gradient(to right, #3b82f6, #8b5cf6) border-box;
+  border: 1px solid transparent;
+}

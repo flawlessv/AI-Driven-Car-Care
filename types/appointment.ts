@@ -1,6 +1,7 @@
 import { User } from './user';
 import { Vehicle } from './vehicle';
 import { MaintenanceRecord } from './maintenance';
+import { ObjectId } from 'mongoose';
 
 // 预约时间段类型
 export interface TimeSlot {
@@ -15,19 +16,36 @@ export interface TimeSlot {
 
 // 预约类型
 export interface Appointment {
-  _id: string;
-  customer: Customer;
-  vehicle: Vehicle;
-  service: Service;
-  timeSlot: TimeSlot;
+  _id?: string;
+  customer: {
+    name: string;
+    phone: string;
+    email?: string;
+  };
+  vehicle: {
+    brand: string;
+    model: string;
+    licensePlate: string;
+  };
+  service: {
+    type: 'maintenance' | 'repair' | 'inspection';
+    name: string;
+    description: string;
+    duration: number;
+    basePrice: number;
+  };
+  timeSlot: {
+    date: string | Date;
+    startTime: string;
+    endTime?: string;
+    technician?: string; // 技师ID
+  };
   status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
   notes?: string;
-  estimatedDuration: number; // 预计服务时长（分钟）
-  estimatedCost: number;     // 预计费用
-  confirmationSent: boolean;
-  reminderSent: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  estimatedDuration: number;
+  estimatedCost: number;
+  confirmationSent?: boolean;
+  reminderSent?: boolean;
 }
 
 // 维修保养服务类型
