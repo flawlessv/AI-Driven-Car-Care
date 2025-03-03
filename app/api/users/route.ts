@@ -32,10 +32,15 @@ export async function GET(request: NextRequest) {
     const User = getUserModel();
 
     // 构建查询条件
-    const query = role ? { role } : {};
+    let query: any = {};
     
-    // 确保只返回有效角色的用户
-    query.role = { $in: Object.values(USER_ROLES) };
+    if (role) {
+      // 如果指定了角色，使用精确匹配
+      query.role = role;
+    } else {
+      // 如果没有指定角色，则确保只返回有效角色的用户
+      query.role = { $in: Object.values(USER_ROLES) };
+    }
 
     console.log('查询条件:', query);
 
