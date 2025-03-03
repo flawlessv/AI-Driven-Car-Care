@@ -372,7 +372,7 @@ export default function MaintenancePage() {
       title: '费用',
       dataIndex: 'cost',
       key: 'cost',
-      render: (cost: number) => `¥${cost.toLocaleString()}`,
+      render: (cost: number | null | undefined) => cost ? `¥${cost.toLocaleString()}` : '¥0',
     },
     {
       title: '操作',

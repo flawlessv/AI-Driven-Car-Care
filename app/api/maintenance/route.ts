@@ -53,7 +53,12 @@ export async function GET(req: NextRequest) {
           select: 'name username',
           model: 'User'
         })
-        .populate('parts.part', 'name code')
+        .populate({
+          path: 'parts.part',
+          model: 'Part',
+          select: 'name code',
+          strictPopulate: false
+        })
         .populate('createdBy', 'username')
         .populate('updatedBy', 'username')
         .sort({ startDate: -1 })
@@ -188,16 +193,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return createdResponse({
+    return successResponse({
       data: maintenance,
       message: '维修记录创建成功',
     });
   } catch (error: any) {
-    console.error('创建维修记录失败:', error);
-    if (error.code === 11000) {
-      return validationErrorResponse('该维修记录已存在');
-    }
-    return errorResponse(error.message || '创建维修记录失败，请稍后重试');
+    console.error('添加维修记录失败:', error);
+    return errorResponse(error.message || '添加维修记录失败');
   }
 }
 
