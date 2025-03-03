@@ -225,7 +225,7 @@ export default function MaintenanceDetailPage({ params }: { params: { id: string
               {data.completionDate ? dayjs(data.completionDate).format('YYYY-MM-DD') : '-'}
             </Descriptions.Item>
             <Descriptions.Item label="费用">
-              ¥{data.cost.toLocaleString()}
+              ¥{(data.cost || 0).toLocaleString()}
             </Descriptions.Item>
             <Descriptions.Item label="客户">
               {data.customer?.name || '未指定'} - {data.customer?.phone || 'N/A'}

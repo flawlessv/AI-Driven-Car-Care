@@ -8,6 +8,7 @@ import Maintenance from '@/models/maintenance';
 import Vehicle from '@/models/vehicle';
 import Part from '@/models/part';
 import { getUserModel } from '@/lib/db/models';
+import { getMaintenanceModel } from '@/models/maintenance';
 
 import {
   successResponse,
@@ -29,104 +30,26 @@ interface MaintenancePart {
   unitPrice: number;
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const authResult = await authMiddleware(req);
-    if (!authResult.success || !authResult.user) {
+    const user = await authMiddleware(request);
+    if (!user) {
       return errorResponse('未授权访问', 401);
     }
 
-    const user = authResult.user as AuthUser;
-
-    // 如果是新建页面，返回空数据
-    if (params.id === 'new') {
-      return successResponse({
-        _id: 'new',
-        vehicle: {
-          _id: '',
-          brand: '',
-          model: '',
-          licensePlate: ''
-        },
-        customer: {
-          _id: '',
-          name: '',
-          phone: '',
-          email: ''
-        },
-        technician: {
-          _id: '',
-          name: '',
-          level: ''
-        },
-        type: 'regular',
-        status: 'pending',
-        description: '',
-        startDate: new Date().toISOString(),
-        mileage: 0,
-        cost: 0,
-        parts: [],
-        notes: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
-    }
-
-    // 确保数据库连接
     await connectDB();
-
-    // 检查ID的有效性
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
-      return errorResponse('无效的维修记录ID', 400);
-    }
-
-    // 检查模型是否已注册
-    if (!mongoose.models.Technician) {
-      console.error('Technician model not registered');
-      return errorResponse('系统错误：模型未注册', 500);
-    }
+    const Maintenance = getMaintenanceModel();
 
     const maintenance = await Maintenance.findById(params.id)
       .populate('vehicle', 'brand model licensePlate')
-      .populate('customer', 'name phone email')
-      .populate('technician', 'name level')
+      .populate('technician', 'name username')
       .populate('parts.part', 'name code price')
-      .populate('createdBy', 'username');
+      .populate('createdBy', 'username')
+      .populate('updatedBy', 'username');
 
     if (!maintenance) {
-      console.error('维修记录不存在:', params.id);
-      return notFoundResponse('维修记录不存在');
+      return errorResponse('维修记录不存在', 404);
     }
-
-    // 如果customer字段为空，尝试从vehicle中获取
-    if (!maintenance.customer) {
-      const vehicle = await Vehicle.findById(maintenance.vehicle);
-      if (vehicle && vehicle.owner) {
-        maintenance.customer = vehicle.owner;
-        await maintenance.save();
-      }
-    }
-
-    // 验证用户是否有权限查看该记录
-    if (user.role === 'customer') {
-      const vehicle = await Vehicle.findById(maintenance.vehicle);
-      if (!vehicle || vehicle.owner.toString() !== user._id.toString()) {
-        return errorResponse('无权查看此维修记录', 403);
-      }
-    }
-
-    // 添加调试信息
-    console.log('维修记录查询结果:', {
-      id: maintenance._id,
-      technician: maintenance.technician,
-      customer: maintenance.customer,
-      vehicle: maintenance.vehicle,
-      populated: {
-        hasTechnician: !!maintenance.technician,
-        technicianId: maintenance.technician?._id,
-        technicianName: maintenance.technician?.name,
-      }
-    });
 
     return successResponse(maintenance);
   } catch (error: any) {
