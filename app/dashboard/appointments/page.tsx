@@ -71,8 +71,8 @@ const serviceOptions = [
 ];
 
 export default function AppointmentsPage() {
-  const [loading, setLoading] = useState(false);
   const [data, setData] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -95,9 +95,14 @@ export default function AppointmentsPage() {
         throw new Error(result.message || '获取预约列表失败');
       }
 
-      setData(result.data);
+      // 确保我们获取到正确的数据
+      const appointmentsData = Array.isArray(result.data) ? result.data : [];
+      console.log('Appointments data:', appointmentsData);
+      setData(appointmentsData);
     } catch (error: any) {
+      console.error('获取预约列表失败:', error);
       message.error(error.message || '获取预约列表失败');
+      setData([]);
     } finally {
       setLoading(false);
     }
@@ -145,21 +150,22 @@ export default function AppointmentsPage() {
       render: (id: string) => id.slice(-8),
     },
     {
-      title: '客户姓名',
-      dataIndex: ['customer', 'name'],
-      key: 'customerName',
-    },
-    {
-      title: '联系电话',
-      dataIndex: ['customer', 'phone'],
-      key: 'customerPhone',
+      title: '客户信息',
+      dataIndex: 'customer',
+      key: 'customer',
+      render: (customer: any) => (
+        <div>
+          <div>{customer?.name}</div>
+          <div className="text-gray-500 text-sm">{customer?.phone}</div>
+        </div>
+      ),
     },
     {
       title: '车辆信息',
       dataIndex: 'vehicle',
       key: 'vehicle',
       render: (vehicle: any) => 
-        `${vehicle.brand} ${vehicle.model} (${vehicle.licensePlate})`,
+        vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.licensePlate})` : '-',
     },
     {
       title: '服务项目',
@@ -168,16 +174,17 @@ export default function AppointmentsPage() {
     },
     {
       title: '预约时间',
-      dataIndex: ['timeSlot'],
+      dataIndex: 'timeSlot',
       key: 'appointmentTime',
       render: (timeSlot: any) => (
-        `${dayjs(timeSlot.date).format('YYYY-MM-DD')} ${timeSlot.startTime}-${timeSlot.endTime}`
+        timeSlot ? `${dayjs(timeSlot.date).format('YYYY-MM-DD')} ${timeSlot.startTime}-${timeSlot.endTime}` : '-'
       ),
     },
     {
       title: '技师',
       dataIndex: ['timeSlot', 'technician', 'name'],
       key: 'technicianName',
+      render: (name: string) => name || '-',
     },
     {
       title: '状态',
@@ -216,14 +223,41 @@ export default function AppointmentsPage() {
 
   const handleEdit = (record: Appointment) => {
     setEditingAppointment(record);
-    form.setFieldsValue({
-      ...record,
-      vehicle: record.vehicle._id,
-      'timeSlot.technician': record.timeSlot.technician._id,
+    
+    // 打印接收到的数据，方便调试
+    console.log('Editing appointment:', record);
+    
+    const formValues = {
+      // 客户信息
+      'customer.name': record.customer.name,
+      'customer.phone': record.customer.phone,
+      'customer.email': record.customer.email,
+      
+      // 车辆信息 - 直接使用内嵌的车辆信息
+      'vehicle.brand': record.vehicle.brand,
+      'vehicle.model': record.vehicle.model,
+      'vehicle.licensePlate': record.vehicle.licensePlate,
+      
+      // 服务信息
+      'service.type': record.service.type,
+      'service.name': record.service.name,
+      'service.description': record.service.description,
+      'service.duration': record.service.duration,
+      'service.basePrice': record.service.basePrice,
+      
+      // 时间信息
+      'timeSlot.technician': record.timeSlot?.technician,
       date: dayjs(record.timeSlot.date),
       startTime: dayjs(record.timeSlot.startTime, 'HH:mm'),
       endTime: dayjs(record.timeSlot.endTime, 'HH:mm'),
-    });
+      
+      // 其他信息
+      status: record.status,
+      notes: record.notes
+    };
+
+    console.log('Form values:', formValues);
+    form.setFieldsValue(formValues);
     setModalVisible(true);
   };
 
@@ -253,62 +287,54 @@ export default function AppointmentsPage() {
 
   const handleSubmit = async (values: any) => {
     try {
-      const url = editingAppointment
-        ? `/api/appointments/${editingAppointment._id}`
-        : '/api/appointments';
-      const method = editingAppointment ? 'PUT' : 'POST';
-
-      // 构造正确的数据格式
-      const formattedValues = {
+      setLoading(true);
+      
+      const formattedData = {
         customer: {
-          name: values.customer.name,
-          phone: values.customer.phone,
-          email: values.customer.email,
+          name: values['customer.name'],
+          phone: values['customer.phone'],
+          email: values['customer.email']
         },
-        vehicle: values.vehicle,
+        vehicle: {
+          brand: values['vehicle.brand'],
+          model: values['vehicle.model'],
+          licensePlate: values['vehicle.licensePlate']
+        },
         service: {
-          name: values.service.name,
-          description: values.service.description,
-          category: values.service.category,
-          duration: values.service.duration,
-          basePrice: values.service.basePrice,
+          type: values['service.type'],
+          name: values['service.name'],
+          description: values['service.description'],
+          duration: values['service.duration'],
+          basePrice: values['service.basePrice']
         },
         timeSlot: {
-          date: dayjs(values.date).toDate(),
-          startTime: dayjs(values.startTime).format('HH:mm'),
-          endTime: dayjs(values.endTime).format('HH:mm'),
-          technician: values.timeSlot.technician,
+          date: values.date.format('YYYY-MM-DD'),
+          startTime: values.startTime.format('HH:mm'),
+          endTime: values.endTime.format('HH:mm'),
+          technician: values['timeSlot.technician']
         },
-        status: values.status || 'pending',
-        notes: values.notes,
-        estimatedDuration: values.service.duration,
-        estimatedCost: values.service.basePrice,
+        status: values.status,
+        notes: values.notes
       };
 
-      console.log('提交的数据:', formattedValues);
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formattedValues),
+      const response = await fetch(`/api/appointments/${editingAppointment?._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formattedData),
       });
 
       const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.message || '保存预约失败');
-      }
+      if (!response.ok) throw new Error(result.message);
 
-      message.success(editingAppointment ? '更新成功' : '创建成功');
+      message.success('更新成功');
       setModalVisible(false);
       form.resetFields();
       setEditingAppointment(null);
       fetchAppointments();
     } catch (error: any) {
-      console.error('提交失败:', error);
-      message.error(error.message || '保存预约失败');
+      message.error(error.message || '更新失败');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -367,7 +393,7 @@ export default function AppointmentsPage() {
           onFinish={handleSubmit}
         >
           <Form.Item
-            name={['customer', 'name']}
+            name="customer.name"
             label="客户姓名"
             rules={[{ required: true, message: '请输入客户姓名' }]}
           >
@@ -375,7 +401,7 @@ export default function AppointmentsPage() {
           </Form.Item>
 
           <Form.Item
-            name={['customer', 'phone']}
+            name="customer.phone"
             label="联系电话"
             rules={[{ required: true, message: '请输入联系电话' }]}
           >
@@ -383,7 +409,7 @@ export default function AppointmentsPage() {
           </Form.Item>
 
           <Form.Item
-            name={['customer', 'email']}
+            name="customer.email"
             label="电子邮箱"
             rules={[{ type: 'email', message: '请输入有效的邮箱地址' }]}
           >
@@ -391,29 +417,36 @@ export default function AppointmentsPage() {
           </Form.Item>
 
           <Form.Item
-            name="vehicle"
-            label="选择车辆"
-            rules={[{ required: true, message: '请选择车辆' }]}
+            name="vehicle.brand"
+            label="车辆品牌"
+            rules={[{ required: true, message: '请输入车辆品牌' }]}
           >
-            <Select>
-              {vehicles.map(vehicle => (
-                <Select.Option 
-                  key={vehicle._id} 
-                  value={vehicle._id}
-                >
-                  {`${vehicle.brand} ${vehicle.model} (${vehicle.licensePlate})`}
-                </Select.Option>
-              ))}
-            </Select>
+            <Input />
           </Form.Item>
 
           <Form.Item
-            name={['service', 'category']}
+            name="vehicle.model"
+            label="车型"
+            rules={[{ required: true, message: '请输入车型' }]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            name="vehicle.licensePlate"
+            label="车牌号"
+            rules={[{ required: true, message: '请输入车牌号' }]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            name="service.type"
             label="服务类型"
             rules={[{ required: true, message: '请选择服务类型' }]}
           >
             <Select placeholder="请选择服务类型">
-              <Select.Option value="regular">常规保养</Select.Option>
+              <Select.Option value="maintenance">常规保养</Select.Option>
               <Select.Option value="repair">维修</Select.Option>
               <Select.Option value="inspection">检查</Select.Option>
             </Select>
@@ -422,14 +455,14 @@ export default function AppointmentsPage() {
           <Form.Item
             noStyle
             shouldUpdate={(prevValues, currentValues) => 
-              prevValues?.service?.category !== currentValues?.service?.category
+              prevValues?.service?.type !== currentValues?.service?.type
             }
           >
             {({ getFieldValue }) => {
-              const category = getFieldValue(['service', 'category']);
-              const services = serviceOptions.find(opt => opt.category === category)?.items || [];
+              const type = getFieldValue(['service', 'type']);
+              const services = serviceOptions.find(opt => opt.category === type)?.items || [];
               
-              return category ? (
+              return type ? (
                 <Form.Item
                   name={['service', 'name']}
                   label="服务项目"

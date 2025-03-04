@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db-connect';
-import { getUserModel } from '@/lib/db/models';
+import { connectDB } from '../../../lib/mongodb';
+import { getUserModel } from '../../../lib/db/models';
 
 export async function GET() {
   try {
     // 连接数据库
-    await dbConnect();
+    await connectDB();
     console.log('数据库连接成功');
 
     const User = getUserModel();
@@ -36,7 +36,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     // 连接数据库
-    await dbConnect();
+    await connectDB();
     
     // 获取请求数据
     const data = await request.json();

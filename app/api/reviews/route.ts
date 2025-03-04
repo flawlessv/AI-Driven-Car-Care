@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db-connect';
-import Review from '@/models/review';
+import { connectDB } from '../../../lib/mongodb';
+import Review from '../../../models/review';
 
 export async function GET(request: Request) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const rating = searchParams.get('rating');
     const status = searchParams.get('status');
 
-    await dbConnect();
+    await connectDB();
 
     // 构建查询条件
     const query: any = {};
@@ -59,7 +59,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    await dbConnect();
+    await connectDB();
 
     const review = await Review.create(data);
     await review.populate('author', 'name phone');

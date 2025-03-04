@@ -1,99 +1,119 @@
-import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db-connect';
-import Maintenance from '@/models/maintenance';
+import { NextRequest } from 'next/server';
+import { connectDB } from '../../../../lib/mongodb';
+import { authMiddleware } from '../../../../lib/auth';
+import Maintenance from '../../../../models/maintenance';
+import {
+  successResponse,
+  errorResponse,
+} from '../../../../lib/api-response';
+import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // 验证用户权限
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return errorResponse('未授权访问', 401);
+    }
+
+    // 连接数据库
+    await connectDB();
+
+    // 获取查询参数
     const { searchParams } = new URL(request.url);
+    const period = searchParams.get('period') || 'month'; // day, week, month, year
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    if (!startDate || !endDate) {
-      return NextResponse.json(
-        { message: '请提供开始和结束日期' },
-        { status: 400 }
-      );
+    // 构建查询条件
+    const query: any = {};
+    
+    if (startDate && endDate) {
+      query.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    } else {
+      // 默认统计最近6个月
+      query.createdAt = {
+        $gte: subMonths(startOfMonth(new Date()), 5),
+        $lte: endOfMonth(new Date())
+      };
     }
 
-    await dbConnect();
+    // 获取基础统计数据
+    const [totalCount, completedCount, totalRevenue] = await Promise.all([
+      Maintenance.countDocuments(query),
+      Maintenance.countDocuments({ ...query, status: 'completed' }),
+      Maintenance.aggregate([
+        { $match: { ...query, status: 'completed' } },
+        { $group: { _id: null, total: { $sum: '$cost' } } }
+      ])
+    ]);
 
-    // 获取指定日期范围内的维修记录
-    const maintenanceRecords = await Maintenance.find({
-      date: {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
-      },
-    }).populate('vehicle');
+    // 按时间分组获取趋势数据
+    const timeGroupFormat = {
+      day: '%Y-%m-%d',
+      week: '%Y-W%V',
+      month: '%Y-%m',
+      year: '%Y'
+    };
 
-    // 计算统计数据
-    const totalMaintenance = maintenanceRecords.length;
-    const totalRevenue = maintenanceRecords.reduce((sum, record) => sum + record.cost, 0);
-    const avgCost = totalMaintenance > 0 ? totalRevenue / totalMaintenance : 0;
-    const completedMaintenance = maintenanceRecords.filter(record => record.status === 'completed').length;
-    const pendingMaintenance = maintenanceRecords.filter(record => record.status === 'pending').length;
-
-    // 获取不重复的车辆数量
-    const uniqueVehicles = new Set(maintenanceRecords.map(record => record.vehicle?._id.toString()));
-    const totalVehicles = uniqueVehicles.size;
-
-    // 按维修类型统计
-    const maintenanceByType = Object.entries(
-      maintenanceRecords.reduce((acc: any, record) => {
-        if (!acc[record.type]) {
-          acc[record.type] = { count: 0, revenue: 0 };
+    const trends = await Maintenance.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: timeGroupFormat[period as keyof typeof timeGroupFormat], date: '$createdAt' } }
+          },
+          count: { $sum: 1 },
+          completed: { 
+            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+          },
+          revenue: {
+            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, '$cost', 0] }
+          }
         }
-        acc[record.type].count += 1;
-        acc[record.type].revenue += record.cost;
-        return acc;
-      }, {})
-    ).map(([type, data]: [string, any]) => ({
-      type,
-      count: data.count,
-      revenue: data.revenue,
-    }));
-
-    // 按车辆统计
-    const maintenanceByVehicle = Array.from(
-      maintenanceRecords.reduce((acc, record) => {
-        const vehicleId = record.vehicle?._id.toString();
-        if (!vehicleId) return acc;
-
-        const key = vehicleId;
-        if (!acc.has(key)) {
-          acc.set(key, {
-            vehicle: {
-              brand: record.vehicle.brand,
-              model: record.vehicle.model,
-              licensePlate: record.vehicle.licensePlate,
-            },
-            count: 0,
-            revenue: 0,
-          });
-        }
-        const data = acc.get(key);
-        data.count += 1;
-        data.revenue += record.cost;
-        return acc;
-      }, new Map())
-    ).map(([_, data]) => data);
-
-    return NextResponse.json({
-      data: {
-        totalMaintenance,
-        totalRevenue,
-        avgCost,
-        completedMaintenance,
-        pendingMaintenance,
-        totalVehicles,
-        maintenanceByType,
-        maintenanceByVehicle,
       },
+      { $sort: { '_id.date': 1 } }
+    ]);
+
+    // 按类型分组统计
+    const typeStats = await Maintenance.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$type',
+          count: { $sum: 1 },
+          revenue: {
+            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, '$cost', 0] }
+          }
+        }
+      }
+    ]);
+
+    return successResponse({
+      overview: {
+        totalCount,
+        completedCount,
+        completionRate: totalCount > 0 ? (completedCount / totalCount * 100) : 0,
+        totalRevenue: totalRevenue[0]?.total || 0
+      },
+      trends: trends.map(t => ({
+        date: t._id.date,
+        count: t.count,
+        completed: t.completed,
+        revenue: t.revenue
+      })),
+      typeStats: typeStats.map(t => ({
+        type: t._id,
+        count: t.count,
+        revenue: t.revenue
+      }))
     });
+
   } catch (error: any) {
-    console.error('获取报表数据失败:', error);
-    return NextResponse.json(
-      { message: '获取报表数据失败' },
-      { status: 500 }
-    );
+    console.error('获取维修统计数据失败:', error);
+    return errorResponse(error.message || '获取维修统计数据失败');
   }
 } 

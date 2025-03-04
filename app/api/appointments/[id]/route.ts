@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import Appointment from '@/models/appointment';
-import { connectDB } from '@/lib/db';
+import { connectDB } from '../../../../lib/mongodb';
+import Appointment from '../../../../models/appointment';
+import { successResponse, errorResponse } from '../../../../lib/api-response';
 
 export async function GET(
   request: Request,
@@ -9,33 +10,19 @@ export async function GET(
   try {
     await connectDB();
     const appointment = await Appointment.findById(params.id)
-      .populate('customer', 'name phone email')
-      .populate('vehicle', 'brand model licensePlate')
-      .populate('timeSlot.technician', 'name');
+      .populate('customer')
+      .populate('vehicle')
+      .populate('timeSlot.technician');
 
     if (!appointment) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: '预约不存在'
-        },
-        { status: 404 }
-      );
+      return errorResponse('预约不存在', 404);
     }
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       data: appointment
     });
   } catch (error: any) {
-    console.error('Error fetching appointment:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error.message || '获取预约详情失败'
-      },
-      { status: 500 }
-    );
+    return errorResponse(error.message);
   }
 }
 
@@ -46,40 +33,64 @@ export async function PUT(
   try {
     await connectDB();
     const data = await request.json();
+    console.log('Received update data:', data);
+
+    const updateData = {
+      timeSlot: {
+        date: data.timeSlot?.date ? new Date(data.timeSlot.date) : undefined,
+        startTime: data.timeSlot?.startTime,
+        endTime: data.timeSlot?.endTime,
+        technician: data.timeSlot?.technician
+      },
+      service: {
+        type: data.service?.type,
+        name: data.service?.name,
+        description: data.service?.description,
+        duration: data.service?.duration,
+        basePrice: data.service?.basePrice
+      },
+      status: data.status,
+      notes: data.notes
+    };
+
+    // 移除所有 undefined 值
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      } else if (typeof updateData[key] === 'object') {
+        Object.keys(updateData[key]).forEach(subKey => {
+          if (updateData[key][subKey] === undefined) {
+            delete updateData[key][subKey];
+          }
+        });
+      }
+    });
+
+    console.log('Processed update data:', updateData);
 
     const appointment = await Appointment.findByIdAndUpdate(
       params.id,
-      { ...data, updatedAt: new Date() },
-      { new: true, runValidators: true }
+      { $set: updateData },
+      { 
+        new: true,
+        runValidators: true
+      }
     )
-      .populate('customer', 'name phone email')
-      .populate('vehicle', 'brand model licensePlate')
-      .populate('timeSlot.technician', 'name');
+    .populate('customer')
+    .populate('vehicle')
+    .populate('timeSlot.technician');
 
     if (!appointment) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: '预约不存在'
-        },
-        { status: 404 }
-      );
+      return errorResponse('预约不存在', 404);
     }
 
-    return NextResponse.json({
-      success: true,
-      message: '预约更新成功',
+    return successResponse({
+      message: '更新成功',
       data: appointment
     });
   } catch (error: any) {
-    console.error('Error updating appointment:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error.message || '更新预约失败'
-      },
-      { status: 500 }
-    );
+    console.error('Update error:', error);
+    return errorResponse(error.message);
   }
 }
 
@@ -92,27 +103,13 @@ export async function DELETE(
     const appointment = await Appointment.findByIdAndDelete(params.id);
 
     if (!appointment) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: '预约不存在'
-        },
-        { status: 404 }
-      );
+      return errorResponse('预约不存在', 404);
     }
 
-    return NextResponse.json({
-      success: true,
-      message: '预约删除成功'
+    return successResponse({
+      message: '删除成功'
     });
   } catch (error: any) {
-    console.error('Error deleting appointment:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error.message || '删除预约失败'
-      },
-      { status: 500 }
-    );
+    return errorResponse(error.message);
   }
 } 

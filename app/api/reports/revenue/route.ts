@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db-connect';
-import MaintenanceRecord from '@/models/maintenance';
+import { connectDB } from '../../../../lib/mongodb';
+import MaintenanceRecord from '../../../../models/maintenance';
 import dayjs from 'dayjs';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const period = searchParams.get('period') || 'month';
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
       );
     }
 
-    await dbConnect();
+    await connectDB();
 
     // 获取指定日期范围内的维修记录
     const maintenanceRecords = await MaintenanceRecord.find({

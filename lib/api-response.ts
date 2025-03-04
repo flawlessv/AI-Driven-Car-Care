@@ -12,19 +12,18 @@ interface SuccessResponse<T> {
 }
 
 // 成功响应
-export function successResponse<T>(data: T, message?: string): NextResponse<ApiResponse<T>> {
+export const successResponse = <T>(data: T, message?: string) => {
   const response: ApiResponse<T> = {
-    data,
+    success: true,
+    data: data
   };
   
   if (message) {
     response.message = message;
   }
 
-  return NextResponse.json(response, {
-    status: 200,
-  });
-}
+  return NextResponse.json(response);
+};
 
 // 创建成功响应
 export function createdResponse<T>(data: T, message?: string): NextResponse<ApiResponse<T>> {

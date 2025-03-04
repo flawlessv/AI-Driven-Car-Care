@@ -25,6 +25,7 @@ import WorkOrderProgressTimeline from '../components/WorkOrderProgress';
 import WorkOrderEvaluation from '../components/WorkOrderEvaluation';
 import dayjs from 'dayjs';
 import MaintenanceForm from './components/MaintenanceForm';
+import { StarOutlined } from '@ant-design/icons';
 
 const { TextArea } = Input;
 
@@ -77,6 +78,7 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
   const [selectedTechnician, setSelectedTechnician] = useState<string>();
   const [progressNotes, setProgressNotes] = useState('');
   const [form] = Form.useForm();
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
 
   const user = useSelector((state: RootState) => state.auth.user);
 
@@ -245,6 +247,21 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
     fetchWorkOrder();
   };
 
+  const handleAddReview = () => {
+    if (workOrder.status === 'completed' && !workOrder.review) {
+      return (
+        <Button 
+          type="primary"
+          icon={<StarOutlined />}
+          onClick={() => setReviewModalVisible(true)}
+        >
+          添加评价
+        </Button>
+      );
+    }
+    return null;
+  };
+
   if (loading || !workOrder) {
     return <div className="p-6">加载中...</div>;
   }
@@ -304,6 +321,7 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
                 编辑工单
               </Button>
             )}
+            {handleAddReview()}
           </Space>
         </div>
 
@@ -493,6 +511,18 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
             placeholder="请输入分配说明"
           />
         </div>
+      </Modal>
+
+      <Modal
+        title="添加评价"
+        open={reviewModalVisible}
+        onOk={() => {
+          // Handle adding a review
+          setReviewModalVisible(false);
+        }}
+        onCancel={() => setReviewModalVisible(false)}
+      >
+        {/* Add review form content here */}
       </Modal>
     </div>
   );
