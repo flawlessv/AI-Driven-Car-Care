@@ -2,16 +2,6 @@ import mongoose from 'mongoose';
 import type { MaintenanceRecord } from '@/app/dashboard/maintenance/types';
 import { DocumentWithMethods, ModelWithStaticMethods } from '../lib/mongoose-types';
 
-// 状态历史记录接口
-interface StatusHistory {
-  status: string;
-  note: string;
-  timestamp: Date;
-  updatedBy: mongoose.Types.ObjectId;
-}
-
-// 配件文档接口
-interface MaintenancePartDocument extends DocumentWithMethods<MaintenancePart, {}> {}
 
 // 保养记录文档接口
 interface MaintenanceDocument extends DocumentWithMethods<MaintenanceRecord, {

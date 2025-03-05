@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { connectDB } from '../../../../lib/mongodb';
 import Appointment from '../../../../models/appointment';
 import { successResponse, errorResponse } from '../../../../lib/api-response';
