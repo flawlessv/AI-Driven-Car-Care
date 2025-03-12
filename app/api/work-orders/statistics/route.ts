@@ -10,7 +10,7 @@ import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await authMiddleware(request);
+    const {user} = await authMiddleware(request);
     if (!user) {
       return errorResponse('未授权访问', 401);
     }

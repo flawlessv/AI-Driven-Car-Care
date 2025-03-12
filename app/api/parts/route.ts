@@ -11,7 +11,7 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await authMiddleware(request);
+    const {user} = await authMiddleware(request);
     if ('status' in user) return user;
 
     await connectDB();

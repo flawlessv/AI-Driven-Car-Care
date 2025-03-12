@@ -19,7 +19,7 @@ const SERVICE_CATEGORY_MAP = {
 } as const;
 
 type ServiceCategory = '维修' | '保养' | '检查';
-
+// 获取预约列表
 export async function GET(request: NextRequest) {
   try {
     const authResult = await authMiddleware(request);
@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// 创建预约
 export async function POST(request: NextRequest) {
   try {
     const authResult = await authMiddleware(request);

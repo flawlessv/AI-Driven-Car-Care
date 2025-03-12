@@ -37,7 +37,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return notFoundResponse('无效的维修记录ID');
     }
 
-    const user = await authMiddleware(request);
+    const {user} = await authMiddleware(request);
     if (!user) {
       return errorResponse('未授权访问', 401);
     }

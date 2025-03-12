@@ -11,7 +11,7 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await authMiddleware(request);
+    const {user} = await authMiddleware(request);
     if (!user) {
       return errorResponse('未授权访问', 401);
     }

@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Table, Button, Space, Select, message, Input, Tag } from 'antd';
+import { Table, Button, Space, Select, message, Input, Tag, Modal } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { SearchOutlined } from '@ant-design/icons';
+import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/lib/store';
 import type { User } from '@/types/user';
 import { ROLE_NAMES } from '@/types/user';
+import UserForm from '../../components/UserForm';
 
 const { Search } = Input;
 
@@ -23,6 +25,7 @@ const statusOptions = [
 ];
 
 export default function UsersPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
@@ -30,6 +33,11 @@ export default function UsersPage() {
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  
   const currentUser = useSelector((state: RootState) => state.auth.user);
 
   const fetchUsers = async (
@@ -75,41 +83,14 @@ export default function UsersPage() {
     fetchUsers();
   }, [currentPage, pageSize, search, roleFilter]);
 
-  const handleRoleChange = async (newRole: string, userId: string) => {
-    try {
-      const response = await fetch('/api/users', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          role: newRole,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || '更新用户角色失败');
-      }
-
-      message.success('更新角色成功');
-      fetchUsers();
-    } catch (error: any) {
-      message.error(error.message || '更新用户角色失败');
-    }
-  };
-
   const handleStatusChange = async (newStatus: string, userId: string) => {
     try {
-      const response = await fetch('/api/users', {
+      const response = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId,
           status: newStatus,
         }),
       });
@@ -127,6 +108,41 @@ export default function UsersPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      setActionLoading(true);
+      const response = await fetch(`/api/users/${selectedUser._id}`, {
+        method: 'DELETE',
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || '删除用户失败');
+      }
+
+      message.success('用户删除成功');
+      fetchUsers();
+    } catch (error: any) {
+      message.error(error.message || '删除用户失败');
+    } finally {
+      setActionLoading(false);
+      setDeleteModalVisible(false);
+      setSelectedUser(null);
+    }
+  };
+
+  const showDeleteConfirm = (user: User) => {
+    setSelectedUser(user);
+    setDeleteModalVisible(true);
+  };
+
+  const handleCreateSuccess = () => {
+    setCreateModalVisible(false);
+    fetchUsers();
+  };
+
   const columns: ColumnsType<User> = [
     {
       title: '用户名',
@@ -137,6 +153,7 @@ export default function UsersPage() {
       title: '姓名',
       dataIndex: 'name',
       key: 'name',
+      render: (name) => name || '-',
     },
     {
       title: '邮箱',
@@ -147,6 +164,7 @@ export default function UsersPage() {
       title: '电话',
       dataIndex: 'phone',
       key: 'phone',
+      render: (phone) => phone || '-',
     },
     {
       title: '角色',
@@ -154,7 +172,7 @@ export default function UsersPage() {
       key: 'role',
       render: (role: keyof typeof ROLE_NAMES) => (
         <Tag color={getRoleColor(role)}>
-          {ROLE_NAMES[role]}
+          {ROLE_NAMES[role] || role}
         </Tag>
       ),
     },
@@ -177,6 +195,37 @@ export default function UsersPage() {
       dataIndex: 'createdAt',
       key: 'createdAt',
       render: (date: string) => new Date(date).toLocaleString(),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      render: (_, record) => (
+        <Space size="small">
+          <Button 
+            icon={<EyeOutlined />} 
+            size="small"
+            onClick={() => router.push(`/dashboard/users/${record._id}`)}
+          >
+            详情
+          </Button>
+          <Button 
+            icon={<EditOutlined />} 
+            size="small"
+            onClick={() => router.push(`/dashboard/users/${record._id}`)}
+          >
+            编辑
+          </Button>
+          <Button 
+            danger 
+            icon={<DeleteOutlined />} 
+            size="small"
+            onClick={() => showDeleteConfirm(record)}
+            disabled={currentUser?._id === record._id}
+          >
+            删除
+          </Button>
+        </Space>
+      ),
     },
   ];
 
@@ -212,6 +261,13 @@ export default function UsersPage() {
     <div className="p-6">
       <div className="flex justify-between mb-4">
         <h1 className="text-2xl font-bold">用户管理</h1>
+        <Button 
+          type="primary" 
+          icon={<PlusOutlined />}
+          onClick={() => setCreateModalVisible(true)}
+        >
+          创建用户
+        </Button>
       </div>
 
       <div className="mb-4 flex gap-4">
@@ -244,6 +300,31 @@ export default function UsersPage() {
         }}
         onChange={handleTableChange}
       />
+
+      {/* 创建用户弹窗 */}
+      <Modal
+        title="创建新用户"
+        open={createModalVisible}
+        onCancel={() => setCreateModalVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <UserForm
+          onSuccess={handleCreateSuccess}
+          onCancel={() => setCreateModalVisible(false)}
+        />
+      </Modal>
+
+      {/* 删除确认弹窗 */}
+      <Modal
+        title="确认删除"
+        open={deleteModalVisible}
+        onCancel={() => setDeleteModalVisible(false)}
+        confirmLoading={actionLoading}
+        onOk={handleDelete}
+      >
+        <p>确定要删除用户 <strong>{selectedUser?.username}</strong> 吗？此操作不可恢复。</p>
+      </Modal>
     </div>
   );
 } 

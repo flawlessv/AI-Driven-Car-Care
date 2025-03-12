@@ -120,7 +120,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await authMiddleware(request);
+    const {user} = await authMiddleware(request);
     if (!user) {
       return errorResponse('未授权访问', 401);
     }

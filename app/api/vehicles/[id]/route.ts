@@ -17,7 +17,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await authMiddleware(request);
+    const {user} = await authMiddleware(request);
     await connectDB();
 
     // 获取车辆信息并填充关联数据
@@ -71,7 +71,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await authMiddleware(request);
+    const {user} = await authMiddleware(request);
     await connectDB();
 
     const vehicle = await Vehicle.findById(params.id);
@@ -140,7 +140,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await authMiddleware(request);
+    const {user} = await authMiddleware(request);
     await connectDB();
 
     const vehicle = await Vehicle.findById(params.id);

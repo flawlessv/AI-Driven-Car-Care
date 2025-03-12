@@ -14,7 +14,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await authMiddleware(request);
+    const {user} = await authMiddleware(request);
     if ('status' in user) return user;
 
     await connectDB();
@@ -36,7 +36,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await authMiddleware(request);
+    const {user} = await authMiddleware(request);
     if ('status' in user) return user;
 
     // 检查用户权限
@@ -118,7 +118,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await authMiddleware(request);
+    const {user} = await authMiddleware(request);
     if ('status' in user) return user;
 
     // 检查用户权限

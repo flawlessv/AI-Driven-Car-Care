@@ -15,7 +15,7 @@ import mongoose from 'mongoose';
 // 获取车辆列表
 export async function GET(request: NextRequest) {
   try {
-    const user = await authMiddleware(request);
+    const {user} = await authMiddleware(request);
     await connectDB();
 
     const searchParams = request.nextUrl.searchParams;

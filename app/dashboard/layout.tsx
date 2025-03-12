@@ -83,6 +83,12 @@ const menuItems = [
     path: '/dashboard/technicians',
   },
   {
+    key: 'users',
+    icon: <UserOutlined />,
+    label: '用户管理',
+    path: '/dashboard/users',
+  },
+  {
     key: 'parts',
     icon: <AppstoreOutlined />,
     label: '配件库存',
