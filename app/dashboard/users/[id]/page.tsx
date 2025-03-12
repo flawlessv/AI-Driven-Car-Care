@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, Descriptions, Button, Spin, message, Modal, Tag, Divider } from 'antd';
 import { EditOutlined, DeleteOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import UserForm from '../../../components/UserForm';
-import { User, ROLE_NAMES } from '@/types/user';
+import { User, ROLE_NAMES } from '../../../types/user';
 
 export default function UserDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();

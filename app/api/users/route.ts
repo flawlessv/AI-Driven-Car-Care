@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     // 获取查询参数
     const searchParams = request.nextUrl.searchParams;
     const role = searchParams.get('role');
+    const search = searchParams.get('search');
 
     // 连接数据库
     await connectDB();
@@ -40,6 +41,17 @@ export async function GET(request: NextRequest) {
     } else {
       // 如果没有指定角色，则确保只返回有效角色的用户
       query.role = { $in: Object.values(USER_ROLES) };
+    }
+
+    // 添加搜索条件
+    if (search) {
+      // 使用正则表达式进行模糊搜索，匹配用户名或邮箱
+      const searchRegex = new RegExp(search, 'i');
+      query.$or = [
+        { username: searchRegex },
+        { email: searchRegex },
+        { name: searchRegex }
+      ];
     }
 
     console.log('查询条件:', query);
