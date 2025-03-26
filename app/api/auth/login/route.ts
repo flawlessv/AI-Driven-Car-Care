@@ -61,18 +61,50 @@ export async function POST(request: Request) {
       });
       console.log('Token 生成成功');
 
-      const userWithoutPassword = {
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role
+      // 获取用户完整信息，包括权限
+      const userWithPermissions = await User.findById(user._id).lean();
+
+      if (!userWithPermissions) {
+        return NextResponse.json(
+          { success: false, message: '获取用户详细信息失败' },
+          { status: 500 }
+        );
+      }
+
+      // 使用类型断言来避免TypeScript错误
+      interface UserWithPermissions {
+        _id: any;
+        username: string;
+        email: string;
+        role: string;
+        permissions?: Array<{ menuKey: string; permission: string }>;
+        name?: string;
+      }
+
+      const userForClient: UserWithPermissions = {
+        _id: userWithPermissions._id,
+        username: userWithPermissions.username,
+        email: userWithPermissions.email,
+        role: userWithPermissions.role,
+        permissions: (userWithPermissions as any).permissions || [],
+        name: (userWithPermissions as any).name || ''
       };
+
+      // 重要调试信息
+      console.log('登录成功 - 完整用户权限:', {
+        role: userWithPermissions.role,
+        username: userWithPermissions.username,
+        permissionsCount: userForClient.permissions?.length || 0,
+        permissionKeys: userForClient.permissions?.map(p => p.menuKey).join(', ') || '无'
+      });
+
+      console.log('用户权限数量:', userForClient.permissions?.length || 0);
 
       const response = NextResponse.json({
         success: true,
         message: '登录成功',
         data: {
-          user: userWithoutPassword,
+          user: userForClient,
           token
         }
       });

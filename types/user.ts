@@ -1,13 +1,52 @@
-export type UserRole = 'admin' | 'staff' | 'customer';
+// 用户角色定义
+export const USER_ROLES = {
+  ADMIN: 'admin',
+  TECHNICIAN: 'technician',
+  CUSTOMER: 'customer',
+  STAFF: 'staff'
+} as const;
 
+export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
+
+// 菜单权限类型
+export type PermissionLevel = 'none' | 'read' | 'write' | 'manage';
+
+// 菜单项权限配置
+export interface MenuPermission {
+  menuKey: string;
+  permission: PermissionLevel;
+}
+
+// 用户信息类型
 export interface User {
   _id: string;
   username: string;
   email: string;
-  password: string;
+  name?: string;
   role: UserRole;
-  createdAt: string;
-  updatedAt: string;
+  permissions?: MenuPermission[];
+  status?: string;
+  phone?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// 登录请求参数
+export interface LoginParams {
+  email: string;
+  password: string;
+}
+
+// 登录响应数据
+export interface LoginResponse {
+  user: User;
+  token: string;
+}
+
+// 用户权限配置
+export interface UserPermissions {
+  userId: string;
+  permissions: MenuPermission[];
 }
 
 export interface UserResponse {
@@ -17,19 +56,9 @@ export interface UserResponse {
   role: 'admin' | 'staff' | 'customer';
 }
 
-export interface LoginForm {
-  email: string;
-  password: string;
-}
-
 export interface RegisterForm extends LoginForm {
   username: string;
   confirmPassword: string;
-}
-
-export interface AuthResponse {
-  user: UserResponse;
-  token: string;
 }
 
 export interface RegisterData {

@@ -7,6 +7,19 @@ export const USER_STATUS = {
   INACTIVE: 'inactive',
 } as const;
 
+// 权限定义的Schema
+const menuPermissionSchema = new mongoose.Schema({
+  menuKey: {
+    type: String,
+    required: true
+  },
+  permission: {
+    type: String,
+    enum: ['read', 'write', 'manage', 'none'],
+    default: 'none'
+  }
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -28,6 +41,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: Object.values(USER_ROLES),
     default: USER_ROLES.CUSTOMER,
+  },
+  // 新增权限字段
+  permissions: {
+    type: [menuPermissionSchema],
+    default: []
   },
   status: {
     type: String,

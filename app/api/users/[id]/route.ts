@@ -1,5 +1,7 @@
-import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
+import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
+import dbConnect from '@/lib/db-connect';
+import User from '@/app/models/user';
 import { authMiddleware } from '@/lib/auth';
 import { getUserModel } from '@/lib/db/models';
 import { hash } from 'bcryptjs';
@@ -9,35 +11,54 @@ import {
   validationErrorResponse,
 } from '@/lib/api-response';
 
+// API响应工具类
+class ApiResponseUtil {
+  static success(data: any, message = 'Success') {
+    return NextResponse.json({
+      success: true,
+      message,
+      data
+    });
+  }
+
+  static error(status: number, message: string) {
+    return NextResponse.json(
+      {
+        success: false,
+        message
+      },
+      { status }
+    );
+  }
+}
+
+// 获取单个用户信息
 export async function GET(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const {user} = await authMiddleware(request);
+    await dbConnect();
+    
+    const { id } = params;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return ApiResponseUtil.error(400, '无效的用户ID');
+    }
+    
+    const user = await User.findById(id).lean();
     
     if (!user) {
-      return errorResponse('未授权访问', 401);
+      return ApiResponseUtil.error(404, '用户不存在');
     }
-
-    // 只允许管理员和员工访问用户详情
-    if (!['admin', 'staff'].includes(user.role)) {
-      debugger
-      return errorResponse('无权访问', 403);
-    }
-
-    await connectDB();
-    const User = getUserModel();
-
-    const foundUser = await User.findById(params.id).select('-password');
-    if (!foundUser) {
-      return errorResponse('用户不存在', 404);
-    }
-
-    return successResponse(foundUser);
+    
+    // 不返回敏感信息
+    delete user.password;
+    
+    return ApiResponseUtil.success(user);
   } catch (error: any) {
-    console.error('获取用户详情失败:', error);
-    return errorResponse(error.message);
+    console.error('获取用户信息失败:', error);
+    return ApiResponseUtil.error(500, `获取用户信息失败: ${error.message}`);
   }
 }
 

@@ -10,6 +10,7 @@ import type { RootState } from '@/lib/store';
 import type { User } from '@/types/user';
 import { ROLE_NAMES } from '@/types/user';
 import UserForm from '../../components/UserForm';
+import PermissionGuard from '@/app/components/PermissionGuard';
 
 const { Search } = Input;
 
@@ -200,31 +201,33 @@ export default function UsersPage() {
       title: '操作',
       key: 'action',
       render: (_, record) => (
-        <Space size="small">
-          <Button 
-            icon={<EyeOutlined />} 
-            size="small"
-            onClick={() => router.push(`/dashboard/users/${record._id}`)}
-          >
-            详情
-          </Button>
-          <Button 
-            icon={<EditOutlined />} 
-            size="small"
-            onClick={() => router.push(`/dashboard/users/${record._id}`)}
-          >
-            编辑
-          </Button>
-          <Button 
-            danger 
-            icon={<DeleteOutlined />} 
-            size="small"
-            onClick={() => showDeleteConfirm(record)}
-            disabled={currentUser?._id === record._id}
-          >
-            删除
-          </Button>
-        </Space>
+        <PermissionGuard requiredPermission="write" menuKey="users">
+          <Space size="small">
+            <Button 
+              icon={<EyeOutlined />} 
+              size="small"
+              onClick={() => router.push(`/dashboard/users/${record._id}`)}
+            >
+              详情
+            </Button>
+            <Button 
+              icon={<EditOutlined />} 
+              size="small"
+              onClick={() => router.push(`/dashboard/users/${record._id}`)}
+            >
+              编辑
+            </Button>
+            <Button 
+              danger 
+              icon={<DeleteOutlined />} 
+              size="small"
+              onClick={() => showDeleteConfirm(record)}
+              disabled={currentUser?._id === record._id}
+            >
+              删除
+            </Button>
+          </Space>
+        </PermissionGuard>
       ),
     },
   ];
@@ -258,73 +261,75 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between mb-4">
-        <h1 className="text-2xl font-bold">用户管理</h1>
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />}
-          onClick={() => setCreateModalVisible(true)}
-        >
-          创建用户
-        </Button>
-      </div>
+    <PermissionGuard requiredPermission="read" menuKey="users">
+      <div className="space-y-4">
+        <div className="flex justify-between">
+          <div className="flex items-center space-x-2">
+            <Search
+              placeholder="搜索用户名、邮箱或电话"
+              allowClear
+              onSearch={handleSearch}
+              style={{ width: 300 }}
+            />
+            <Select
+              placeholder="角色过滤"
+              allowClear
+              style={{ width: 120 }}
+              options={roleOptions}
+              onChange={handleRoleFilterChange}
+            />
+          </div>
+          <PermissionGuard requiredPermission="write" menuKey="users">
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />}
+              onClick={() => setCreateModalVisible(true)}
+            >
+              添加用户
+            </Button>
+          </PermissionGuard>
+        </div>
 
-      <div className="mb-4 flex gap-4">
-        <Search
-          placeholder="搜索用户名或邮箱"
-          allowClear
-          onSearch={handleSearch}
-          style={{ width: 300 }}
+        <Table
+          columns={columns}
+          dataSource={data}
+          rowKey="_id"
+          loading={loading}
+          pagination={{
+            current: currentPage,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            showQuickJumper: true,
+          }}
+          onChange={handleTableChange}
         />
-        <Select
-          placeholder="按角色筛选"
-          allowClear
-          onChange={handleRoleFilterChange}
-          options={roleOptions}
-          style={{ width: 200 }}
-        />
-      </div>
 
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey="_id"
-        loading={loading}
-        pagination={{
-          current: currentPage,
-          pageSize,
-          total,
-          showSizeChanger: true,
-          showQuickJumper: true,
-        }}
-        onChange={handleTableChange}
-      />
-
-      {/* 创建用户弹窗 */}
-      <Modal
-        title="创建新用户"
-        open={createModalVisible}
-        onCancel={() => setCreateModalVisible(false)}
-        footer={null}
-        width={600}
-      >
-        <UserForm
-          onSuccess={handleCreateSuccess}
+        {/* 创建用户弹窗 */}
+        <Modal
+          title="创建新用户"
+          open={createModalVisible}
           onCancel={() => setCreateModalVisible(false)}
-        />
-      </Modal>
+          footer={null}
+          width={600}
+        >
+          <UserForm
+            onSuccess={handleCreateSuccess}
+            onCancel={() => setCreateModalVisible(false)}
+          />
+        </Modal>
 
-      {/* 删除确认弹窗 */}
-      <Modal
-        title="确认删除"
-        open={deleteModalVisible}
-        onCancel={() => setDeleteModalVisible(false)}
-        confirmLoading={actionLoading}
-        onOk={handleDelete}
-      >
-        <p>确定要删除用户 <strong>{selectedUser?.username}</strong> 吗？此操作不可恢复。</p>
-      </Modal>
-    </div>
+        {/* 删除确认弹窗 */}
+        <Modal
+          title="确认删除"
+          open={deleteModalVisible}
+          onCancel={() => setDeleteModalVisible(false)}
+          confirmLoading={actionLoading}
+          onOk={handleDelete}
+        >
+          <p>确定要删除用户 <strong>{selectedUser?.username}</strong> 吗？此操作不可恢复。</p>
+        </Modal>
+      </div>
+    </PermissionGuard>
   );
 } 

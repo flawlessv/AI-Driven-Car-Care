@@ -2,18 +2,10 @@
 
 import { Layout, Menu, Avatar, Dropdown, Button, theme, message } from 'antd';
 import {
-  CarOutlined,
-  ToolOutlined,
-  TeamOutlined,
-  CalendarOutlined,
-  UserOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  DashboardOutlined,
-  AppstoreOutlined,
-  BarChartOutlined,
-  MessageOutlined,
   HomeOutlined,
+  MenuFoldOutlined, 
+  MenuUnfoldOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -21,108 +13,9 @@ import Link from 'next/link';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '@/lib/store';
 import { logout } from '@/lib/store/slices/authSlice';
+import { menuItems } from '@/app/config/menu';
 
 const { Header, Sider, Content } = Layout;
-
-const menuItems = [
-  {
-    key: 'dashboard',
-    icon: <DashboardOutlined />,
-    label: '仪表盘',
-    path: '/dashboard',
-  },
-  {
-    key: 'vehicles',
-    icon: <CarOutlined />,
-    label: '车辆管理',
-    children: [
-      {
-        key: 'vehicle-list',
-        label: '车辆列表',
-        path: '/dashboard/vehicles',
-      },
-      {
-        key: 'vehicle-files',
-        label: '车辆档案',
-        path: '/dashboard/vehicles/files',
-      },
-      {
-        key: 'vehicle-health',
-        label: '健康评分',
-        path: '/dashboard/vehicles/health',
-      },
-    ],
-  },
-  {
-    key: 'maintenance',
-    icon: <ToolOutlined />,
-    label: '保养维修',
-    children: [
-      {
-        key: 'maintenance-records',
-        label: '维修记录',
-        path: '/dashboard/maintenance',
-      },
-      {
-        key: 'maintenance-rules',
-        label: '保养规则',
-        path: '/dashboard/maintenance/rules',
-      },
-    ],
-  },
-  {
-    key: 'appointments',
-    icon: <CalendarOutlined />,
-    label: '预约管理',
-    path: '/dashboard/appointments',
-  },
-  {
-    key: 'technicians',
-    icon: <TeamOutlined />,
-    label: '技师团队',
-    path: '/dashboard/technicians',
-  },
-  {
-    key: 'users',
-    icon: <UserOutlined />,
-    label: '用户管理',
-    path: '/dashboard/users',
-  },
-  {
-    key: 'parts',
-    icon: <AppstoreOutlined />,
-    label: '配件库存',
-    path: '/dashboard/parts',
-  },
-  {
-    key: 'reports',
-    icon: <BarChartOutlined />,
-    label: '统计报表',
-    children: [
-      {
-        key: 'maintenance-stats',
-        label: '维修统计',
-        path: '/dashboard/reports/maintenance',
-      },
-      {
-        key: 'revenue-stats',
-        label: '收入统计',
-        path: '/dashboard/reports/revenue',
-      },
-      {
-        key: 'customer-analysis',
-        label: '客户分析',
-        path: '/dashboard/reports/customers',
-      },
-    ],
-  },
-  {
-    key: 'reviews',
-    icon: <MessageOutlined />,
-    label: '评价管理',
-    path: '/dashboard/reviews',
-  },
-];
 
 const userMenu = [
   {
@@ -135,6 +28,36 @@ const userMenu = [
     label: '退出登录',
   },
 ];
+
+const getDefaultPermissions = (role: string) => {
+  if (role === 'customer') {
+    return [
+      { menuKey: 'dashboard', permission: 'read' },
+      { menuKey: 'vehicles', permission: 'read' },
+      { menuKey: 'vehicle-list', permission: 'read' },
+      { menuKey: 'vehicle-files', permission: 'read' },
+      { menuKey: 'vehicle-health', permission: 'read' },
+      { menuKey: 'maintenance', permission: 'read' },
+      { menuKey: 'maintenance-records', permission: 'read' },
+      { menuKey: 'appointments', permission: 'write' },
+      { menuKey: 'technicians', permission: 'read' },
+      { menuKey: 'reviews', permission: 'write' }
+    ];
+  } else if (role === 'technician') {
+    return [
+      { menuKey: 'dashboard', permission: 'read' },
+      { menuKey: 'vehicles', permission: 'read' },
+      { menuKey: 'maintenance', permission: 'write' },
+      { menuKey: 'maintenance-records', permission: 'write' },
+      { menuKey: 'maintenance-rules', permission: 'read' },
+      { menuKey: 'appointments', permission: 'read' },
+      { menuKey: 'technicians', permission: 'read' },
+      { menuKey: 'parts', permission: 'read' },
+      { menuKey: 'reviews', permission: 'read' }
+    ];
+  }
+  return [];
+};
 
 export default function DashboardLayout({
   children,
@@ -220,21 +143,106 @@ export default function DashboardLayout({
           selectedKeys={[pathname.split('/')[2] || 'dashboard']}
           defaultOpenKeys={['vehicles', 'maintenance', 'reports']}
           onClick={({ key, keyPath }) => {
-            const item = menuItems.find(item => item.key === key) || 
-                        menuItems.find(item => item.children?.some(child => child.key === key))?.children?.find(child => child.key === key);
+            const item = menuItems.find((item: any) => item.key === key) || 
+                        menuItems.find((item: any) => item.children?.some((child: any) => child.key === key))?.children?.find((child: any) => child.key === key);
             if (item?.path) {
               handleMenuClick(item.path);
             }
           }}
-          items={menuItems.map(item => ({
-            key: item.key,
-            icon: item.icon,
-            label: item.label,
-            children: item.children?.map(child => ({
-              key: child.key,
-              label: child.label,
-            })),
-          }))}
+          items={menuItems
+            // 过滤菜单项：管理员可见全部，非管理员根据权限控制
+            .filter(item => {
+              // 添加日志查看用户信息和权限
+              console.log('菜单过滤 - 当前用户:', {
+                role: user?.role,
+                hasPermissions: !!user?.permissions,
+                permissionsCount: user?.permissions?.length || 0,
+                userId: user?._id,
+                itemKey: item.key
+              });
+              
+              // 如果是管理员，显示所有菜单
+              if (user?.role === 'admin') {
+                console.log(`菜单项 ${item.key} - 管理员可见`);
+                return true;
+              }
+              
+              // 如果是管理员专属菜单，则不显示
+              if (item.adminOnly) {
+                console.log(`菜单项 ${item.key} - 管理员专属，非管理员不可见`);
+                return false;
+              }
+
+              // 如果用户有权限配置，根据权限配置判断
+              let permission;
+              if (user?.permissions && user.permissions.length > 0) {
+                permission = user.permissions.find((p: { menuKey: string; permission: string }) => p.menuKey === item.key);
+                console.log(`菜单项 ${item.key} - 权限设置:`, permission);
+              } else {
+                console.log(`菜单项 ${item.key} - 用户无权限配置，使用默认`);
+                // 使用角色默认权限
+                const defaultPermissions = getDefaultPermissions(user?.role || '');
+                permission = defaultPermissions.find(p => p.menuKey === item.key);
+                console.log(`菜单项 ${item.key} - 默认权限:`, permission);
+              }
+              
+              // 无权限则不显示
+              if (permission && permission.permission === 'none') {
+                console.log(`菜单项 ${item.key} - 无权限，不显示`);
+                return false;
+              }
+              
+              // 如果找不到权限设置，默认不显示该菜单
+              if (!permission && item.key !== 'dashboard') {
+                console.log(`菜单项 ${item.key} - 无权限设置，不显示`);
+                return false;
+              }
+              
+              console.log(`菜单项 ${item.key} - 显示`);
+              return true;
+            })
+            .map(item => ({
+              key: item.key,
+              icon: item.icon,
+              label: item.label,
+              children: item.children?.map(child => {
+                // 对子菜单项进行权限过滤
+                console.log(`处理子菜单 ${child.key}`);
+                
+                if (user?.role !== 'admin') {
+                  let permission;
+                  
+                  // 先检查用户自定义权限
+                  if (user?.permissions && user.permissions.length > 0) {
+                    permission = user.permissions.find((p: { menuKey: string; permission: string }) => p.menuKey === child.key);
+                    console.log(`子菜单项 ${child.key} - 权限设置:`, permission);
+                  } else {
+                    // 使用角色默认权限
+                    const defaultPermissions = getDefaultPermissions(user?.role || '');
+                    permission = defaultPermissions.find(p => p.menuKey === child.key);
+                    console.log(`子菜单项 ${child.key} - 默认权限:`, permission);
+                  }
+                  
+                  // 如果找到权限设置并且是无权限，则不显示
+                  if (permission && permission.permission === 'none') {
+                    console.log(`子菜单项 ${child.key} - 无权限，不显示`);
+                    return null;
+                  }
+                  
+                  // 如果找不到权限设置，默认不显示该菜单
+                  if (!permission) {
+                    console.log(`子菜单项 ${child.key} - 无权限设置，不显示`);
+                    return null;
+                  }
+                }
+                
+                console.log(`子菜单项 ${child.key} - 显示`);
+                return {
+                  key: child.key,
+                  label: child.label,
+                };
+              }).filter(Boolean), // 过滤掉null的子菜单
+            }))}
         />
       </Sider>
       <Layout style={{ marginLeft: collapsed ? 80 : 200, transition: 'all 0.2s' }}>
