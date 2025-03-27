@@ -173,32 +173,40 @@ export default function DashboardLayout({
                 return false;
               }
 
-              // 如果用户有权限配置，根据权限配置判断
+              // 如果用户有权限配置，根据权限配置判断（优先使用管理员分配的权限）
               let permission;
               if (user?.permissions && user.permissions.length > 0) {
                 permission = user.permissions.find((p: { menuKey: string; permission: string }) => p.menuKey === item.key);
-                console.log(`菜单项 ${item.key} - 权限设置:`, permission);
-              } else {
-                console.log(`菜单项 ${item.key} - 用户无权限配置，使用默认`);
-                // 使用角色默认权限
-                const defaultPermissions = getDefaultPermissions(user?.role || '');
-                permission = defaultPermissions.find(p => p.menuKey === item.key);
-                console.log(`菜单项 ${item.key} - 默认权限:`, permission);
+                console.log(`菜单项 ${item.key} - 用户自定义权限设置:`, permission);
+                
+                // 如果找到了权限设置，直接使用，无论是什么项目（包括dashboard）
+                if (permission) {
+                  // 如果权限是none，不显示
+                  if (permission.permission === 'none') {
+                    console.log(`菜单项 ${item.key} - 用户自定义权限为none，不显示`);
+                    return false;
+                  }
+                  
+                  console.log(`菜单项 ${item.key} - 用户自定义权限(${permission.permission})，显示`);
+                  return true;
+                }
               }
               
-              // 无权限则不显示
-              if (permission && permission.permission === 'none') {
-                console.log(`菜单项 ${item.key} - 无权限，不显示`);
+              // 如果没有找到用户自定义权限，才使用默认权限
+              console.log(`菜单项 ${item.key} - 用户无自定义权限，使用默认`);
+              // 使用角色默认权限
+              const defaultPermissions = getDefaultPermissions(user?.role || '');
+              permission = defaultPermissions.find(p => p.menuKey === item.key);
+              console.log(`菜单项 ${item.key} - 默认权限:`, permission);
+              
+              // 无权限则不显示（包括默认权限）
+              if (!permission || permission.permission === 'none') {
+                console.log(`菜单项 ${item.key} - 无权限或权限为none，不显示`);
                 return false;
               }
               
-              // 如果找不到权限设置，默认不显示该菜单
-              if (!permission && item.key !== 'dashboard') {
-                console.log(`菜单项 ${item.key} - 无权限设置，不显示`);
-                return false;
-              }
-              
-              console.log(`菜单项 ${item.key} - 显示`);
+              // 有权限才显示
+              console.log(`菜单项 ${item.key} - 有默认权限(${permission.permission})，显示`);
               return true;
             })
             .map(item => ({
@@ -215,23 +223,32 @@ export default function DashboardLayout({
                   // 先检查用户自定义权限
                   if (user?.permissions && user.permissions.length > 0) {
                     permission = user.permissions.find((p: { menuKey: string; permission: string }) => p.menuKey === child.key);
-                    console.log(`子菜单项 ${child.key} - 权限设置:`, permission);
-                  } else {
-                    // 使用角色默认权限
-                    const defaultPermissions = getDefaultPermissions(user?.role || '');
-                    permission = defaultPermissions.find(p => p.menuKey === child.key);
-                    console.log(`子菜单项 ${child.key} - 默认权限:`, permission);
-                  }
+                    console.log(`子菜单项 ${child.key} - 用户自定义权限设置:`, permission);
+                    
+                    // 如果找到了权限设置，无论什么项目直接使用
+                    if (permission) {
+                      // 如果权限是none，不显示
+                      if (permission.permission === 'none') {
+                        console.log(`子菜单项 ${child.key} - 用户自定义权限为none，不显示`);
+                        return null;
+                      }
+                      
+                      console.log(`子菜单项 ${child.key} - 用户有自定义权限(${permission.permission})，显示`);
+                      return {
+                        key: child.key,
+                        label: child.label,
+                      };
+                    }
+                  } 
                   
-                  // 如果找到权限设置并且是无权限，则不显示
-                  if (permission && permission.permission === 'none') {
-                    console.log(`子菜单项 ${child.key} - 无权限，不显示`);
-                    return null;
-                  }
+                  // 如果没有找到用户自定义权限，再使用默认权限
+                  const defaultPermissions = getDefaultPermissions(user?.role || '');
+                  permission = defaultPermissions.find(p => p.menuKey === child.key);
+                  console.log(`子菜单项 ${child.key} - 默认权限:`, permission);
                   
-                  // 如果找不到权限设置，默认不显示该菜单
-                  if (!permission) {
-                    console.log(`子菜单项 ${child.key} - 无权限设置，不显示`);
+                  // 如果找不到权限设置或权限为none，不显示
+                  if (!permission || permission.permission === 'none') {
+                    console.log(`子菜单项 ${child.key} - 无权限或权限为none，不显示`);
                     return null;
                   }
                 }

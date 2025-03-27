@@ -1,32 +1,35 @@
 import mongoose from 'mongoose';
 
+// 定义更简单的schema，移除复杂嵌套结构
 const appointmentSchema = new mongoose.Schema({
   customer: {
-    name: { type: String, required: true },
-    phone: { type: String, required: true },
-    email: String
+    type: mongoose.Schema.Types.Mixed,
+    required: true
   },
+  // 改为引用Vehicle模型
   vehicle: {
-    brand: { type: String, required: true },
-    model: { type: String, required: true },
-    licensePlate: { type: String, required: true }
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Vehicle',
+    required: true
   },
+  // 改为引用Service模型
   service: {
-    type: {
-      type: String,
-      enum: ['maintenance', 'repair', 'inspection'],
-      required: true
-    },
-    name: { type: String, required: true },
-    description: String,
-    duration: { type: Number, required: true },
-    basePrice: { type: Number, required: true }
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Service',
+    required: true
   },
-  timeSlot: {
-    date: { type: Date, required: true },
-    startTime: { type: String, required: true },
-    endTime: String,
-    technician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  date: { 
+    type: Date, 
+    required: true 
+  },
+  startTime: { 
+    type: String, 
+    required: true 
+  },
+  endTime: String,
+  technician: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User' 
   },
   status: {
     type: String,
@@ -47,13 +50,13 @@ appointmentSchema.pre('save', async function(next) {
   if (this.isNew) {
     const Appointment = mongoose.model('Appointment');
     const overlappingAppointment = await Appointment.findOne({
-      'timeSlot.technician': this?.timeSlot?.technician,
-      'timeSlot.date': this?.timeSlot?.date,
+      technician: this.technician,
+      date: this.date,
       status: { $nin: ['cancelled'] },  
       $or: [
         {
-          'timeSlot.startTime': { $lt: this?.timeSlot?.endTime },
-          'timeSlot.endTime': { $gt: this?.timeSlot?.startTime },
+          startTime: { $lt: this.endTime },
+          endTime: { $gt: this.startTime },
         },
       ],
     });
@@ -66,8 +69,7 @@ appointmentSchema.pre('save', async function(next) {
 });
 
 // 确保模型只被创建一次
-
-const Appointment = mongoose.model('Appointment', appointmentSchema);
+const Appointment = mongoose.models.Appointment || mongoose.model('Appointment', appointmentSchema);
 
 export function getAppointmentModel() {
   return mongoose.models.Appointment || mongoose.model('Appointment', appointmentSchema);

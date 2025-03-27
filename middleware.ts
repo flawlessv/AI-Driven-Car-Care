@@ -4,8 +4,11 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // 允许登录和注册API
-  if (pathname.startsWith('/api/auth/')) {
+  // 允许登录和注册API以及特定公开API
+  if (
+    pathname.startsWith('/api/auth/') || 
+    pathname === '/api/appointments/upcoming'
+  ) {
     return NextResponse.next();
   }
 
@@ -20,9 +23,15 @@ export function middleware(request: NextRequest) {
   // 处理API请求的认证
   if (pathname.startsWith('/api/')) {
     if (!token) {
+      console.log('API请求未授权:', pathname);
       return NextResponse.json(
         { success: false, message: '未授权访问' },
-        { status: 401 }
+        { 
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
     }
     return NextResponse.next();

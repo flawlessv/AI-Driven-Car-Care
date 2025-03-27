@@ -124,14 +124,15 @@ const DashboardPage = () => {
         const [startDate, endDate] = dateRange;
 
         // 并行请求所有数据
-        const [statsResponse, maintenanceResponse, appointmentsResponse] = await Promise.all([
+        const [statsResponse, maintenanceResponse] = await Promise.all([
           // 获取仪表盘统计数据
           fetch(`/api/dashboard/stats?startDate=${startDate.format('YYYY-MM-DD')}&endDate=${endDate.format('YYYY-MM-DD')}`),
           // 获取最近保养记录
-          fetch('/api/maintenance/recent'),
-          // 获取即将到来的预约
-          fetch('/api/appointments/upcoming')
+          fetch('/api/maintenance/recent')
         ]);
+        
+        // 单独处理预约请求以便更好地处理错误
+        const appointmentsResponse = await fetch('/api/appointments/upcoming');
 
         // 处理统计数据
         const statsResult = await statsResponse.json();
@@ -146,9 +147,21 @@ const DashboardPage = () => {
         }
 
         // 处理预约数据
-        const appointmentsResult = await appointmentsResponse.json();
+        // 检查响应状态
         if (!appointmentsResponse.ok) {
-          throw new Error(appointmentsResult.message || '获取预约数据失败');
+          const errorText = await appointmentsResponse.text();
+          console.error('预约API返回错误状态:', appointmentsResponse.status, appointmentsResponse.statusText);
+          console.log('错误响应内容:', errorText.substring(0, 200) + '...');
+          throw new Error(`获取预约数据失败: HTTP ${appointmentsResponse.status}`);
+        }
+        
+        // 解析JSON
+        let appointmentsResult;
+        try {
+          appointmentsResult = await appointmentsResponse.json();
+        } catch (error) {
+          console.error('解析预约数据JSON失败:', error);
+          throw new Error('获取预约数据失败: 返回格式错误');
         }
 
         // 更新所有状态

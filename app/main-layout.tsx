@@ -14,6 +14,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/lib/store';
+import { MenuPermission, PermissionLevel } from '@/types/user';
 
 const { Header, Content } = Layout;
 
@@ -91,6 +92,32 @@ export default function MainLayout({
     }
   };
 
+  // 检查用户是否有权限访问菜单项
+  const hasMenuPermission = (menuKey: string): boolean => {
+    // 如果用户未登录，不显示任何菜单
+    if (!user) {
+      return false;
+    }
+    
+    // 权限检查完全依赖permissions配置
+    // 如果没有权限配置，则默认不显示菜单
+    console.log('user.permissions', user.permissions);
+    if (!user.permissions || user.permissions.length === 0) {
+      return false;
+    }
+    
+    // 查找菜单对应的权限
+    const menuPermission = user.permissions.find(
+      (p: MenuPermission) => p.menuKey === menuKey
+    );
+    
+    // 如果没有找到对应的权限配置，或者权限级别为'none'，则没有权限
+    return !!menuPermission && menuPermission.permission !== 'none';
+  };
+
+  // 根据用户权限过滤菜单项
+  const filteredMenuItems = menuItems.filter(item => hasMenuPermission(item.key));
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Header style={{ padding: 0, background: colorBgContainer }}>
@@ -102,7 +129,7 @@ export default function MainLayout({
             <Menu
               mode="horizontal"
               selectedKeys={[pathname.split('/')[2] || 'dashboard']}
-              items={menuItems.map(item => ({
+              items={filteredMenuItems.map(item => ({
                 key: item.key,
                 icon: item.icon,
                 label: item.label,

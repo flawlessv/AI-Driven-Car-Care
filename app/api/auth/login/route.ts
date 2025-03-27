@@ -71,6 +71,48 @@ export async function POST(request: Request) {
         );
       }
 
+      // 判断是否需要为用户获取权限规则
+      try {
+        // 如果用户没有自定义权限设置，尝试从权限规则中查找
+        if (!(userWithPermissions as any).permissions || (userWithPermissions as any).permissions.length === 0) {
+          console.log('用户无自定义权限，尝试获取权限规则...');
+          
+          // 导入Permission模型
+          const Permission = (await import('../../../models/permission')).default;
+          
+          // 查找适用于该用户的权限规则
+          const permissionRule = await Permission.findOne({
+            $or: [
+              { users: userWithPermissions._id },
+              { roles: userWithPermissions.role, isDefault: true }
+            ]
+          }).lean();
+          
+          if (permissionRule) {
+            console.log('找到适用的权限规则:', {
+              ruleName: (permissionRule as any).name,
+              permissionsCount: (permissionRule as any).permissions?.length || 0
+            });
+            
+            // 将权限规则应用到用户对象
+            (userWithPermissions as any).permissions = (permissionRule as any).permissions || [];
+            
+            // 可选：将权限规则同步到用户记录（这样下次登录就不需要再查询）
+            await User.findByIdAndUpdate(userWithPermissions._id, {
+              permissions: (permissionRule as any).permissions || []
+            });
+            
+            console.log('已将权限规则同步到用户记录');
+          } else {
+            console.log('未找到适用的权限规则，使用空权限');
+            (userWithPermissions as any).permissions = [];
+          }
+        }
+      } catch (permError) {
+        console.error('获取权限规则失败:', permError);
+        // 出错时不阻止登录，仅记录错误
+      }
+
       // 使用类型断言来避免TypeScript错误
       interface UserWithPermissions {
         _id: any;
