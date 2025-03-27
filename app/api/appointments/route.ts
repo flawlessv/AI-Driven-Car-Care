@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { authMiddleware } from '@/lib/auth';
-import { getAppointmentModel } from '@/models/appointment';
+import { getAppointmentModel } from 'models/appointment';
 import Vehicle from '@/models/vehicle';
-import { getServiceModel } from '@/models/service';
+import { getServiceModel } from 'models/service';
 import {
   successResponse,
   errorResponse,

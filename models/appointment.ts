@@ -47,13 +47,13 @@ appointmentSchema.pre('save', async function(next) {
   if (this.isNew) {
     const Appointment = mongoose.model('Appointment');
     const overlappingAppointment = await Appointment.findOne({
-      'timeSlot.technician': this.timeSlot.technician,
-      'timeSlot.date': this.timeSlot.date,
-      status: { $nin: ['cancelled'] },
+      'timeSlot.technician': this?.timeSlot?.technician,
+      'timeSlot.date': this?.timeSlot?.date,
+      status: { $nin: ['cancelled'] },  
       $or: [
         {
-          'timeSlot.startTime': { $lt: this.timeSlot.endTime },
-          'timeSlot.endTime': { $gt: this.timeSlot.startTime },
+          'timeSlot.startTime': { $lt: this?.timeSlot?.endTime },
+          'timeSlot.endTime': { $gt: this?.timeSlot?.startTime },
         },
       ],
     });
@@ -66,8 +66,11 @@ appointmentSchema.pre('save', async function(next) {
 });
 
 // 确保模型只被创建一次
-mongoose.models = {};
 
 const Appointment = mongoose.model('Appointment', appointmentSchema);
+
+export function getAppointmentModel() {
+  return mongoose.models.Appointment || mongoose.model('Appointment', appointmentSchema);
+}
 
 export default Appointment; 
