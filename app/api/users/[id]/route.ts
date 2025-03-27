@@ -145,7 +145,7 @@ export async function DELETE(
       return errorResponse('未授权访问', 401);
     }
 
-    await connectDB();
+    await dbConnect();
     const User = getUserModel();
 
     const deletedUser = await User.findByIdAndDelete(params.id);
