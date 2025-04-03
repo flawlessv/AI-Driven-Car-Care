@@ -8,7 +8,6 @@ import Maintenance from '@/models/maintenance';
 import Vehicle from '@/models/vehicle';
 import Part from '@/models/part';
 import { getUserModel } from '@/lib/db/models';
-import { getMaintenanceModel } from '@/models/maintenance';
 
 import {
   successResponse,
@@ -43,7 +42,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     await connectDB();
-    const Maintenance = getMaintenanceModel();
 
     const maintenance = await Maintenance.findById(params.id)
       .populate('vehicle', 'brand model licensePlate')

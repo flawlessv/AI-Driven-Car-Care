@@ -10,6 +10,7 @@ import {
   BarChartOutlined,
   MessageOutlined,
   LockOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 
 // 菜单项定义
@@ -58,6 +59,12 @@ export const menuItems = [
         path: '/dashboard/maintenance/rules',
       },
     ],
+  },
+  {
+    key: 'work-orders',
+    icon: <FileTextOutlined />,
+    label: '工单管理',
+    path: '/dashboard/work-orders',
   },
   {
     key: 'appointments',

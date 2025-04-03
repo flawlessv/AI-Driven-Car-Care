@@ -59,10 +59,16 @@ export async function POST(
       return errorResponse('技师不存在或未激活', 404);
     }
 
-    // 更新工单
-    workOrder.technician = technicianId;
-    workOrder.status = 'assigned';
-    await workOrder.save();
+    // 更新工单 - 使用findByIdAndUpdate替代save()方法
+    const updatedWorkOrder = await WorkOrder.findByIdAndUpdate(
+      params.id,
+      {
+        technician: technicianId,
+        status: 'assigned',
+        updatedBy: authResult.user._id
+      },
+      { new: true }
+    );
 
     // 记录工单进度
     await recordWorkOrderProgress(
@@ -74,7 +80,7 @@ export async function POST(
 
     return successResponse({
       message: '工单分配成功',
-      workOrder
+      workOrder: updatedWorkOrder
     });
 
   } catch (error: any) {

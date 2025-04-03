@@ -11,8 +11,11 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const {user} = await authMiddleware(request);
-    if ('status' in user) return user;
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return errorResponse('未授权访问', 401);
+    }
+    const user = authResult.user;
 
     await connectDB();
 
@@ -78,8 +81,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const {user} = await authMiddleware(request);
-    if ('status' in user) return user;
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return errorResponse('未授权访问', 401);
+    }
+    const user = authResult.user;
 
     // 检查用户权限
     console.log(user, 'user123');

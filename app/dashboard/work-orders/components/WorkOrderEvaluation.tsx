@@ -32,18 +32,30 @@ export default function WorkOrderEvaluationComponent({
       const values = await form.validateFields();
       setSubmitting(true);
 
+      // 构建与评价管理系统一致的数据结构
+      const submitData = {
+        rating: values.rating,
+        feedback: values.feedback,
+        // 工单评价只能评价技师，不需要选择评价对象类型
+        targetType: 'technician',
+        workOrder: workOrderId
+      };
+
+      console.log('提交评价数据:', submitData);
+
       const response = await fetch(`/api/work-orders/${workOrderId}/evaluation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify(submitData),
       });
 
       const result = await response.json();
 
       if (response.ok) {
         message.success('评价提交成功');
+        form.resetFields();
         onEvaluationSubmit?.();
       } else {
         message.error(result.message || '评价提交失败');

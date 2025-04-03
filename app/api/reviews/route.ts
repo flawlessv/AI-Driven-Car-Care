@@ -19,21 +19,51 @@ export async function GET(request: Request) {
     if (rating) query.rating = parseInt(rating);
     if (status) query.status = status;
 
+    console.log('评价查询条件:', query);
+    console.log('分页参数: page=', page, 'limit=', limit);
+
     // 获取总数
     const total = await Review.countDocuments(query);
+    console.log('评价总数:', total);
 
     // 获取评价列表
     const reviews = await Review.find(query)
-      .populate('author', 'name phone')
-      .populate('maintenanceRecord', 'date type cost')
-      .populate({
-        path: 'target',
-        select: 'name level',
-        model: 'User'
-      })
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);
+
+    console.log('找到评价数量:', reviews.length);
+    
+    // 格式化评价数据，处理可能的引用问题
+    const formattedReviews = reviews.map(review => {
+      const reviewObj = review.toObject();
+      
+      // 确保author是对象
+      if (reviewObj.author && typeof reviewObj.author === 'object') {
+        if (!reviewObj.author.name && review._id) {
+          reviewObj.author = {
+            name: '用户' + review._id.toString().substr(-4),
+            phone: '未提供'
+          };
+        }
+      } else if (reviewObj.author) {
+        // 如果author是ID，创建一个临时的author对象
+        reviewObj.author = {
+          name: '用户' + reviewObj.author.toString().substr(-4),
+          phone: '未提供'
+        };
+      }
+      
+      // 确保targetId是对象
+      if (reviewObj.targetId && typeof reviewObj.targetId !== 'object') {
+        reviewObj.targetId = {
+          _id: reviewObj.targetId,
+          name: reviewObj.targetType === 'technician' ? '技师' : '门店'
+        };
+      }
+      
+      return reviewObj;
+    });
 
     return NextResponse.json({
       success: true,
@@ -41,7 +71,7 @@ export async function GET(request: Request) {
         total,
         page,
         limit,
-        items: reviews,
+        items: formattedReviews,
       },
     });
   } catch (error: any) {
@@ -61,14 +91,9 @@ export async function POST(request: Request) {
     const data = await request.json();
     await connectDB();
 
+    console.log('创建评价数据:', data);
     const review = await Review.create(data);
-    await review.populate('author', 'name phone');
-    await review.populate('maintenanceRecord', 'date type cost');
-    await review.populate({
-      path: 'target',
-      select: 'name level',
-      model: 'User'
-    });
+    console.log('评价创建成功:', review._id);
 
     return NextResponse.json({
       success: true,

@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const reviewSchema = new mongoose.Schema({
   author: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Customer',
+    ref: 'User', // 确保引用的是User模型
     required: true,
   },
   targetType: {
@@ -40,18 +40,14 @@ const reviewSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  reply: {
-    content: String,
-    replyAt: Date,
-    repliedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-    },
-  },
   status: {
     type: String,
     enum: ['published', 'hidden', 'deleted'],
     default: 'published',
+  },
+  workOrder: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'WorkOrder',
   }
 }, {
   timestamps: true

@@ -122,12 +122,12 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
         throw new Error(result.message || '获取技师列表失败');
       }
 
-      if (!result.data?.data || !Array.isArray(result.data.data)) {
+      if (!result.data || !Array.isArray(result.data)) {
         throw new Error('技师列表数据格式错误');
       }
 
-      setTechnicians(result.data.data);
-      console.log('成功设置技师列表:', result.data.data);
+      setTechnicians(result.data);
+      console.log('成功设置技师列表:', result.data);
 
     } catch (error: any) {
       console.error('获取技师列表失败:', error);
@@ -400,7 +400,7 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
                     workOrder: params.id,
                     rating: workOrder.rating,
                     feedback: workOrder.feedback,
-                    createdBy: workOrder.customer._id,
+                    createdBy: workOrder.customer?._id || user?._id || '',
                     createdAt: workOrder.updatedAt,
                     _id: '',
                   } : undefined}
@@ -521,8 +521,17 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
           setReviewModalVisible(false);
         }}
         onCancel={() => setReviewModalVisible(false)}
+        footer={null}
+        width={600}
       >
-        {/* Add review form content here */}
+        <WorkOrderEvaluation
+          workOrderId={params.id}
+          canEvaluate={true}
+          onEvaluationSubmit={() => {
+            setReviewModalVisible(false);
+            fetchWorkOrder();
+          }}
+        />
       </Modal>
     </div>
   );

@@ -45,7 +45,6 @@ export interface Review {
   images?: string[];
   tags: string[];
   likes: number;
-  reply?: string;
   createdAt: Date;
   updatedAt: Date;
 }

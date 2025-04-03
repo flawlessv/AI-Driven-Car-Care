@@ -10,10 +10,10 @@ export async function GET(
     await dbConnect();
 
     const review = await Review.findById(params.id)
-      .populate('author', 'name phone')
+      .populate('author', 'username name email phone')
       .populate('maintenanceRecord', 'date type cost')
       .populate({
-        path: 'target',
+        path: 'targetId',
         model: 'User'
       });
 
@@ -53,10 +53,10 @@ export async function PUT(
       { ...data, updatedAt: new Date() },
       { new: true, runValidators: true }
     )
-      .populate('author', 'name phone')
+      .populate('author', 'username name email phone')
       .populate('maintenanceRecord', 'date type cost')
       .populate({
-        path: 'target',
+        path: 'targetId',
         model: data.targetType === 'technician' ? 'User' : 'Shop'
       });
 

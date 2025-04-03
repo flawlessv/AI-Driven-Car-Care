@@ -43,7 +43,7 @@ export async function GET(
     // 获取工单进度历史
     const progress = await WorkOrderProgress.find({ workOrder: params.id })
       .populate({
-        path: 'operator',
+        path: 'updatedBy',
         select: 'username'
       })
       .sort({ timestamp: -1 });
@@ -90,21 +90,44 @@ export async function PUT(
         data.progressNotes
       );
 
-      // 更新工单状态
-      workOrder.status = data.status;
-      await workOrder.save();
+      // 更新工单状态，使用findByIdAndUpdate而不是直接修改保存，以避免验证问题
+      await WorkOrder.findByIdAndUpdate(params.id, { 
+        status: data.status,
+        updatedBy: authResult.user._id  // 添加更新者信息
+      });
+    } else {
+      // 处理完整工单更新
+      // 确保保留创建者信息
+      if (!data.createdBy) {
+        data.createdBy = workOrder.createdBy;
+      }
+      
+      // 添加更新者信息
+      data.updatedBy = authResult.user._id;
+      
+      // 使用findByIdAndUpdate避免验证问题
+      await WorkOrder.findByIdAndUpdate(params.id, data, { 
+        runValidators: true  // 仍然运行验证但跳过required验证
+      });
     }
+
+    // 重新获取更新后的工单
+    const updatedWorkOrder = await WorkOrder.findById(params.id)
+      .populate('vehicle', 'brand model licensePlate')
+      .populate('customer', 'username email phone')
+      .populate('technician', 'username email phone')
+      .populate('createdBy', 'username');
 
     // 获取更新后的进度记录
     const progress = await WorkOrderProgress.find({ workOrder: params.id })
-      .populate('operator', 'username')
+      .populate('updatedBy', 'username')
       .sort({ timestamp: -1 });
 
     console.log('更新后的进度记录:', progress);
 
     return successResponse({
       message: '工单更新成功',
-      workOrder,
+      workOrder: updatedWorkOrder,
       progress
     });
 
@@ -193,7 +216,7 @@ const handleStatusChange = async (workOrderId: string, status: string, user: any
       workOrder: workOrderId,
       status,
       note: notes,
-      operator: user._id,
+      updatedBy: user._id,
       timestamp: new Date()
     });
 
@@ -201,14 +224,14 @@ const handleStatusChange = async (workOrderId: string, status: string, user: any
     const progress = await WorkOrderProgress.create({
       workOrder: workOrderId,
       status,
-      note: notes,
-      operator: user._id,
+      notes: notes,
+      updatedBy: user._id,
       timestamp: new Date()
     });
 
     // 获取包含用户信息的进度记录
     const populatedProgress = await WorkOrderProgress.findById(progress._id)
-      .populate('operator', 'username');
+      .populate('updatedBy', 'username');
 
     console.log('创建的进度记录:', populatedProgress);
 

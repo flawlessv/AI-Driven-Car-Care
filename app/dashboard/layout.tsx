@@ -41,7 +41,8 @@ const getDefaultPermissions = (role: string) => {
       { menuKey: 'maintenance-records', permission: 'read' },
       { menuKey: 'appointments', permission: 'write' },
       { menuKey: 'technicians', permission: 'read' },
-      { menuKey: 'reviews', permission: 'write' }
+      { menuKey: 'reviews', permission: 'write' },
+      { menuKey: 'work-orders', permission: 'read' }
     ];
   } else if (role === 'technician') {
     return [
@@ -53,7 +54,8 @@ const getDefaultPermissions = (role: string) => {
       { menuKey: 'appointments', permission: 'read' },
       { menuKey: 'technicians', permission: 'read' },
       { menuKey: 'parts', permission: 'read' },
-      { menuKey: 'reviews', permission: 'read' }
+      { menuKey: 'reviews', permission: 'read' },
+      { menuKey: 'work-orders', permission: 'write' }
     ];
   }
   return [];
