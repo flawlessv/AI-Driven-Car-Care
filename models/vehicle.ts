@@ -15,11 +15,6 @@ const vehicleSchema = new mongoose.Schema({
     required: [true, '请输入车牌号'],
     unique: true
   },
-  owner: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Customer',
-    required: [true, '请指定车辆所有者']
-  },
   ownerName: String,
   ownerContact: String,
   year: {

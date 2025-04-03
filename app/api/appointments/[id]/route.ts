@@ -11,7 +11,7 @@ export async function GET(
     const appointment = await Appointment.findById(params.id)
       .populate('customer')
       .populate('vehicle')
-      .populate('timeSlot.technician');
+      .populate('technician');
 
     if (!appointment) {
       return errorResponse('预约不存在', 404);
@@ -34,13 +34,14 @@ export async function PUT(
     const data = await request.json();
     console.log('Received update data:', data);
 
-    const updateData = {
-      timeSlot: {
-        date: data.timeSlot?.date ? new Date(data.timeSlot.date) : undefined,
-        startTime: data.timeSlot?.startTime,
-        endTime: data.timeSlot?.endTime,
-        technician: data.timeSlot?.technician
-      },
+    // 使用扁平结构
+    const updateData: any = {
+      // 将timeSlot字段提取到顶层
+      date: data.timeSlot?.date ? new Date(data.timeSlot.date) : undefined,
+      startTime: data.timeSlot?.startTime,
+      endTime: data.timeSlot?.endTime,
+      technician: data.timeSlot?.technician,
+      // 服务信息
       service: {
         type: data.service?.type,
         name: data.service?.name,
@@ -48,6 +49,7 @@ export async function PUT(
         duration: data.service?.duration,
         basePrice: data.service?.basePrice
       },
+      // 其他字段
       status: data.status,
       notes: data.notes
     };
@@ -77,7 +79,7 @@ export async function PUT(
     )
     .populate('customer')
     .populate('vehicle')
-    .populate('timeSlot.technician');
+    .populate('technician');
 
     if (!appointment) {
       return errorResponse('预约不存在', 404);

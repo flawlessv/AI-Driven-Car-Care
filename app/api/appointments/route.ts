@@ -41,7 +41,11 @@ export async function GET(request: NextRequest) {
     const appointments = await Appointment.find(query)
       .populate('vehicle', 'brand model licensePlate')
       .populate('service', 'name description category duration basePrice')
-      .populate('timeSlot.technician', 'name username')
+      .populate({ 
+        path: 'timeSlot.technician', 
+        select: 'name username',
+        strictPopulate: false
+      })
       .sort({ 'timeSlot.date': -1 });
 
     return successResponse(appointments);
@@ -116,7 +120,7 @@ export async function POST(request: NextRequest) {
       serviceId = service._id;
     }
 
-    // 创建预约对象
+    // 创建预约对象 - 修改为扁平结构适应数据库模型
     const appointmentData = {
       customer: {
         name: customer.name,
@@ -125,17 +129,19 @@ export async function POST(request: NextRequest) {
       },
       vehicle: vehicleId,
       service: serviceId,
-      timeSlot: {
-        date: timeSlot.date,  // 不需要手动转换为 Date，mongoose 会自动处理
-        startTime: timeSlot.startTime,
-        endTime: timeSlot.endTime,
-        technician: timeSlot.technician
-      },
+      // 将timeSlot中的字段提取到顶层
+      date: timeSlot.date,
+      startTime: timeSlot.startTime,
+      endTime: timeSlot.endTime,
+      technician: timeSlot.technician,
+      // 其他字段保持不变
       status,
       estimatedDuration: Number(estimatedDuration),
       estimatedCost: Number(estimatedCost)
     };
 
+    console.log('创建预约数据:', appointmentData);
+    
     // 创建预约
     const Appointment = getAppointmentModel();
     const appointment = new Appointment(appointmentData);
@@ -147,7 +153,7 @@ export async function POST(request: NextRequest) {
     await appointment.populate([
       { path: 'vehicle', select: 'brand model licensePlate' },
       { path: 'service', select: 'name description category duration basePrice' },
-      { path: 'timeSlot.technician', select: 'name username' }
+      { path: 'technician', select: 'name username' }
     ]);
 
     return successResponse({

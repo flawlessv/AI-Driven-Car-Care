@@ -42,7 +42,7 @@ const statusText = {
 // 添加服务项目预设选项
 const serviceOptions = [
   {
-    category: 'regular',
+    category: 'maintenance',
     items: [
       { name: '常规保养', duration: 60, basePrice: 300 },
       { name: '机油更换', duration: 30, basePrice: 200 },
@@ -69,6 +69,9 @@ const serviceOptions = [
     ],
   },
 ];
+
+// 添加调试代码，将选项打印到控制台
+console.log('可用的服务类型选项:', serviceOptions.map(opt => opt.category));
 
 export default function AppointmentsPage() {
   const [data, setData] = useState<Appointment[]>([]);
@@ -286,39 +289,126 @@ export default function AppointmentsPage() {
   };
 
   const handleSubmit = async (values: any) => {
+    console.log(values,'values');
+    
     try {
       setLoading(true);
       
+      // 确保所有必填字段都已填写
+      if (!values['service.type'] || !values['service.name'] || 
+          !values['service.duration'] || !values['service.basePrice']) {
+        message.error('请完善服务信息');
+        setLoading(false);
+        return;
+      }
+      
+      if (!values['timeSlot.technician']) {
+        message.error('请选择技师');
+        setLoading(false);
+        return;
+      }
+      
+      // 验证日期和时间
+      if (!values.date) {
+        message.error('请选择预约日期');
+        setLoading(false);
+        return;
+      }
+      
+      if (!values.startTime) {
+        message.error('请选择开始时间');
+        setLoading(false);
+        return;
+      }
+      
+      if (!values.endTime) {
+        message.error('请选择结束时间');
+        setLoading(false);
+        return;
+      }
+      
+      // 打印关键字段的值
+      console.log('日期:', values.date);
+      console.log('开始时间:', values.startTime);
+      console.log('结束时间:', values.endTime);
+      console.log('技师ID:', values['timeSlot.technician']);
+      
+      // 步骤1: 先获取或创建车辆ID
+      let vehicleId;
+      
+      // 检查是否有匹配的车辆
+      const vehicleData = {
+        brand: values['vehicle.brand'],
+        model: values['vehicle.model'],
+        licensePlate: values['vehicle.licensePlate']
+      };
+      
+      // 尝试根据车牌号查找现有车辆
+      const vehicleResponse = await fetch(`/api/vehicles?licensePlate=${vehicleData.licensePlate}`);
+      const vehicleResult = await vehicleResponse.json();
+      
+      if (vehicleResponse.ok && vehicleResult.data?.data?.length > 0) {
+        // 使用现有车辆ID
+        vehicleId = vehicleResult.data.data[0]._id;
+      } else {
+        // 创建新车辆
+        const createVehicleResponse = await fetch('/api/vehicles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(vehicleData),
+        });
+        
+        if (!createVehicleResponse.ok) {
+          throw new Error('创建车辆失败');
+        }
+        
+        const createVehicleResult = await createVehicleResponse.json();
+        vehicleId = createVehicleResult.data._id;
+      }
+      
+      // 步骤2: 使用获取到的车辆ID创建预约
+      // 完全模仿API的数据格式
+      // 准备serviceData
+      const serviceData = {
+        name: values['service.name'],
+        category: values['service.type'],
+        duration: Number(values['service.duration']),
+        basePrice: Number(values['service.basePrice']),
+        description: values['service.description'] || ''
+      };
+      
+      // 创建API期望的精确格式
       const formattedData = {
         customer: {
           name: values['customer.name'],
           phone: values['customer.phone'],
-          email: values['customer.email']
+          email: values['customer.email'] || ''
         },
-        vehicle: {
-          brand: values['vehicle.brand'],
-          model: values['vehicle.model'],
-          licensePlate: values['vehicle.licensePlate']
-        },
-        service: {
-          type: values['service.type'],
-          name: values['service.name'],
-          description: values['service.description'],
-          duration: values['service.duration'],
-          basePrice: values['service.basePrice']
-        },
+        vehicle: vehicleId,
+        service: serviceData, // API会处理这个对象并创建服务
         timeSlot: {
-          date: values.date.format('YYYY-MM-DD'),
+          date: values.date.toDate(),
           startTime: values.startTime.format('HH:mm'),
           endTime: values.endTime.format('HH:mm'),
           technician: values['timeSlot.technician']
         },
-        status: values.status,
-        notes: values.notes
+        status: values.status || 'pending',
+        estimatedDuration: Number(values['service.duration']),
+        estimatedCost: Number(values['service.basePrice']),
+        notes: values.notes || ''
       };
+      
+      console.log('正在提交特殊格式数据:', JSON.stringify(formattedData, null, 2));
 
-      const response = await fetch(`/api/appointments/${editingAppointment?._id}`, {
-        method: 'PUT',
+      // 根据是否有编辑中的预约决定使用POST还是PUT
+      const url = editingAppointment?._id 
+        ? `/api/appointments/${editingAppointment._id}` 
+        : `/api/appointments`;
+      
+      const method = editingAppointment?._id ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),
       });
@@ -326,13 +416,13 @@ export default function AppointmentsPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.message);
 
-      message.success('更新成功');
+      message.success(editingAppointment ? '更新成功' : '创建成功');
       setModalVisible(false);
       form.resetFields();
       setEditingAppointment(null);
       fetchAppointments();
     } catch (error: any) {
-      message.error(error.message || '更新失败');
+      message.error(error.message || (editingAppointment ? '更新失败' : '创建失败'));
     } finally {
       setLoading(false);
     }
@@ -346,12 +436,14 @@ export default function AppointmentsPage() {
 
   // 添加服务选择后的处理函数
   const handleServiceSelect = (serviceData: any) => {
-    form.setFieldsValue({
-      'service.duration': serviceData.duration,
-      'service.basePrice': serviceData.basePrice,
-      estimatedDuration: serviceData.duration,
-      estimatedCost: serviceData.basePrice,
-    });
+    console.log('选择的服务数据:', serviceData);
+    if (serviceData) {
+      form.setFieldsValue({
+        'service.duration': serviceData.duration,
+        'service.basePrice': serviceData.basePrice,
+      });
+      
+    }
   };
 
   return (
@@ -455,22 +547,27 @@ export default function AppointmentsPage() {
           <Form.Item
             noStyle
             shouldUpdate={(prevValues, currentValues) => 
-              prevValues?.service?.type !== currentValues?.service?.type
+              prevValues?.['service.type'] !== currentValues?.['service.type']
             }
           >
             {({ getFieldValue }) => {
-              const type = getFieldValue(['service', 'type']);
+              const type = getFieldValue('service.type');
+              console.log('服务类型:', type);
               const services = serviceOptions.find(opt => opt.category === type)?.items || [];
-              
-              return type ? (
+              console.log('找到的服务项目:', services);
+              return type && services.length > 0 ? (
                 <Form.Item
-                  name={['service', 'name']}
+                  name="service.name"
                   label="服务项目"
                   rules={[{ required: true, message: '请选择服务项目' }]}
                 >
                   <Select
                     placeholder="请选择服务项目"
-                    onChange={(_, option: any) => handleServiceSelect(option.data)}
+                    onChange={(value, option: any) => {
+                      console.log('选择的值:', value);
+                      console.log('选择的选项:', option);
+                      handleServiceSelect(option.data);
+                    }}
                   >
                     {services.map(service => (
                       <Select.Option
@@ -488,14 +585,14 @@ export default function AppointmentsPage() {
           </Form.Item>
 
           <Form.Item
-            name={['service', 'description']}
+            name="service.description"
             label="服务描述"
           >
             <TextArea rows={2} />
           </Form.Item>
 
           <Form.Item
-            name={['service', 'duration']}
+            name="service.duration"
             label="预计时长(分钟)"
             rules={[{ required: true, message: '请输入预计时长' }]}
           >
@@ -503,7 +600,7 @@ export default function AppointmentsPage() {
           </Form.Item>
 
           <Form.Item
-            name={['service', 'basePrice']}
+            name="service.basePrice"
             label="基础价格"
             rules={[{ required: true, message: '请输入基础价格' }]}
           >
@@ -535,7 +632,7 @@ export default function AppointmentsPage() {
           </Form.Item>
 
           <Form.Item
-            name={['timeSlot', 'technician']}
+            name="timeSlot.technician"
             label="选择技师"
             rules={[{ required: true, message: '请选择技师' }]}
           >
