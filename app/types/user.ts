@@ -1,13 +1,21 @@
+import { ObjectId } from 'mongodb';
+
+export type UserRole = 'admin' | 'staff' | 'technician' | 'customer';
+
 export interface User {
-  _id: string;
+  _id: string | ObjectId;
   username: string;
-  name?: string;
   email: string;
+  password?: string;
+  role: UserRole;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
-  role: 'admin' | 'customer' | 'technician' | 'staff';
-  status: string;
-  createdAt: Date;
-  updatedAt: Date;
+  address?: string;
+  avatar?: string;
+  isActive: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 // 添加角色常量

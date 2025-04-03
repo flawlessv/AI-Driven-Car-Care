@@ -169,13 +169,19 @@ export default function WorkOrdersPage() {
     {
       title: '车辆',
       dataIndex: ['vehicle'],
-      render: (vehicle: any) => (
-        <span>
-          {vehicle.brand} {vehicle.model}
-          <br />
-          {vehicle.licensePlate}
-        </span>
-      ),
+      render: (vehicle: any) => {
+        if (!vehicle) {
+          return <span>未知车辆</span>;
+        }
+        
+        return (
+          <span>
+            {vehicle?.brand || '未知品牌'} {vehicle?.model || '未知型号'}
+            <br />
+            {vehicle?.licensePlate || '无车牌'}
+          </span>
+        );
+      },
     },
     {
       title: '维修类型',

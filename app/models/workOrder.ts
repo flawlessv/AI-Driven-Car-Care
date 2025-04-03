@@ -5,6 +5,7 @@ export const WORK_ORDER_STATUS = {
   PENDING: 'pending',      // 待处理
   ASSIGNED: 'assigned',    // 已分配
   IN_PROGRESS: 'in_progress', // 处理中
+  PENDING_CHECK: 'pending_check', // 待验收
   COMPLETED: 'completed',  // 已完成
   CANCELLED: 'cancelled'   // 已取消
 } as const;
@@ -46,6 +47,22 @@ export interface IWorkOrder extends Document {
   completionDate?: Date;   // 完成日期
   customerNotes?: string;   // 客户备注
   technicianNotes?: string; // 技师备注
+  completionProof?: {
+    workOrderId: Schema.Types.ObjectId;
+    proofImages: string[];
+    notes?: string;
+    submittedBy: Schema.Types.ObjectId;
+    submittedAt: Date;
+    approved?: boolean;
+    approvedBy?: Schema.Types.ObjectId;
+    approvedAt?: Date;
+  }; // 完成证明
+  progress?: Array<{
+    status: typeof WORK_ORDER_STATUS[keyof typeof WORK_ORDER_STATUS];
+    notes?: string;
+    timestamp: Date;
+    user: Schema.Types.ObjectId;
+  }>; // 工单进度记录
   rating?: number;         // 评分 (1-5)
   feedback?: string;       // 反馈
   createdAt: Date;        // 创建时间
@@ -89,6 +106,26 @@ const workOrderSchema = new Schema<IWorkOrder>({
   completionDate: Date,
   customerNotes: String,
   technicianNotes: String,
+  completionProof: {
+    workOrderId: { type: Schema.Types.ObjectId, ref: 'WorkOrder' },
+    proofImages: [String],
+    notes: String,
+    submittedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    submittedAt: { type: Date, default: Date.now },
+    approved: { type: Boolean, default: false },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    approvedAt: Date
+  },
+  progress: [{
+    status: { 
+      type: String, 
+      required: true,
+      enum: Object.values(WORK_ORDER_STATUS)
+    },
+    notes: String,
+    timestamp: { type: Date, default: Date.now },
+    user: { type: Schema.Types.ObjectId, ref: 'User', required: true }
+  }],
   rating: { type: Number, min: 1, max: 5 },
   feedback: String,
 }, {
@@ -103,5 +140,21 @@ workOrderSchema.index({ technician: 1 });
 workOrderSchema.index({ status: 1 });
 workOrderSchema.index({ createdAt: 1 });
 
-// 导出模型
-export const WorkOrder = mongoose.models.WorkOrder || mongoose.model<IWorkOrder>('WorkOrder', workOrderSchema); 
+// 获取工单模型
+export function getWorkOrderModel() {
+  try {
+    const modelName = 'WorkOrder';
+    // 如果模型已存在，直接返回
+    if (mongoose.models[modelName]) {
+      return mongoose.models[modelName];
+    }
+    // 否则创建并返回模型
+    return mongoose.model<IWorkOrder>(modelName, workOrderSchema);
+  } catch (error) {
+    console.error('获取WorkOrder模型失败:', error);
+    throw error;
+  }
+}
+
+// 向后兼容导出
+export default mongoose.models.WorkOrder || mongoose.model<IWorkOrder>('WorkOrder', workOrderSchema); 

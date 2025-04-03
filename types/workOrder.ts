@@ -31,6 +31,7 @@ export interface WorkOrder {
   completionDate?: string;      // 完成日期
   customerNotes?: string;       // 客户备注
   technicianNotes?: string;     // 技师备注
+  completionProof?: string[];   // 完成证明图片
   rating?: number;              // 客户评分(1-5)
   feedback?: string;            // 客户反馈
   createdBy: string;            // 创建人ID

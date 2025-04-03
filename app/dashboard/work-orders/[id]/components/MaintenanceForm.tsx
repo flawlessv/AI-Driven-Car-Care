@@ -1,114 +1,130 @@
-import React from 'react';
-import { Form, Input, Button, message, InputNumber } from 'antd';
-import { useSelector } from 'react-redux';
-import type { RootState } from '@/lib/store';
+'use client';
+
+import React, { useState } from 'react';
+import { Form, Input, Button, Select, DatePicker, InputNumber, message } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { WorkOrder } from '@/types/workOrder';
 
 const { TextArea } = Input;
+const { Option } = Select;
 
 interface MaintenanceFormProps {
-  workOrderId: string;
-  workOrder: any;
+  workOrderId: string | string[];
+  workOrder: WorkOrder;
   onSuccess?: () => void;
 }
 
-export default function MaintenanceForm({ workOrderId, workOrder, onSuccess }: MaintenanceFormProps) {
+const MaintenanceForm: React.FC<MaintenanceFormProps> = ({ 
+  workOrderId, 
+  workOrder,
+  onSuccess 
+}) => {
   const [form] = Form.useForm();
-  const user = useSelector((state: RootState) => state.auth.user);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // 确保workOrderId是字符串
+  const id = Array.isArray(workOrderId) ? workOrderId[0] : workOrderId;
 
   const handleSubmit = async (values: any) => {
+    setSubmitting(true);
+    
     try {
-      // 直接提交表单数据，让后端处理总价计算
-      const requestData = {
-        description: values.description,
-        mileage: values.mileage,
-        cost: values.cost,
-        notes: values.notes,
-        workOrder: workOrderId,
-        vehicle: workOrder.vehicle._id,
-        technician: user._id,
-        type: 'repair',
-        status: 'completed',
-        startDate: new Date().toISOString(),
-        parts: [{
-          part: "6795b034c3265f20497d6636",
-          quantity: 1,
-          unitPrice: 3
-        }]
-      };
-
-      console.log('提交的数据:', requestData);
-
-      const response = await fetch('/api/maintenance', {
+      const response = await fetch(`/api/work-orders/${id}/maintenance`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify({
+          ...values,
+          workOrder: id
+        }),
       });
-
+      
       const result = await response.json();
-      console.log('API响应:', result);
       
-      if (!response.ok) {
-        throw new Error(result.message || '提交失败');
+      if (response.ok) {
+        message.success('维修记录添加成功');
+        form.resetFields();
+        if (onSuccess) {
+          onSuccess();
+        }
+      } else {
+        message.error(result.message || '维修记录添加失败');
       }
-
-      message.success('维修记录添加成功');
-      form.resetFields();
-      onSuccess?.();
-      
-    } catch (error: any) {
-      console.error('提交维修记录失败:', error);
-      message.error(error.message || '提交失败，请重试');
+    } catch (error) {
+      console.error('添加维修记录失败:', error);
+      message.error('维修记录添加失败');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  if (user?.role !== 'technician') {
-    return null;
-  }
-
   return (
-    <Form form={form} onFinish={handleSubmit}>
+    <Form
+      form={form}
+      layout="vertical"
+      onFinish={handleSubmit}
+      initialValues={{
+        maintenanceType: '维修',
+        vehicle: workOrder?.vehicle?._id || ''
+      }}
+    >
       <Form.Item
         name="description"
-        label="维修描述"
-        rules={[{ required: true, message: '请输入维修描述' }]}
+        label="维修内容"
+        rules={[{ required: true, message: '请输入维修内容' }]}
       >
-        <TextArea rows={4} placeholder="请详细描述维修内容" />
-      </Form.Item>
-      
-      <Form.Item
-        name="mileage"
-        label="当前里程"
-        rules={[{ required: true, message: '请输入当前里程' }]}
-      >
-        <InputNumber min={0} style={{ width: '100%' }} />
+        <TextArea rows={3} placeholder="详细描述您执行的维修工作..." />
       </Form.Item>
 
       <Form.Item
-        name="cost"
-        label="维修费用"
-        rules={[{ required: true, message: '请输入维修费用' }]}
+        name="maintenanceType"
+        label="维修类型"
+        rules={[{ required: true, message: '请选择维修类型' }]}
       >
-        <InputNumber 
-          min={0} 
-          style={{ width: '100%' }} 
-          placeholder="请输入维修费用"
-        />
+        <Select placeholder="选择维修类型">
+          <Option value="维修">维修</Option>
+          <Option value="保养">保养</Option>
+          <Option value="检查">检查</Option>
+          <Option value="更换零件">更换零件</Option>
+          <Option value="其他">其他</Option>
+        </Select>
       </Form.Item>
-      
+
       <Form.Item
-        name="notes"
-        label="备注"
+        name="hoursSpent"
+        label="花费时间(小时)"
+        rules={[{ required: true, message: '请输入花费的时间' }]}
       >
-        <TextArea rows={2} placeholder="可选：添加其他备注信息" />
+        <InputNumber min={0.5} step={0.5} style={{ width: '100%' }} />
+      </Form.Item>
+
+      <Form.Item
+        name="partsUsed"
+        label="使用的零件"
+      >
+        <TextArea rows={2} placeholder="列出使用的零件(可选)..." />
+      </Form.Item>
+
+      <Form.Item
+        name="technicianNotes"
+        label="技师备注"
+      >
+        <TextArea rows={2} placeholder="添加任何其他备注信息(可选)..." />
       </Form.Item>
 
       <Form.Item>
-        <Button type="primary" htmlType="submit">
+        <Button 
+          type="primary" 
+          htmlType="submit" 
+          loading={submitting}
+          icon={<PlusOutlined />}
+        >
           添加维修记录
         </Button>
       </Form.Item>
     </Form>
   );
-} 
+};
+
+export default MaintenanceForm; 

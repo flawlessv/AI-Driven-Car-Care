@@ -16,16 +16,24 @@ import {
   Select,
   Input,
   Form,
+  Upload,
+  Typography,
+  Alert,
 } from 'antd';
 import type { RootState } from '@/lib/store';
 import type { WorkOrder, WorkOrderProgress } from '@/types/workOrder';
 import type { User } from '@/types/user';
+import type { Vehicle } from '@/types/vehicle';
 import WorkOrderForm from '../components/WorkOrderForm';
 import WorkOrderProgressTimeline from '../components/WorkOrderProgress';
 import WorkOrderEvaluation from '../components/WorkOrderEvaluation';
 import dayjs from 'dayjs';
 import MaintenanceForm from './components/MaintenanceForm';
-import { StarOutlined } from '@ant-design/icons';
+import { StarOutlined, UploadOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import WorkOrderCompletion from './components/WorkOrderCompletion';
+import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
+import { useParams } from 'next/navigation';
+import { RcFile } from 'antd/es/upload';
 
 const { TextArea } = Input;
 
@@ -61,13 +69,29 @@ const priorityColor = {
   urgent: 'red',
 };
 
-interface PageProps {
-  params: {
-    id: string;
-  };
-}
+const formatDisplayData = (workOrder: WorkOrder | null) => {
+  if (!workOrder) return null;
 
-export default function WorkOrderDetailPage({ params }: PageProps) {
+  const vehicle = typeof workOrder.vehicle === 'string' 
+    ? { _id: workOrder.vehicle } as Vehicle 
+    : workOrder.vehicle;
+    
+  const customer = typeof workOrder.customer === 'string'
+    ? { _id: workOrder.customer } as User
+    : workOrder.customer;
+    
+  const technician = workOrder.technician && typeof workOrder.technician === 'string'
+    ? { _id: workOrder.technician } as User
+    : workOrder.technician;
+
+  return {
+    vehicle,
+    customer,
+    technician
+  };
+};
+
+const WorkOrderDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [progress, setProgress] = useState<WorkOrderProgress[]>([]);
@@ -79,7 +103,11 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
   const [progressNotes, setProgressNotes] = useState('');
   const [form] = Form.useForm();
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
+  const params = useParams();
   const user = useSelector((state: RootState) => state.auth.user);
 
   useEffect(() => {
@@ -139,11 +167,17 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
   };
 
   const handleEdit = () => {
+    if (!workOrder) return;
+    
+    const vehicleId = typeof workOrder.vehicle === 'string' 
+      ? workOrder.vehicle 
+      : workOrder.vehicle._id;
+      
     const initialValues = {
       ...workOrder,
-      vehicle: workOrder?.vehicle._id,
-      startDate: workOrder?.startDate ? dayjs(workOrder.startDate) : undefined,
-      completionDate: workOrder?.completionDate ? dayjs(workOrder.completionDate) : undefined
+      vehicle: vehicleId,
+      startDate: workOrder.startDate ? dayjs(workOrder.startDate) : undefined,
+      completionDate: workOrder.completionDate ? dayjs(workOrder.completionDate) : undefined
     };
     
     console.log('编辑工单初始值:', initialValues);
@@ -185,6 +219,45 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
 
   const handleStatusChange = async (status: string) => {
     try {
+      // 如果是技师提交"待检查"状态，需要处理图片上传
+      const isTechnician = user?.role === 'technician';
+      const isSubmittingForCheck = status === 'pending_check' && fileList.length > 0;
+      const isInProgressStatus = workOrder?.status === 'in_progress';
+      
+      if (isTechnician && isSubmittingForCheck && isInProgressStatus) {
+        setUploading(true);
+        // 模拟上传图片获取URLs
+        const imageUrls = await Promise.all(
+          fileList.map(file => mockUpload(file.originFileObj as File))
+        );
+
+        // 调用API提交完成证明
+        const proofResponse = await fetch(`/api/work-orders/${params.id}/completion-proof`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            proofImages: imageUrls,
+            notes: progressNotes,
+          }),
+        });
+
+        if (!proofResponse.ok) {
+          const errorResult = await proofResponse.json();
+          throw new Error(errorResult.message || '提交完成证明失败');
+        }
+
+        setUploading(false);
+        message.success('完成证明提交成功，工单状态已更新为待检查');
+        setStatusModalVisible(false);
+        setProgressNotes('');
+        setFileList([]);
+        fetchWorkOrder();
+        return;
+      }
+
+      // 常规状态更新
       const response = await fetch(`/api/work-orders/${params.id}`, {
         method: 'PUT',
         headers: {
@@ -203,15 +276,28 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
         message.success('状态更新成功');
         setStatusModalVisible(false);
         setProgressNotes('');
-        
         fetchWorkOrder();
       } else {
         message.error(result.message || '状态更新失败');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('更新状态失败:', error);
-      message.error('状态更新失败');
+      message.error(error.message || '状态更新失败');
+      setUploading(false);
     }
+  };
+
+  // 模拟上传文件到服务器
+  const mockUpload = async (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        setTimeout(() => {
+          resolve(reader.result as string);
+        }, 500);
+      };
+    });
   };
 
   const handleAssign = async () => {
@@ -261,6 +347,27 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
     }
     return null;
   };
+
+  // 处理文件上传前的验证
+  const beforeUpload = (file: RcFile) => {
+    const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
+    if (!isJpgOrPng) {
+      message.error('只能上传JPG/PNG格式的图片!');
+    }
+    const isLt2M = file.size / 1024 / 1024 < 2;
+    if (!isLt2M) {
+      message.error('图片大小不能超过2MB!');
+    }
+    return false;
+  };
+
+  // 处理文件列表变化
+  const handleChange: UploadProps['onChange'] = ({ fileList: newFileList }) => {
+    setFileList(newFileList);
+  };
+
+  // 在渲染前处理数据
+  const displayData = formatDisplayData(workOrder);
 
   if (loading || !workOrder) {
     return <div className="p-6">加载中...</div>;
@@ -334,57 +441,61 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
               column={2}
               bordered
             >
-              <Descriptions.Item label="车辆">
-                {workOrder.vehicle.brand} {workOrder.vehicle.model}
-                <br />
-                {workOrder.vehicle.licensePlate}
-              </Descriptions.Item>
-              <Descriptions.Item label="维修类型">
-                {workOrder.type}
-              </Descriptions.Item>
-              <Descriptions.Item label="客户">
-                {workOrder.customer?.username || '未分配客户'}
-              </Descriptions.Item>
-              <Descriptions.Item label="技师">
-                {workOrder.technician?.username || '未分配技师'}
-              </Descriptions.Item>
-              <Descriptions.Item label="创建者">
-                {workOrder.createdBy?.username || '未知'}
-              </Descriptions.Item>
-              <Descriptions.Item label="预计工时">
-                {workOrder.estimatedHours ? `${workOrder.estimatedHours}小时` : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="实际工时">
-                {workOrder.actualHours ? `${workOrder.actualHours}小时` : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="期望开始日期" span={2}>
-                {workOrder.startDate ? new Date(workOrder.startDate).toLocaleDateString() : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="完成日期" span={2}>
-                {workOrder.completionDate ? new Date(workOrder.completionDate).toLocaleDateString() : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="问题描述" span={2}>
-                {workOrder.description}
-              </Descriptions.Item>
-              {workOrder.diagnosis && (
-                <Descriptions.Item label="故障诊断" span={2}>
-                  {workOrder.diagnosis}
-                </Descriptions.Item>
-              )}
-              {workOrder.solution && (
-                <Descriptions.Item label="解决方案" span={2}>
-                  {workOrder.solution}
-                </Descriptions.Item>
-              )}
-              {workOrder.customerNotes && (
-                <Descriptions.Item label="客户备注" span={2}>
-                  {workOrder.customerNotes}
-                </Descriptions.Item>
-              )}
-              {workOrder.technicianNotes && (
-                <Descriptions.Item label="技师备注" span={2}>
-                  {workOrder.technicianNotes}
-                </Descriptions.Item>
+              {displayData && (
+                <>
+                  <Descriptions.Item label="车辆">
+                    {displayData.vehicle?.brand} {displayData.vehicle?.model}
+                    <br />
+                    {displayData.vehicle?.licensePlate}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="维修类型">
+                    {workOrder.type}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="客户">
+                    {displayData.customer?.username || '未分配客户'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="技师">
+                    {displayData.technician?.username || '未分配技师'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="创建者">
+                    {workOrder.createdBy?.username || '未知'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="预计工时">
+                    {workOrder.estimatedHours ? `${workOrder.estimatedHours}小时` : '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="实际工时">
+                    {workOrder.actualHours ? `${workOrder.actualHours}小时` : '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="期望开始日期" span={2}>
+                    {workOrder.startDate ? new Date(workOrder.startDate).toLocaleDateString() : '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="完成日期" span={2}>
+                    {workOrder.completionDate ? new Date(workOrder.completionDate).toLocaleDateString() : '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="问题描述" span={2}>
+                    {workOrder.description}
+                  </Descriptions.Item>
+                  {workOrder.diagnosis && (
+                    <Descriptions.Item label="故障诊断" span={2}>
+                      {workOrder.diagnosis}
+                    </Descriptions.Item>
+                  )}
+                  {workOrder.solution && (
+                    <Descriptions.Item label="解决方案" span={2}>
+                      {workOrder.solution}
+                    </Descriptions.Item>
+                  )}
+                  {workOrder.customerNotes && (
+                    <Descriptions.Item label="客户备注" span={2}>
+                      {workOrder.customerNotes}
+                    </Descriptions.Item>
+                  )}
+                  {workOrder.technicianNotes && (
+                    <Descriptions.Item label="技师备注" span={2}>
+                      {workOrder.technicianNotes}
+                    </Descriptions.Item>
+                  )}
+                </>
               )}
             </Descriptions>
           </Col>
@@ -425,6 +536,133 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
         )}
       </Card>
 
+      {workOrder && (
+        <WorkOrderCompletion
+          workOrderId={workOrder._id}
+          status={workOrder.status}
+          completionProof={workOrder.completionProof}
+          onSubmitSuccess={fetchWorkOrder}
+        />
+      )}
+
+      {/* 完成证明展示 */}
+      {workOrder?.completionProof && displayData && (
+        <Card title="完成证明" className="mb-6">
+          <div className="mb-2">
+            {workOrder.completionProof.notes && (
+              <Typography.Paragraph className="mb-4">
+                <strong>技师备注:</strong> {workOrder.completionProof.notes}
+              </Typography.Paragraph>
+            )}
+            
+            <div className="flex flex-wrap gap-2">
+              {workOrder.completionProof.proofImages && 
+               Array.isArray(workOrder.completionProof.proofImages) && 
+               workOrder.completionProof.proofImages.map((image, index) => (
+                <div key={index} className="relative">
+                  <img 
+                    src={image} 
+                    alt={`完成证明图片 ${index + 1}`} 
+                    className="w-40 h-40 object-cover rounded"
+                    onClick={() => window.open(image, '_blank')}
+                    style={{ cursor: 'pointer' }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {user?.role === 'admin' && 
+           workOrder.status === 'pending_check' && 
+           typeof workOrder.completionProof.approved === 'boolean' && 
+           !workOrder.completionProof.approved && (
+            <div className="mt-4">
+              <Space>
+                <Button 
+                  type="primary" 
+                  icon={<CheckOutlined />}
+                  onClick={() => {
+                    Modal.confirm({
+                      title: '确认审批',
+                      content: '确定通过这项工作的完成证明吗？',
+                      onOk: async () => {
+                        try {
+                          const response = await fetch(`/api/work-orders/${params.id}/completion-proof`, {
+                            method: 'PUT',
+                            headers: {
+                              'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                              approved: true,
+                              notes: '管理员已审核通过'
+                            }),
+                          });
+                          
+                          if (response.ok) {
+                            message.success('审批通过成功');
+                            fetchWorkOrder();
+                          } else {
+                            const data = await response.json();
+                            message.error(data.message || '审批失败');
+                          }
+                        } catch (error) {
+                          console.error('审批失败:', error);
+                          message.error('审批操作失败');
+                        }
+                      }
+                    });
+                  }}
+                >
+                  通过审批
+                </Button>
+                <Button 
+                  danger
+                  icon={<CloseOutlined />}
+                  onClick={() => {
+                    Modal.confirm({
+                      title: '拒绝审批',
+                      content: '确定拒绝这项工作的完成证明吗？',
+                      okType: 'danger',
+                      onOk: async () => {
+                        try {
+                          const response = await fetch(`/api/work-orders/${params.id}/completion-proof`, {
+                            method: 'PUT',
+                            headers: {
+                              'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                              approved: false,
+                              notes: '管理员已拒绝，请重新完成工作'
+                            }),
+                          });
+                          
+                          if (response.ok) {
+                            message.success('已拒绝通过');
+                            fetchWorkOrder();
+                          } else {
+                            const data = await response.json();
+                            message.error(data.message || '操作失败');
+                          }
+                        } catch (error) {
+                          console.error('审批操作失败:', error);
+                          message.error('审批操作失败');
+                        }
+                      }
+                    });
+                  }}
+                >
+                  拒绝通过
+                </Button>
+              </Space>
+            </div>
+          )}
+          
+          {workOrder.completionProof.approved && (
+            <Tag color="green" className="mt-2">已审核通过</Tag>
+          )}
+        </Card>
+      )}
+
       <Modal
         title="编辑工单"
         open={editModalVisible}
@@ -435,10 +673,10 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
         <WorkOrderForm
           form={form}
           vehicles={[{
-            _id: workOrder?.vehicle._id,
-            brand: workOrder?.vehicle.brand,
-            model: workOrder?.vehicle.model,
-            licensePlate: workOrder?.vehicle.licensePlate
+            _id: displayData?.vehicle?._id,
+            brand: displayData?.vehicle?.brand,
+            model: displayData?.vehicle?.model,
+            licensePlate: displayData?.vehicle?.licensePlate
           }]}
           initialValues={workOrder}
           mode="edit"
@@ -448,37 +686,84 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
       <Modal
         title="更新状态"
         open={statusModalVisible}
-        onOk={() => handleStatusChange(workOrder.status)}
         onCancel={() => setStatusModalVisible(false)}
-      >
-        <div className="mb-4">
-          <div className="mb-2">新状态</div>
-          <Select
-            style={{ width: '100%' }}
-            value={workOrder.status}
-            onChange={value => setWorkOrder({ ...workOrder, status: value })}
+        footer={[
+          <Button key="cancel" onClick={() => setStatusModalVisible(false)}>
+            取消
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            loading={submitting || uploading}
+            onClick={() => {
+              if (workOrder) {
+                handleStatusChange(workOrder.status);
+              }
+            }}
           >
-            {Object.entries(statusText).map(([key, text]) => (
-              <Select.Option
-                key={key}
-                value={key}
-                disabled={!['admin'].includes(user?.role || '') && 
-                  !['pending', 'assigned', 'in_progress', 'pending_check'].includes(key)}
+            提交
+          </Button>
+        ]}
+      >
+        <Form layout="vertical">
+          <Form.Item label="新状态">
+            <Select
+              value={workOrder?.status}
+              onChange={value => setWorkOrder({ ...workOrder, status: value })}
+              style={{ width: '100%' }}
+            >
+              {Object.entries(statusText).map(([key, text]) => (
+                <Select.Option
+                  key={key}
+                  value={key}
+                  disabled={!['admin'].includes(user?.role || '') && 
+                    !['pending', 'assigned', 'in_progress', 'pending_check'].includes(key)}
+                >
+                  {text}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          
+          <Form.Item label="进度备注">
+            <Input.TextArea
+              rows={4}
+              value={progressNotes}
+              onChange={(e) => setProgressNotes(e.target.value)}
+              placeholder="请输入工作进度备注..."
+            />
+          </Form.Item>
+          
+          {/* 仅当状态变更为"待检查"且用户是技师时显示上传组件 */}
+          {user?.role === 'technician' && 
+           (workOrder?.status === 'in_progress' || 
+            (workOrder?.status === 'pending_check' && workOrder.completionProof?.approved === false)) && (
+            <Form.Item label="上传完成证明">
+              <Alert
+                message="请上传完成工作的证明照片，管理员将根据照片验收你的工作"
+                type="info"
+                showIcon
+                className="mb-3"
+              />
+              <Upload
+                listType="picture-card"
+                fileList={fileList}
+                beforeUpload={beforeUpload}
+                onChange={handleChange}
               >
-                {text}
-              </Select.Option>
-            ))}
-          </Select>
-        </div>
-        <div>
-          <div className="mb-2">进度说明</div>
-          <TextArea
-            rows={4}
-            value={progressNotes}
-            onChange={e => setProgressNotes(e.target.value)}
-            placeholder="请输入状态变更的原因或说明"
-          />
-        </div>
+                {fileList.length >= 8 ? null : (
+                  <div>
+                    <UploadOutlined />
+                    <div style={{ marginTop: 8 }}>上传图片</div>
+                  </div>
+                )}
+              </Upload>
+              <Typography.Text type="secondary">
+                请上传工作完成的证明照片（最多8张，每张不超过2MB）
+              </Typography.Text>
+            </Form.Item>
+          )}
+        </Form>
       </Modal>
 
       <Modal
@@ -535,4 +820,6 @@ export default function WorkOrderDetailPage({ params }: PageProps) {
       </Modal>
     </div>
   );
-} 
+};
+
+export default WorkOrderDetailPage; 
