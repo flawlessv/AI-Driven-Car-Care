@@ -36,9 +36,16 @@ export interface Comment {
 // 评价类型
 export interface Review {
   _id: string;
-  author: User;
+  author: User | string;
+  authorName?: string;
+  authorPhone?: string;
+  authorEmail?: string;
   targetType: 'technician' | 'shop';
-  targetId: string;
+  targetId: string | {
+    _id: string;
+    name?: string;
+    username?: string;
+  };
   maintenanceRecord: string;
   rating: number;
   content: string;
@@ -47,6 +54,8 @@ export interface Review {
   likes: number;
   createdAt: Date;
   updatedAt: Date;
+  workOrder?: string;
+  workOrderNumber?: string;
 }
 
 // 知识库文章类型

@@ -34,6 +34,14 @@ const priorityColor = {
   urgent: 'red',
 };
 
+// Add type options mapping for repair types
+const typeOptions = {
+  regular: '常规保养',
+  repair: '故障维修',
+  accident: '事故维修',
+  other: '其他',
+};
+
 export default function WorkOrdersPage() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<WorkOrder[]>([]);
@@ -172,6 +180,9 @@ export default function WorkOrdersPage() {
     {
       title: '维修类型',
       dataIndex: 'type',
+      render: (type: keyof typeof typeOptions) => (
+        <span>{typeOptions[type] || type}</span>
+      ),
     },
     {
       title: '问题描述',

@@ -235,14 +235,14 @@ export async function POST(
 
 // PUT 方法：审批工作完成证明
 export async function PUT(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     await connectDB();
 
     // 解析请求数据
-    const { approved, notes } = await req.json();
+    const { approved, notes } = await request.json();
     
     if (typeof approved !== 'boolean') {
       return NextResponse.json(
@@ -274,7 +274,7 @@ export async function PUT(
     }
 
     // 获取当前用户ID用于记录谁执行了审批操作
-    const session = await authMiddleware(req);
+    const session = await authMiddleware(request);
     if (!session || !session.user || !session.user.id) {
       return NextResponse.json(
         { success: false, message: '未授权操作' }, 
@@ -291,83 +291,71 @@ export async function PUT(
       );
     }
 
-    // 更新工单状态和完成证明
+    // 更新完成证明对象
     const updateData: any = {
       $set: {
         'completionProof.approved': approved,
         'completionProof.approvedBy': session.user.id,
-        'completionProof.approvedAt': new Date()
+        'completionProof.approvedAt': new Date(),
+        'completionProof.reviewNotes': notes || ''
       }
     };
 
-    // 如果审批通过，更新工单状态为已完成
+    // 如果批准，将工单更新为已完成状态
+    // 如果驳回，将工单更新为进行中状态
     if (approved) {
       updateData.$set.status = 'completed';
+      updateData.$set.completionDate = new Date();
     } else {
-      // 如果审批不通过，回退工单状态为进行中
       updateData.$set.status = 'in_progress';
-      
-      // 如果有驳回原因，添加到完成证明中
-      if (notes) {
-        updateData.$set['completionProof.rejectionNotes'] = notes;
-      }
     }
 
-    const result = await WorkOrder.findOneAndUpdate(
-      { _id: new ObjectId(workOrderId) },
+    // 更新工单
+    const updatedWorkOrder = await WorkOrder.findByIdAndUpdate(
+      workOrderId, 
       updateData,
       { new: true }
-    );
-
-    if (!result) {
-      return NextResponse.json(
-        { success: false, message: '更新工单状态失败' }, 
-        { status: 500 }
-      );
+    )
+    .populate('vehicle')
+    .populate('customer')
+    .populate('technician');
+    
+    if (!updatedWorkOrder) {
+      return errorResponse('无法更新工单', 500);
     }
 
-    // 创建一条新的进度记录
+    // 创建进度记录，确保使用当前时间戳
     const progressStatus = approved ? 'completed' : 'in_progress';
-    const progressNotes = approved 
-      ? '完成证明审核通过，工单已完成' 
-      : `完成证明被驳回：${notes || '无驳回原因'}`;
+    const progressNotes = approved
+      ? `管理员已批准完成证明: ${notes || '无备注'}`
+      : `管理员已驳回完成证明: ${notes || '无备注'}`;
 
-    // 创建工单进度记录
     const progressRecord = new WorkOrderProgress({
       workOrder: workOrderId,
       status: progressStatus,
       notes: progressNotes,
       updatedBy: session.user.id,
-      createdAt: new Date()
+      createdAt: new Date() // 确保使用当前时间
     });
-    
-    // 保存工单进度记录
+
     await progressRecord.save();
     console.log('创建工单进度记录:', progressRecord);
 
-    // 获取所有进度记录，按时间倒序
+    // 获取最新的进度记录
     const progress = await WorkOrderProgress.find({ workOrder: workOrderId })
       .populate('updatedBy', 'username role')
       .sort({ createdAt: -1 });
 
-    return NextResponse.json({ 
-      success: true, 
-      message: `完成证明审批${approved ? '通过' : '拒绝'}成功`,
-      data: {
-        workOrder: {
-          _id: result._id,
-          status: result.status,
-          completionDate: result.completionDate
-        }
-      },
+    // 返回统一的响应结构
+    return successResponse({
+      message: approved ? '工单完成证明已批准' : '工单完成证明已驳回',
+      workOrder: updatedWorkOrder,
       progress
     });
+
   } catch (error: any) {
-    console.error('审批完成证明发生错误:', error);
-    return NextResponse.json(
-      { success: false, message: `审批完成证明失败: ${error.message}` }, 
-      { status: 500 }
-    );
+    console.error('评审完成证明失败:', error);
+    return errorResponse(error.message || '评审完成证明失败');
   }
 }
 

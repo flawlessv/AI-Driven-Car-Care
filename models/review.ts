@@ -6,6 +6,15 @@ const reviewSchema = new mongoose.Schema({
     ref: 'User', // 确保引用的是User模型
     required: true,
   },
+  authorName: {
+    type: String,
+  },
+  authorPhone: {
+    type: String,
+  },
+  authorEmail: {
+    type: String,
+  },
   targetType: {
     type: String,
     enum: ['technician', 'shop'],
@@ -48,6 +57,9 @@ const reviewSchema = new mongoose.Schema({
   workOrder: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'WorkOrder',
+  },
+  workOrderNumber: {
+    type: String,
   }
 }, {
   timestamps: true

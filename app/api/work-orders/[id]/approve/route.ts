@@ -8,6 +8,8 @@ import {
   errorResponse,
   notFoundResponse,
 } from '@/lib/api-response';
+import { checkRole } from '@/lib/auth';
+import { updateVehicleStatusByWorkOrder } from '@/lib/work-order-utils';
 
 // 定义工单状态常量
 const WORK_ORDER_STATUS = {
@@ -26,80 +28,71 @@ export async function PUT(
 ) {
   try {
     // 验证用户身份和权限
-    const authResult = await authMiddleware(request);
+    const authResult = await checkRole(['admin'])(request);
     if (!authResult.success || !authResult.user) {
       return errorResponse('未授权访问', 401);
     }
 
-    // 只有管理员可以审批工单
-    if (authResult.user.role !== 'admin') {
-      return errorResponse('只有管理员可以审批工单', 403);
-    }
-
     await connectDB();
 
-    // 获取工单信息
     const workOrderId = params.id;
+    
+    // 获取工单信息
     const workOrder = await WorkOrder.findById(workOrderId);
     if (!workOrder) {
       return notFoundResponse('工单不存在');
     }
 
-    // 只有 pending_check 状态的工单可以审批
-    if (workOrder.status !== WORK_ORDER_STATUS.PENDING_CHECK) {
-      return errorResponse('只有待审核状态的工单可以审批', 400);
+    // 验证工单状态
+    if (workOrder.status !== 'pending_check') {
+      return errorResponse('只有处于待审核状态的工单才能通过审批', 400);
     }
 
     // 更新工单状态为已完成
-    workOrder.status = WORK_ORDER_STATUS.COMPLETED;
-    workOrder.completionDate = new Date();
-    
-    // 如果工单有完成证明，更新完成证明的审批信息
-    if (workOrder.completionProof) {
-      workOrder.completionProof.approved = true;
-      workOrder.completionProof.approvedBy = authResult.user._id;
-      workOrder.completionProof.approvedAt = new Date();
+    const updatedWorkOrder = await WorkOrder.findByIdAndUpdate(
+      workOrderId,
+      { 
+        status: 'completed',
+        completionDate: new Date()
+      },
+      { new: true }
+    )
+    .populate('vehicle')
+    .populate('customer')
+    .populate('technician');
+
+    if (!updatedWorkOrder) {
+      return errorResponse('更新工单状态失败', 500);
     }
 
-    // 记录工单进度
+    // 创建工单进度记录
     const progressRecord = new WorkOrderProgress({
       workOrder: workOrderId,
-      status: WORK_ORDER_STATUS.COMPLETED,
-      notes: '工单已审核通过，维修完成',
+      status: 'completed',
+      notes: '管理员已审批完成',
       updatedBy: authResult.user._id,
-      createdAt: new Date()
+      createdAt: new Date() // 确保使用当前时间
     });
-    
-    // 保存工单进度记录
+
     await progressRecord.save();
     console.log('创建工单进度记录:', progressRecord);
-    
-    // 保存工单
-    await workOrder.save();
 
-    // 获取更新后的工单详细信息
-    const updatedWorkOrder = await WorkOrder.findById(workOrderId)
-      .populate('vehicle')
-      .populate('customer')
-      .populate('technician')
-      .populate('createdBy');
+    // 如果工单有关联车辆，更新车辆状态
+    if (workOrder.vehicle) {
+      await updateVehicleStatusByWorkOrder(workOrder.vehicle.toString(), 'completed');
+    }
 
-    // 获取所有进度记录，按时间倒序
+    // 获取最新的进度记录
     const progress = await WorkOrderProgress.find({ workOrder: workOrderId })
       .populate('updatedBy', 'username role')
       .sort({ createdAt: -1 });
 
+    // 返回统一的响应结构
     return successResponse({
-      message: '工单审批成功',
-      data: {
-        workOrder: {
-          _id: workOrder._id,
-          status: workOrder.status,
-          completionDate: workOrder.completionDate
-        }
-      },
+      workOrder: updatedWorkOrder,
       progress: progress
     });
+    
   } catch (error: any) {
     console.error('审批工单失败:', error);
     return errorResponse(error.message || '审批工单失败');

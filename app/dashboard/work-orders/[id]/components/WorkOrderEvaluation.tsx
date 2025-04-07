@@ -1,17 +1,32 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Rate, Button, Input, message, Card } from 'antd';
-import { StarOutlined } from '@ant-design/icons';
+import { Rate, Button, Input, message, Card, Space, Typography, Avatar, Tag } from 'antd';
+import { StarOutlined, UserOutlined } from '@ant-design/icons';
 
 const { TextArea } = Input;
+const { Text } = Typography;
 
 export interface WorkOrderEvaluation {
   _id: string;
   workOrder: string;
   rating: number;
   feedback?: string;
-  createdBy: string;
+  createdBy: {
+    _id: string;
+    username?: string;
+    email?: string;
+  };
+  evaluator?: {
+    _id: string;
+    username?: string;
+    email?: string;
+  };
+  evaluatorInfo?: {
+    userId: string;
+    username: string;
+    email?: string;
+  };
   createdAt: string;
 }
 
@@ -34,6 +49,32 @@ const WorkOrderEvaluationComponent: React.FC<WorkOrderEvaluationProps> = ({
   
   // 确保workOrderId是字符串
   const id = Array.isArray(workOrderId) ? workOrderId[0] : workOrderId;
+
+  // 获取评价人信息
+  const getEvaluatorInfo = () => {
+    if (!evaluation) return null;
+    
+    // 从多个可能的字段获取评价人信息
+    let name = '';
+    let email = '';
+    
+    if (evaluation.evaluatorInfo) {
+      name = evaluation.evaluatorInfo.username;
+      email = evaluation.evaluatorInfo.email || '';
+    } else if (evaluation.evaluator) {
+      name = evaluation.evaluator.username || '';
+      email = evaluation.evaluator.email || '';
+    } else if (evaluation.createdBy) {
+      name = evaluation.createdBy.username || '';
+      email = evaluation.createdBy.email || '';
+    }
+    
+    if (!name && evaluation._id) {
+      name = '用户' + evaluation._id.toString().substring(evaluation._id.toString().length - 4);
+    }
+    
+    return { name, email };
+  };
 
   const handleSubmit = async () => {
     if (rating === 0) {
@@ -73,6 +114,9 @@ const WorkOrderEvaluationComponent: React.FC<WorkOrderEvaluationProps> = ({
 
   // 只读评价展示
   if (evaluation && !canEvaluate) {
+    const evaluatorInfo = getEvaluatorInfo();
+    const evaluationDate = evaluation.createdAt ? new Date(evaluation.createdAt).toLocaleString() : '';
+    
     return (
       <Card title="客户评价" bordered={false}>
         <div className="mb-2">
@@ -82,6 +126,15 @@ const WorkOrderEvaluationComponent: React.FC<WorkOrderEvaluationProps> = ({
         {evaluation.feedback && (
           <div className="border-t pt-2 mt-2">
             <p className="text-gray-700">{evaluation.feedback}</p>
+          </div>
+        )}
+        {evaluatorInfo && (
+          <div className="mt-4 text-right">
+            <Space>
+              <Avatar icon={<UserOutlined />} size="small" />
+              <Text type="secondary">{evaluatorInfo.name}</Text>
+              {evaluationDate && <Text type="secondary">评价于 {evaluationDate}</Text>}
+            </Space>
           </div>
         )}
       </Card>

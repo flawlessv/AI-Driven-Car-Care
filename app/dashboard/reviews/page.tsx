@@ -25,19 +25,29 @@ const { Option } = Select;
 interface Review {
   _id: string;
   author: {
-    name: string;
-    phone: string;
-  };
+    _id: string;
+    username: string;
+    phone?: string;
+    email?: string;
+  } | string;
+  authorName?: string;
+  authorPhone?: string;
+  authorEmail?: string;
   targetType: 'technician' | 'shop';
   targetId: {
+    _id: string;
     name: string;
+    username?: string;
     level?: string;
   };
   maintenanceRecord: {
+    _id: string;
     date: string;
     type: string;
     cost: number;
   };
+  workOrder?: string;
+  workOrderNumber?: string;
   rating: number;
   content: string;
   status: 'published' | 'hidden' | 'deleted';
@@ -83,7 +93,27 @@ export default function ReviewsPage() {
         throw new Error(result.message || '获取评价列表失败');
       }
 
-      setReviews(result.data.items);
+      const formattedReviews = result.data.items.map((review: any) => {
+        let author = review.author || {};
+        if (typeof author !== 'object') {
+          author = { _id: author };
+        }
+        
+        if (review.authorName && !author.username) {
+          author.username = review.authorName;
+        }
+        
+        if (!author.username && author._id) {
+          author.username = '用户' + author._id.toString().substring(author._id.toString().length - 4);
+        }
+        
+        return {
+          ...review,
+          author
+        };
+      });
+
+      setReviews(formattedReviews);
       setTotal(result.data.total);
     } catch (error: any) {
       message.error(error.message || '获取评价列表失败');
@@ -167,16 +197,31 @@ export default function ReviewsPage() {
 
   const columns: ColumnsType<Review> = [
     {
-      title: '评价对象',
-      key: 'target',
-      render: (_, record) => (
-        <Space direction="vertical">
-          <span>{record.targetId.name}</span>
-          <Tag color="blue">
-            {record.targetType === 'technician' ? '技师' : '门店'}
-          </Tag>
-        </Space>
-      ),
+      title: '关联工单',
+      key: 'workOrder',
+      render: (_, record) => {
+        if (record.workOrderNumber) {
+          return (
+            <Button 
+              type="link" 
+              href={`/dashboard/work-orders/${record.workOrder}`}
+            >
+              {record.workOrderNumber}
+            </Button>
+          );
+        } else if (record.workOrder) {
+          return (
+            <Button 
+              type="link" 
+              href={`/dashboard/work-orders/${record.workOrder}`}
+            >
+              查看工单
+            </Button>
+          );
+        } else {
+          return <span className="text-gray-500">无关联工单</span>;
+        }
+      },
     },
     {
       title: '评分',
@@ -194,12 +239,29 @@ export default function ReviewsPage() {
     {
       title: '评价人',
       key: 'author',
-      render: (_, record) => (
-        <Space direction="vertical">
-          <span>{record.author.name}</span>
-          <span className="text-gray-500">{record.author.phone}</span>
-        </Space>
-      ),
+      render: (_, record) => {
+        let username = '';
+        let contact = '';
+        
+        if (record.author && typeof record.author === 'object') {
+          username = record.author.username || '';
+          contact = record.author.phone || record.author.email || '';
+        } else if (record.authorName) {
+          username = record.authorName;
+          contact = record.authorPhone || record.authorEmail || '';
+        } else if (record.author && typeof record.author === 'string') {
+          username = '用户' + record.author.substring(record.author.length - 4);
+        } else {
+          username = '未知用户';
+        }
+        
+        return (
+          <Space direction="vertical">
+            <span>{username}</span>
+            {contact && <span className="text-gray-500">{contact}</span>}
+          </Space>
+        );
+      },
     },
     {
       title: '评价时间',

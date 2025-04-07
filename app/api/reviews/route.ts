@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '../../../lib/mongodb';
 import Review from '../../../models/review';
+import WorkOrder from '../../../models/workOrder';
+import User from '../../../models/user';
 
 export async function GET(request: Request) {
   try {
@@ -28,42 +30,48 @@ export async function GET(request: Request) {
 
     // 获取评价列表
     const reviews = await Review.find(query)
+      .populate('author', 'username email phone')
+      .populate('targetId', 'username name')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);
 
     console.log('找到评价数量:', reviews.length);
     
-    // 格式化评价数据，处理可能的引用问题
-    const formattedReviews = reviews.map(review => {
+    // 获取关联的工单信息
+    const formattedReviews = await Promise.all(reviews.map(async review => {
       const reviewObj = review.toObject();
       
       // 确保author是对象
-      if (reviewObj.author && typeof reviewObj.author === 'object') {
-        if (!reviewObj.author.name && review._id) {
-          reviewObj.author = {
-            name: '用户' + review._id.toString().substr(-4),
-            phone: '未提供'
-          };
-        }
-      } else if (reviewObj.author) {
-        // 如果author是ID，创建一个临时的author对象
+      if (!reviewObj.author || typeof reviewObj.author !== 'object') {
         reviewObj.author = {
-          name: '用户' + reviewObj.author.toString().substr(-4),
-          phone: '未提供'
+          _id: reviewObj.author || '',
+          username: reviewObj.authorName || ('用户' + review._id.toString().substring(review._id.toString().length - 4))
         };
       }
       
       // 确保targetId是对象
-      if (reviewObj.targetId && typeof reviewObj.targetId !== 'object') {
+      if (!reviewObj.targetId || typeof reviewObj.targetId !== 'object') {
         reviewObj.targetId = {
-          _id: reviewObj.targetId,
+          _id: reviewObj.targetId || '',
           name: reviewObj.targetType === 'technician' ? '技师' : '门店'
         };
       }
       
+      // 获取关联工单信息
+      if (reviewObj.workOrder) {
+        try {
+          const workOrder = await WorkOrder.findById(reviewObj.workOrder).lean();
+          if (workOrder) {
+            reviewObj.workOrderNumber = workOrder.orderNumber;
+          }
+        } catch (err) {
+          console.error('获取工单信息失败:', err);
+        }
+      }
+      
       return reviewObj;
-    });
+    }));
 
     return NextResponse.json({
       success: true,
@@ -92,6 +100,37 @@ export async function POST(request: Request) {
     await connectDB();
 
     console.log('创建评价数据:', data);
+    
+    // 确保保存评价人信息
+    if (data.author && !data.authorName) {
+      try {
+        const user = await User.findById(data.author).lean();
+        if (user) {
+          data.authorName = user.username || user.name;
+        }
+      } catch (err) {
+        console.error('获取用户信息失败:', err);
+      }
+    }
+    
+    // 如果有关联的工单，获取工单信息
+    if (data.workOrder) {
+      try {
+        const workOrder = await WorkOrder.findById(data.workOrder).lean();
+        if (workOrder) {
+          // 保存工单编号
+          data.workOrderNumber = workOrder.orderNumber;
+          
+          // 如果没有指定maintenanceRecord，使用工单ID
+          if (!data.maintenanceRecord) {
+            data.maintenanceRecord = data.workOrder;
+          }
+        }
+      } catch (err) {
+        console.error('获取工单信息失败:', err);
+      }
+    }
+    
     const review = await Review.create(data);
     console.log('评价创建成功:', review._id);
 

@@ -136,12 +136,14 @@ export async function GET(request: NextRequest) {
 
     // 获取工单列表
     const workOrders = await WorkOrder.find(query)
-      .populate('vehicle', 'plateNumber brand model')
+      .populate('vehicle', 'plateNumber brand model licensePlate')
       .populate('customer', 'username')
       .populate('technician', 'username')
       .sort({ createdAt: -1 })
       .skip((page - 1) * pageSize)
       .limit(pageSize);
+
+    console.log('获取到的工单列表:', JSON.stringify(workOrders.slice(0, 1), null, 2));
 
     return successResponse({
       data: workOrders,

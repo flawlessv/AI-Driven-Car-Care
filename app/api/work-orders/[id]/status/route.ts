@@ -8,6 +8,11 @@ import {
   errorResponse,
   notFoundResponse,
 } from '@/lib/api-response';
+import {
+  isValidStatusTransition,
+  recordWorkOrderProgress,
+  updateVehicleStatusByWorkOrder,
+} from '@/lib/work-order-utils';
 
 // 定义工单状态常量
 const WORK_ORDER_STATUS = {
@@ -34,114 +39,81 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    // 验证用户身份和权限
-    const authResult = await authMiddleware(request);
-    if (!authResult.success || !authResult.user) {
-      return errorResponse('未授权访问', 401);
+    const authResult = await checkRole(['admin', 'staff', 'technician'])(request);
+    if (!authResult.success) {
+      return errorResponse(authResult.message || '未授权访问', 401);
     }
 
     await connectDB();
 
-    // 解析请求数据
+    const { id } = params;
     const { status, notes } = await request.json();
-    if (!status) {
-      return errorResponse('状态不能为空', 400);
+
+    // 确保用户存在
+    if (!authResult.user) {
+      return errorResponse('无法获取用户信息', 401);
     }
 
-    // 验证状态值有效
-    const validStatusValues = Object.values(WORK_ORDER_STATUS);
-    if (!validStatusValues.includes(status)) {
-      return errorResponse(`无效的状态值，有效值为: ${validStatusValues.join(', ')}`, 400);
-    }
-
-    // 获取工单信息
-    const workOrderId = params.id;
-    const workOrder = await WorkOrder.findById(workOrderId);
+    // 查找工单
+    const workOrder = await WorkOrder.findById(id);
     if (!workOrder) {
-      return notFoundResponse('工单不存在');
+      return errorResponse('工单不存在', 404);
     }
 
-    // 获取当前状态
-    const currentStatus = workOrder.status;
-
-    // 已完成和已取消的工单不能再变更状态
-    if (currentStatus === WORK_ORDER_STATUS.COMPLETED || currentStatus === WORK_ORDER_STATUS.CANCELLED) {
-      return errorResponse('已完成或已取消的工单状态不能再变更', 400);
-    }
-
-    // 验证状态变更是否有效
-    if (!isValidStatusTransition(authResult.user.role, currentStatus, status)) {
-      return errorResponse(`无权从 ${currentStatus} 变更为 ${status}`, 403);
+    // 验证状态转换
+    if (!isValidStatusTransition(workOrder.status, status, authResult.user.role)) {
+      return errorResponse(`无法将工单状态从 "${workOrder.status}" 更改为 "${status}"`, 400);
     }
 
     // 更新工单状态
-    workOrder.status = status;
+    const updatedWorkOrder = await WorkOrder.findByIdAndUpdate(
+      id,
+      { 
+        status,
+        ...(status === 'completed' ? { completionDate: new Date() } : {})
+      },
+      { new: true }
+    )
+    .populate('vehicle')
+    .populate('customer')
+    .populate('technician');
 
-    // 如果变更为已完成状态，记录完成日期
-    if (status === WORK_ORDER_STATUS.COMPLETED && currentStatus !== WORK_ORDER_STATUS.COMPLETED) {
-      workOrder.completionDate = new Date();
+    if (!updatedWorkOrder) {
+      return errorResponse('更新工单状态失败', 500);
     }
 
-    // 记录工单进度
-    const progressRecord = new WorkOrderProgress({
-      workOrder: workOrderId,
-      status: status,
-      notes: notes || getDefaultStatusChangeNote(status),
-      updatedBy: authResult.user._id,
-      createdAt: new Date()
-    });
-    
-    // 保存工单进度记录
-    await progressRecord.save();
-    console.log('创建工单进度记录:', progressRecord);
+    // 使用当前时间记录工单进度
+    await recordWorkOrderProgress(
+      id,
+      status,
+      authResult.user._id.toString(),
+      notes || `状态更新为 ${status}`
+    );
 
-    // 保存工单
-    await workOrder.save();
+    // 如果状态变更为已完成，更新车辆状态
+    if (status === 'completed' && updatedWorkOrder.vehicle) {
+      const vehicleId = typeof updatedWorkOrder.vehicle === 'string' 
+        ? updatedWorkOrder.vehicle 
+        : updatedWorkOrder.vehicle._id;
+      
+      await updateVehicleStatusByWorkOrder(vehicleId.toString(), status);
+    }
 
-    // 获取更新后的工单详细信息
-    const updatedWorkOrder = await WorkOrder.findById(workOrderId)
-      .populate('vehicle')
-      .populate('customer')
-      .populate('technician')
-      .populate('createdBy');
-
-    // 获取更新后的进度记录（所有记录，按时间倒序）
-    const progress = await WorkOrderProgress.find({ workOrder: workOrderId })
+    // 获取最新的进度记录
+    const progressRecords = await WorkOrderProgress.find({ workOrder: id })
       .populate('updatedBy', 'username role')
       .sort({ createdAt: -1 });
 
-    // 返回响应，包含工单信息和进度记录
+    // 返回直接的结构，而不是嵌套在data属性下
     return successResponse({
-      message: '工单状态更新成功',
-      data: {
-        workOrder: {
-          _id: workOrder._id,
-          status: workOrder.status,
-          completionDate: workOrder.completionDate
-        }
-      },
-      progress: progress
+      workOrder: updatedWorkOrder,
+      progress: progressRecords
     });
+    
   } catch (error: any) {
     console.error('更新工单状态失败:', error);
     return errorResponse(error.message || '更新工单状态失败');
   }
-}
-
-// 验证状态变更是否有效
-function isValidStatusTransition(userRole: string, currentStatus: string, newStatus: string): boolean {
-  const statusFlow = {
-    admin: ['pending', 'assigned', 'in_progress', 'pending_check', 'completed', 'cancelled'],
-    staff: ['pending', 'assigned', 'in_progress', 'pending_check', 'completed', 'cancelled'],
-    technician: ['assigned', 'in_progress', 'pending_check'],
-    customer: ['pending', 'cancelled']
-  };
-
-  // 获取用户角色可操作的状态列表
-  const allowedStatuses = statusFlow[userRole as keyof typeof statusFlow] || [];
-
-  // 检查当前状态和目标状态是否在允许列表中
-  return allowedStatuses.includes(currentStatus) && allowedStatuses.includes(newStatus);
 }
 
 // 获取状态变更默认说明

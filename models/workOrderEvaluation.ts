@@ -7,6 +7,14 @@ const workOrderEvaluationSchema = new mongoose.Schema(
       ref: 'WorkOrder',
       required: true,
     },
+    customer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    technician: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
     rating: {
       type: Number,
       required: true,
@@ -19,6 +27,14 @@ const workOrderEvaluationSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    evaluatorInfo: {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      username: String,
+      email: String
+    }
   },
   {
     timestamps: true,
@@ -28,6 +44,7 @@ const workOrderEvaluationSchema = new mongoose.Schema(
 // 确保每个工单只有一个评价
 workOrderEvaluationSchema.index({ workOrder: 1 }, { unique: true });
 workOrderEvaluationSchema.index({ createdBy: 1 });
+workOrderEvaluationSchema.index({ technician: 1 });
 
 export default mongoose.models.WorkOrderEvaluation || 
   mongoose.model('WorkOrderEvaluation', workOrderEvaluationSchema); 

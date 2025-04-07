@@ -28,6 +28,7 @@ export async function GET(
     const evaluation = await WorkOrderEvaluation.findOne({
       workOrder: params.id,
     })
+      .populate('createdBy', 'username email')
       .populate('customer', 'username')
       .populate('technician', 'username');
 
@@ -35,7 +36,12 @@ export async function GET(
       return errorResponse('工单评价不存在', 404);
     }
 
-    return successResponse(evaluation);
+    const evaluationWithUser = {
+      ...evaluation.toObject(),
+      evaluator: evaluation.createdBy || evaluation.customer
+    };
+
+    return successResponse(evaluationWithUser);
   } catch (error: any) {
     console.error('获取工单评价失败:', error);
     return errorResponse('获取工单评价失败', 500);
@@ -89,7 +95,7 @@ export async function POST(
     const data = await request.json();
     console.log('接收到的评价数据:', data);
     
-    const { rating, feedback, targetType } = data;
+    const { rating, feedback, targetType, userName } = data;
 
     if (!rating || rating < 1 || rating > 5) {
       return errorResponse('评分必须在1-5之间', 400);
@@ -108,7 +114,13 @@ export async function POST(
       technician: technicianId, // 已检查非空
       rating,
       feedback: feedback || '',
-      createdBy: authResult.user._id
+      createdBy: authResult.user._id, // 确保记录评价人
+      // 保存评价人详细信息
+      evaluatorInfo: {
+        userId: authResult.user._id,
+        username: authResult.user.username || userName || '用户',
+        email: authResult.user.email
+      }
     });
 
     const savedEvaluation = await evaluation.save();
@@ -118,7 +130,12 @@ export async function POST(
     await WorkOrder.findByIdAndUpdate(params.id, {
       rating: rating,
       feedback: feedback,
-      updatedBy: authResult.user._id
+      updatedBy: authResult.user._id,
+      // 记录评价人信息
+      evaluatedBy: {
+        userId: authResult.user._id,
+        username: authResult.user.username || userName || '用户'
+      }
     });
     console.log('工单已更新评分');
 
@@ -169,12 +186,14 @@ export async function POST(
       // 创建评价管理系统的记录
       const reviewData = {
         author: userId, // 使用用户ID作为作者
+        authorName: authResult.user.username || userName || '用户', // 保存评价人姓名
         targetType: 'technician',
         targetId: technicianId, // 使用已验证的技师ID
         maintenanceRecord: workOrder.maintenanceRecord || workOrder._id, // 使用关联的维修记录或工单ID
         rating: rating,
         content: feedback || '无评价内容',
-        status: 'published'
+        status: 'published',
+        workOrder: workOrder._id // 关联工单ID
       };
       
       console.log('准备创建的评价数据:', reviewData);
@@ -189,7 +208,22 @@ export async function POST(
       // 不影响主流程，只记录错误
     }
 
-    return successResponse(evaluation);
+    // 查询完整的评价信息，包括用户信息
+    const populatedEvaluation = await WorkOrderEvaluation.findById(savedEvaluation._id)
+      .populate('createdBy', 'username email')
+      .populate('customer', 'username')
+      .populate('technician', 'username');
+
+    // 添加评价人信息到响应中
+    const evaluationWithUser = populatedEvaluation ? populatedEvaluation.toObject() : {
+      ...savedEvaluation.toObject(),
+      evaluator: {
+        _id: authResult.user._id,
+        username: authResult.user.username || userName || '用户'
+      }
+    };
+
+    return successResponse(evaluationWithUser);
   } catch (error: any) {
     console.error('创建工单评价失败:', error);
     return errorResponse('创建工单评价失败:' + (error.message || '未知错误'), 500);

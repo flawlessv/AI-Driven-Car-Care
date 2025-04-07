@@ -157,16 +157,23 @@ const WorkOrderDetailPage = () => {
       // 获取进度数据
       if (result.progress && Array.isArray(result.progress)) {
         console.log('获取到的进度数据:', result.progress);
-        // 确保每条进度记录都有正确的时间戳
-        const formattedProgress = result.progress.map((item: any) => ({
-          ...item,
-          createdAt: item.createdAt || new Date().toISOString()
-        }));
-        setProgress(formattedProgress);
+        
+        // 对进度记录按创建时间排序，确保显示正确顺序
+        const sortedProgress = [...result.progress].sort((a, b) => {
+          // 使用时间戳比较
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        });
+        
+        console.log('排序后的进度数据:', sortedProgress);
+        
+        setProgress(sortedProgress);
       } else {
         // 如果没有获取到进度数据，使用空数组
         setProgress([]);
-        console.warn('未获取到进度数据');
+        console.warn('未获取到进度记录');
+        
+        // 尝试单独获取进度记录
+        fetchProgress();
       }
     } catch (error: any) {
       console.error('获取工单详情失败:', error);
@@ -184,12 +191,16 @@ const WorkOrderDetailPage = () => {
       
       if (response.ok && result.data) {
         console.log('单独获取的进度记录:', result.data);
-        // 确保每条进度记录都有正确的时间戳
-        const formattedProgress = result.data.map((item: any) => ({
-          ...item,
-          createdAt: item.createdAt || new Date().toISOString()
-        }));
-        setProgress(formattedProgress);
+        
+        // 对进度记录按创建时间排序，确保显示正确顺序
+        const sortedProgress = [...result.data].sort((a, b) => {
+          // 使用时间戳比较
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        });
+        
+        console.log('排序后的进度记录:', sortedProgress);
+        
+        setProgress(sortedProgress);
       }
     } catch (error) {
       console.error('获取工单进度失败:', error);
@@ -329,35 +340,38 @@ const WorkOrderDetailPage = () => {
           throw new Error(result.message || '更新状态失败');
         }
         
-        // 如果接口返回了最新的进度记录，直接使用
+        // 如果接口返回了最新的进度记录，对其进行排序后使用
         if (result.progress && Array.isArray(result.progress)) {
           console.log('API返回的进度记录:', result.progress);
-          // 确保每条进度记录都有正确的时间戳
-          const formattedProgress = result.progress.map((item: any) => ({
-            ...item,
-            createdAt: item.createdAt || new Date().toISOString()
-          }));
-          setProgress(formattedProgress);
+          // 对进度记录按创建时间排序，确保显示正确顺序
+          const sortedProgress = [...result.progress].sort((a, b) => {
+            // 使用时间戳比较
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          });
+          
+          console.log('排序后的进度记录:', sortedProgress);
+          
+          setProgress(sortedProgress);
         }
         
         // 更新工单状态
-        if (result.data?.workOrder) {
+        if (result.workOrder) {
           setWorkOrder(prev => {
             if (!prev) return prev;
             return {
               ...prev,
-              status: result.data.workOrder.status,
-              completionDate: result.data.workOrder.completionDate
+              status: result.workOrder.status,
+              completionDate: result.workOrder.completionDate
             };
           });
         }
         
-        message.success('状态更新成功');
+        setStatusModalVisible(false);
+        setProgressNotes(''); // 清空进度备注
+        message.success('工单状态更新成功');
       } catch (error: any) {
         message.error(error.message || '更新状态失败');
       } finally {
-        setProgressNotes(''); // 清空进度备注
-        setStatusModalVisible(false);
         setLoading(false);
       }
     }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   Rate,
@@ -6,8 +6,13 @@ import {
   Form,
   Input,
   message,
+  Space,
+  Avatar,
 } from 'antd';
+import { UserOutlined } from '@ant-design/icons';
 import type { WorkOrderEvaluation } from '@/types/workOrder';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/lib/store';
 
 const { TextArea } = Input;
 
@@ -26,6 +31,7 @@ export default function WorkOrderEvaluationComponent({
 }: WorkOrderEvaluationProps) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const user = useSelector((state: RootState) => state.auth.user);
 
   const handleSubmit = async () => {
     try {
@@ -38,7 +44,10 @@ export default function WorkOrderEvaluationComponent({
         feedback: values.feedback,
         // 工单评价只能评价技师，不需要选择评价对象类型
         targetType: 'technician',
-        workOrder: workOrderId
+        workOrder: workOrderId,
+        // 添加用户信息
+        userId: user?._id,
+        userName: user?.username
       };
 
       console.log('提交评价数据:', submitData);
@@ -81,8 +90,12 @@ export default function WorkOrderEvaluationComponent({
             <div className="text-gray-600">{evaluation.feedback}</div>
           </div>
         )}
-        <div className="text-gray-400 text-sm mt-4">
-          评价时间：{new Date(evaluation.createdAt).toLocaleString()}
+        <div className="flex items-center mt-4 text-gray-500">
+          <Avatar size="small" icon={<UserOutlined />} className="mr-2" />
+          <Space>
+            <span>{evaluation.evaluator?.username || '客户'}</span>
+            <span>评价时间：{new Date(evaluation.createdAt).toLocaleString()}</span>
+          </Space>
         </div>
       </Card>
     );
