@@ -194,9 +194,9 @@ const TechniciansPage = () => {
       key: 'specialties',
       render: (specialties: string[]) => (
         <Space wrap>
-          {specialties.map(specialty => (
+          {Array.isArray(specialties) ? specialties.map(specialty => (
             <Tag key={specialty} color="blue">{specialty}</Tag>
-          ))}
+          )) : null}
         </Space>
       ),
     },
@@ -206,9 +206,9 @@ const TechniciansPage = () => {
       key: 'certifications',
       render: (certifications: string[]) => (
         <Space wrap>
-          {certifications.map(cert => (
+          {Array.isArray(certifications) ? certifications.map(cert => (
             <Tag key={cert} color="green">{cert}</Tag>
-          ))}
+          )) : null}
         </Space>
       ),
     },

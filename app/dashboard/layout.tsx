@@ -86,7 +86,7 @@ export default function DashboardLayout({
   const handleUserMenuClick = async ({ key }: { key: string }) => {
     switch (key) {
       case 'home':
-        router.push('/');
+        window.location.href = '/home';
         break;
       case 'logout':
         try {
