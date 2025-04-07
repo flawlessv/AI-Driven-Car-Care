@@ -4,109 +4,104 @@ import getWorkOrderModel from '@/models/workOrder';
 import User from '@/models/user';
 import { ObjectId } from 'mongodb';
 import { connectDB } from '@/lib/mongodb';
+import { checkRole } from '@/lib/auth';
+import {
+  successResponse,
+  errorResponse,
+  notFoundResponse,
+} from '@/lib/api-response';
+import { writeFile, mkdir } from 'fs/promises';
+import { join, dirname } from 'path';
+import { existsSync } from 'fs';
 
 // POST 方法：提交工作完成证明
 export async function POST(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // 验证用户身份和权限
-    const authResult = await authMiddleware(req);
-    if (!authResult.success || !authResult.user) {
-      return NextResponse.json({ success: false, message: '未授权' }, { status: 401 });
+    // 验证用户权限（技师和管理员可以上传证明）
+    const authResult = await checkRole(['admin', 'technician'])(request);
+    if (!authResult.success) {
+      return errorResponse(authResult.message || '未授权访问', 401);
     }
 
-    const userId = authResult.user._id.toString();
-    const role = authResult.user.role;
-    
-    // 仅技师可以提交完成证明
-    if (role !== 'technician') {
-      return NextResponse.json(
-        { success: false, message: '只有技师才能提交完成证明' }, 
-        { status: 403 }
-      );
+    // 确保用户存在
+    if (!authResult.user) {
+      return errorResponse('无法获取用户信息', 401);
     }
 
-    // 解析请求数据
-    const { proofImages, notes } = await req.json();
-    
-    if (!proofImages || !Array.isArray(proofImages) || proofImages.length === 0) {
-      return NextResponse.json(
-        { success: false, message: '请提供至少一张完成证明图片' }, 
-        { status: 400 }
-      );
-    }
-
-    // 连接数据库并获取工单信息
-    await connectDB();
-    const WorkOrder = getWorkOrderModel();
     const workOrderId = params.id;
-    
-    const workOrder = await WorkOrder.findOne({
-      _id: new ObjectId(workOrderId),
-      technician: userId
-    });
 
+    await connectDB();
+
+    // 获取工单信息
+    const workOrder = await getWorkOrderModel().findById(workOrderId);
     if (!workOrder) {
-      return NextResponse.json(
-        { success: false, message: '找不到您负责的工单' }, 
-        { status: 404 }
-      );
+      return notFoundResponse('工单不存在');
     }
 
-    if (workOrder.status !== 'in_progress') {
-      return NextResponse.json(
-        { success: false, message: '只有进行中的工单才能提交完成证明' }, 
-        { status: 400 }
-      );
+    // 解析表单数据
+    const formData = await request.formData();
+    const notes = formData.get('notes') as string;
+    const proofImages = formData.getAll('proofImages') as File[];
+
+    if (!proofImages || proofImages.length === 0) {
+      return errorResponse('请至少上传一张完成证明照片', 400);
     }
 
-    // 更新工单状态为待检查
-    const result = await WorkOrder.findOneAndUpdate(
-      { _id: new ObjectId(workOrderId) },
-      { 
-        $set: {
-          status: 'pending_check',
-          completionProof: {
-            workOrderId: workOrderId,
-            proofImages: proofImages,
-            notes: notes || '',
-            submittedBy: userId,
-            submittedAt: new Date(),
-            approved: false
-          } 
-        },
-        $push: {
-          progress: {
-            status: 'pending_check',
-            notes: `技师提交了完成证明${notes ? `: ${notes}` : ''}`,
-            timestamp: new Date(),
-            user: userId
-          }
-        }
-      },
-      { returnDocument: 'after' }
-    );
-
-    if (!result) {
-      return NextResponse.json(
-        { success: false, message: '更新工单状态失败' }, 
-        { status: 500 }
-      );
+    // 检查文件是否是图片
+    for (const file of proofImages) {
+      if (!file.type.startsWith('image/')) {
+        return errorResponse('只能上传图片文件', 400);
+      }
+      
+      // 检查文件大小（限制为2MB）
+      if (file.size > 2 * 1024 * 1024) {
+        return errorResponse('图片大小不能超过2MB', 400);
+      }
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: '完成证明提交成功',
-      data: result
+    // 创建保存图片的目录
+    const uploadDir = join(process.cwd(), 'public', 'uploads', 'work-orders', workOrderId);
+    if (!existsSync(dirname(uploadDir))) {
+      await mkdir(dirname(uploadDir), { recursive: true });
+    }
+    if (!existsSync(uploadDir)) {
+      await mkdir(uploadDir, { recursive: true });
+    }
+
+    // 保存图片并获取URL
+    const imageUrls: string[] = [];
+    for (const [index, file] of proofImages.entries()) {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const fileName = `proof_${Date.now()}_${index}.${file.type.split('/')[1]}`;
+      const filePath = join(uploadDir, fileName);
+      
+      await writeFile(filePath, buffer);
+      imageUrls.push(`/uploads/work-orders/${workOrderId}/${fileName}`);
+    }
+
+    // 更新工单完成证明
+    workOrder.completionProof = {
+      workOrderId: workOrder._id,
+      proofImages: imageUrls,
+      notes: notes || '',
+      submittedBy: authResult.user._id,
+      submittedAt: new Date(),
+      approved: false
+    };
+
+    // 保存工单
+    await workOrder.save();
+
+    return successResponse({
+      message: '完成证明上传成功',
+      imageUrls
     });
   } catch (error: any) {
-    console.error('提交完成证明发生错误:', error);
-    return NextResponse.json(
-      { success: false, message: `提交完成证明失败: ${error.message}` }, 
-      { status: 500 }
-    );
+    console.error('上传完成证明失败:', error);
+    return errorResponse(error.message || '上传完成证明失败');
   }
 }
 

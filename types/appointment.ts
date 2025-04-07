@@ -40,12 +40,13 @@ export interface Appointment {
     endTime?: string;
     technician?: string; // 技师ID
   };
-  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'pending' | 'processed' | 'completed' | 'cancelled';
   notes?: string;
   estimatedDuration: number;
   estimatedCost: number;
   confirmationSent?: boolean;
   reminderSent?: boolean;
+  sourceWorkOrder?: string; // 来源工单ID
 }
 
 // 维修保养服务类型

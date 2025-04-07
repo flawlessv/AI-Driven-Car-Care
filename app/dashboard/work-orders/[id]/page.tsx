@@ -29,7 +29,7 @@ import WorkOrderProgressTimeline from '../components/WorkOrderProgress';
 import WorkOrderEvaluation from '../components/WorkOrderEvaluation';
 import dayjs from 'dayjs';
 import MaintenanceForm from './components/MaintenanceForm';
-import { StarOutlined, UploadOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { StarOutlined, UploadOutlined, CheckOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import WorkOrderCompletion from './components/WorkOrderCompletion';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { useParams } from 'next/navigation';
@@ -106,6 +106,12 @@ const WorkOrderDetailPage = () => {
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [completionModalVisible, setCompletionModalVisible] = useState(false);
+  const [completionNotes, setCompletionNotes] = useState('');
+  const [uploadForm] = Form.useForm();
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState('');
+  const [previewTitle, setPreviewTitle] = useState('');
 
   const params = useParams();
   const user = useSelector((state: RootState) => state.auth.user);
@@ -218,86 +224,32 @@ const WorkOrderDetailPage = () => {
   };
 
   const handleStatusChange = async (status: string) => {
-    try {
-      // 如果是技师提交"待检查"状态，需要处理图片上传
-      const isTechnician = user?.role === 'technician';
-      const isSubmittingForCheck = status === 'pending_check' && fileList.length > 0;
-      const isInProgressStatus = workOrder?.status === 'in_progress';
-      
-      if (isTechnician && isSubmittingForCheck && isInProgressStatus) {
-        setUploading(true);
-        // 模拟上传图片获取URLs
-        const imageUrls = await Promise.all(
-          fileList.map(file => mockUpload(file.originFileObj as File))
-        );
-
-        // 调用API提交完成证明
-        const proofResponse = await fetch(`/api/work-orders/${params.id}/completion-proof`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            proofImages: imageUrls,
-            notes: progressNotes,
-          }),
+    if (status === 'completed') {
+      setCompletionModalVisible(true);
+    } else {
+      try {
+        setLoading(true);
+        
+        const response = await fetch(`/api/work-orders/${params.id}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status }),
         });
-
-        if (!proofResponse.ok) {
-          const errorResult = await proofResponse.json();
-          throw new Error(errorResult.message || '提交完成证明失败');
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.message || '更新状态失败');
         }
-
-        setUploading(false);
-        message.success('完成证明提交成功，工单状态已更新为待检查');
-        setStatusModalVisible(false);
-        setProgressNotes('');
-        setFileList([]);
-        fetchWorkOrder();
-        return;
-      }
-
-      // 常规状态更新
-      const response = await fetch(`/api/work-orders/${params.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status,
-          progressNotes,
-        }),
-      });
-
-      const result = await response.json();
-      console.log('状态更新响应:', result);
-
-      if (response.ok) {
+        
         message.success('状态更新成功');
-        setStatusModalVisible(false);
-        setProgressNotes('');
         fetchWorkOrder();
-      } else {
-        message.error(result.message || '状态更新失败');
+      } catch (error: any) {
+        message.error(error.message || '更新状态失败');
+      } finally {
+        setLoading(false);
       }
-    } catch (error: any) {
-      console.error('更新状态失败:', error);
-      message.error(error.message || '状态更新失败');
-      setUploading(false);
     }
-  };
-
-  // 模拟上传文件到服务器
-  const mockUpload = async (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        setTimeout(() => {
-          resolve(reader.result as string);
-        }, 500);
-      };
-    });
   };
 
   const handleAssign = async () => {
@@ -348,25 +300,106 @@ const WorkOrderDetailPage = () => {
     return null;
   };
 
-  // 处理文件上传前的验证
-  const beforeUpload = (file: RcFile) => {
-    const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
-    if (!isJpgOrPng) {
-      message.error('只能上传JPG/PNG格式的图片!');
-    }
-    const isLt2M = file.size / 1024 / 1024 < 2;
-    if (!isLt2M) {
-      message.error('图片大小不能超过2MB!');
-    }
-    return false;
+  const handleUploadChange = ({ fileList }: { fileList: UploadFile[] }) => {
+    setFileList(fileList);
   };
 
-  // 处理文件列表变化
-  const handleChange: UploadProps['onChange'] = ({ fileList: newFileList }) => {
-    setFileList(newFileList);
+  const handlePreview = async (file: UploadFile) => {
+    if (!file.url && !file.preview) {
+      file.preview = await getBase64(file.originFileObj);
+    }
+
+    setPreviewImage(file.url || (file.preview as string));
+    setPreviewOpen(true);
+    setPreviewTitle(file.name || file.url!.substring(file.url!.lastIndexOf('/') + 1));
   };
 
-  // 在渲染前处理数据
+  const getBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const handleSubmitCompletionProof = async () => {
+    try {
+      if (fileList.length === 0) {
+        message.error('请至少上传一张完成证明照片');
+        return;
+      }
+
+      setLoading(true);
+
+      const formData = new FormData();
+      fileList.forEach(file => {
+        if (file.originFileObj) {
+          formData.append('proofImages', file.originFileObj);
+        }
+      });
+      
+      formData.append('notes', completionNotes);
+      formData.append('workOrderId', params.id);
+
+      const uploadResponse = await fetch(`/api/work-orders/${params.id}/completion-proof`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.message || '上传完成证明失败');
+      }
+
+      const updateResponse = await fetch(`/api/work-orders/${params.id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'pending_check' }),
+      });
+
+      if (!updateResponse.ok) {
+        const errorData = await updateResponse.json();
+        throw new Error(errorData.message || '更新工单状态失败');
+      }
+
+      message.success('完成证明提交成功，工单已变更为待审核状态');
+      fetchWorkOrder();
+      setCompletionModalVisible(false);
+      setFileList([]);
+      setCompletionNotes('');
+    } catch (error: any) {
+      console.error('提交完成证明失败:', error);
+      message.error(error.message || '操作失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApproveWorkOrder = async () => {
+    try {
+      setLoading(true);
+      
+      const response = await fetch(`/api/work-orders/${params.id}/approve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || '审核工单失败');
+      }
+      
+      message.success('工单已审核通过，状态已更新为已完成');
+      fetchWorkOrder();
+    } catch (error: any) {
+      message.error(error.message || '审核工单失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const displayData = formatDisplayData(workOrder);
 
   if (loading || !workOrder) {
@@ -545,7 +578,6 @@ const WorkOrderDetailPage = () => {
         />
       )}
 
-      {/* 完成证明展示 */}
       {workOrder?.completionProof && displayData && (
         <Card title="完成证明" className="mb-6">
           <div className="mb-2">
@@ -581,37 +613,8 @@ const WorkOrderDetailPage = () => {
                 <Button 
                   type="primary" 
                   icon={<CheckOutlined />}
-                  onClick={() => {
-                    Modal.confirm({
-                      title: '确认审批',
-                      content: '确定通过这项工作的完成证明吗？',
-                      onOk: async () => {
-                        try {
-                          const response = await fetch(`/api/work-orders/${params.id}/completion-proof`, {
-                            method: 'PUT',
-                            headers: {
-                              'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                              approved: true,
-                              notes: '管理员已审核通过'
-                            }),
-                          });
-                          
-                          if (response.ok) {
-                            message.success('审批通过成功');
-                            fetchWorkOrder();
-                          } else {
-                            const data = await response.json();
-                            message.error(data.message || '审批失败');
-                          }
-                        } catch (error) {
-                          console.error('审批失败:', error);
-                          message.error('审批操作失败');
-                        }
-                      }
-                    });
-                  }}
+                  onClick={handleApproveWorkOrder}
+                  loading={loading}
                 >
                   通过审批
                 </Button>
@@ -733,36 +736,6 @@ const WorkOrderDetailPage = () => {
               placeholder="请输入工作进度备注..."
             />
           </Form.Item>
-          
-          {/* 仅当状态变更为"待检查"且用户是技师时显示上传组件 */}
-          {user?.role === 'technician' && 
-           (workOrder?.status === 'in_progress' || 
-            (workOrder?.status === 'pending_check' && workOrder.completionProof?.approved === false)) && (
-            <Form.Item label="上传完成证明">
-              <Alert
-                message="请上传完成工作的证明照片，管理员将根据照片验收你的工作"
-                type="info"
-                showIcon
-                className="mb-3"
-              />
-              <Upload
-                listType="picture-card"
-                fileList={fileList}
-                beforeUpload={beforeUpload}
-                onChange={handleChange}
-              >
-                {fileList.length >= 8 ? null : (
-                  <div>
-                    <UploadOutlined />
-                    <div style={{ marginTop: 8 }}>上传图片</div>
-                  </div>
-                )}
-              </Upload>
-              <Typography.Text type="secondary">
-                请上传工作完成的证明照片（最多8张，每张不超过2MB）
-              </Typography.Text>
-            </Form.Item>
-          )}
         </Form>
       </Modal>
 
@@ -802,7 +775,6 @@ const WorkOrderDetailPage = () => {
         title="添加评价"
         open={reviewModalVisible}
         onOk={() => {
-          // Handle adding a review
           setReviewModalVisible(false);
         }}
         onCancel={() => setReviewModalVisible(false)}
@@ -817,6 +789,65 @@ const WorkOrderDetailPage = () => {
             fetchWorkOrder();
           }}
         />
+      </Modal>
+
+      <Modal
+        title="提交完成证明"
+        open={completionModalVisible}
+        onCancel={() => {
+          setCompletionModalVisible(false);
+          setFileList([]);
+          setCompletionNotes('');
+        }}
+        footer={[
+          <Button key="cancel" onClick={() => setCompletionModalVisible(false)}>
+            取消
+          </Button>,
+          <Button key="submit" type="primary" onClick={handleSubmitCompletionProof} loading={loading}>
+            提交
+          </Button>
+        ]}
+      >
+        <Form form={uploadForm} layout="vertical">
+          <Form.Item
+            label="完成证明照片"
+            name="proofImages"
+            rules={[{ required: true, message: '请上传至少一张完成证明照片' }]}
+          >
+            <Upload
+              listType="picture-card"
+              fileList={fileList}
+              onChange={handleUploadChange}
+              onPreview={handlePreview}
+              beforeUpload={() => false}
+              accept="image/*"
+            >
+              {fileList.length >= 8 ? null : (
+                <div>
+                  <PlusOutlined />
+                  <div style={{ marginTop: 8 }}>上传图片</div>
+                </div>
+              )}
+            </Upload>
+          </Form.Item>
+          <Form.Item label="备注" name="notes">
+            <Input.TextArea
+              rows={4}
+              placeholder="请填写完成工作的相关说明"
+              value={completionNotes}
+              onChange={e => setCompletionNotes(e.target.value)}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        open={previewOpen}
+        title={previewTitle}
+        footer={null}
+        onCancel={() => setPreviewOpen(false)}
+      >
+        <img alt="预览图片" style={{ width: '100%' }} src={previewImage} />
       </Modal>
     </div>
   );

@@ -21,11 +21,12 @@ export interface IAppointment {
   vehicle: mongoose.Types.ObjectId;
   service: mongoose.Types.ObjectId;
   timeSlot: ITimeSlot;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status: 'pending' | 'processed' | 'completed' | 'cancelled';
   estimatedDuration: number;
   estimatedCost: number;
   createdAt: Date;
   updatedAt: Date;
+  sourceWorkOrder?: mongoose.Types.ObjectId;
 }
 
 // 定义客户信息 Schema
@@ -90,7 +91,7 @@ const appointmentSchema = new Schema<IAppointment>(
     },
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'completed', 'cancelled'],
+      enum: ['pending', 'processed', 'completed', 'cancelled'],
       default: 'pending',
     },
     estimatedDuration: {
@@ -102,6 +103,10 @@ const appointmentSchema = new Schema<IAppointment>(
       type: Number,
       required: [true, '预计费用为必填项'],
       min: [0, '预计费用不能为负数'],
+    },
+    sourceWorkOrder: {
+      type: Schema.Types.ObjectId,
+      ref: 'WorkOrder',
     },
   },
   {

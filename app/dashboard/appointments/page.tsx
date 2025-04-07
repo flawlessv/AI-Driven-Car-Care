@@ -25,16 +25,14 @@ const { TextArea } = Input;
 
 const statusColors = {
   pending: 'orange',
-  confirmed: 'blue',
-  in_progress: 'processing',
+  processed: 'blue',
   completed: 'green',
   cancelled: 'red',
 };
 
 const statusText = {
-  pending: '待确认',
-  confirmed: '已确认',
-  in_progress: '进行中',
+  pending: '待处理',
+  processed: '已处理',
   completed: '已完成',
   cancelled: '已取消',
 };
@@ -225,6 +223,14 @@ export default function AppointmentsPage() {
           >
             编辑
           </Button>
+          {record.status === 'processed' && (
+            <Button
+              type="primary"
+              onClick={() => handleConvertToWorkOrder(record)}
+            >
+              转为工单
+            </Button>
+          )}
           <Button
             type="text"
             danger
@@ -461,6 +467,37 @@ export default function AppointmentsPage() {
     }
   };
 
+  // 添加转换为工单的处理函数
+  const handleConvertToWorkOrder = async (record: Appointment) => {
+    try {
+      setLoading(true);
+      
+      const response = await fetch('/api/work-orders/convert-from-appointment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          appointmentId: record._id,
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || '转换工单失败');
+      }
+      
+      message.success('已成功转换为工单');
+      fetchAppointments(); // 刷新列表
+    } catch (error: any) {
+      console.error('转换工单失败:', error);
+      message.error(error.message || '转换工单失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="p-6">
       <Card
@@ -670,9 +707,8 @@ export default function AppointmentsPage() {
               rules={[{ required: true, message: '请选择状态' }]}
             >
               <Select>
-                <Select.Option value="pending">待确认</Select.Option>
-                <Select.Option value="confirmed">已确认</Select.Option>
-                <Select.Option value="in_progress">进行中</Select.Option>
+                <Select.Option value="pending">待处理</Select.Option>
+                <Select.Option value="processed">已处理</Select.Option>
                 <Select.Option value="completed">已完成</Select.Option>
                 <Select.Option value="cancelled">已取消</Select.Option>
               </Select>

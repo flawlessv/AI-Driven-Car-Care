@@ -10,7 +10,7 @@ import {
   Button,
   message,
 } from 'antd';
-import type { Dayjs } from 'dayjs';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
 const { TextArea } = Input;
@@ -30,24 +30,27 @@ const serviceTypes = [
 export default function AppointmentForm({ onSuccess, onCancel }: AppointmentFormProps) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async (values: any) => {
     try {
       setLoading(true);
       
       const formattedData = {
-        name: values.name,
-        phone: values.phone,
+        customer: {
+          name: values.name,
+          phone: values.phone,
+        },
         vehicleBrand: values.vehicleBrand,
         vehicleModel: values.vehicleModel,
         licensePlate: values.licensePlate,
         serviceType: values.serviceType,
+        serviceDescription: values.description,
         date: values.date.format('YYYY-MM-DD'),
         time: values.time.format('HH:mm'),
-        description: values.description
       };
 
-      const response = await fetch('/api/appointments', {
+      const response = await fetch('/api/appointments/simple', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),
@@ -58,6 +61,10 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
 
       message.success('预约成功！我们会尽快与您联系确认。');
       form.resetFields();
+      
+      // 预约成功后跳转到成功页面
+      router.push('/appointment-success');
+      
       onSuccess?.();
     } catch (error: any) {
       message.error(error.message || '预约失败，请稍后重试');
@@ -131,26 +138,6 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
       </Form.Item>
 
       <Form.Item
-        name="date"
-        label="预约日期"
-        rules={[{ required: true, message: '请选择预约日期' }]}
-      >
-        <DatePicker style={{ width: '100%' }} />
-      </Form.Item>
-
-      <Form.Item
-        name="time"
-        label="预约时间"
-        rules={[{ required: true, message: '请选择预约时间' }]}
-      >
-        <TimePicker 
-          format="HH:mm"
-          minuteStep={30}
-          style={{ width: '100%' }}
-        />
-      </Form.Item>
-
-      <Form.Item
         name="description"
         label="问题描述"
         rules={[{ required: true, message: '请描述车辆问题或服务需求' }]}
@@ -158,6 +145,26 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
         <TextArea 
           rows={4}
           placeholder="请简要描述您的车辆问题或服务需求"
+        />
+      </Form.Item>
+
+      <Form.Item
+        name="date"
+        label="期望预约日期"
+        rules={[{ required: true, message: '请选择预约日期' }]}
+      >
+        <DatePicker style={{ width: '100%' }} />
+      </Form.Item>
+
+      <Form.Item
+        name="time"
+        label="期望预约时间"
+        rules={[{ required: true, message: '请选择预约时间' }]}
+      >
+        <TimePicker 
+          format="HH:mm"
+          minuteStep={30}
+          style={{ width: '100%' }}
         />
       </Form.Item>
 

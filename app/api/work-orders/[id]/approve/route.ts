@@ -1,19 +1,22 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
-import { authMiddleware } from '@/lib/auth';
-import { successResponse, errorResponse } from '@/lib/api-response';
-import WorkOrder from '@/models/workOrder';
-import WorkOrderProgress from '@/models/workOrderProgress';
+import { checkRole } from '@/lib/auth';
+import WorkOrder, { WORK_ORDER_STATUS } from '@/models/workOrder';
+import {
+  successResponse,
+  errorResponse,
+  notFoundResponse,
+} from '@/lib/api-response';
 
-// 管理员审批工单完成
-export async function POST(
+export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await authMiddleware(request);
+    // 验证用户权限（仅管理员可以审核工单）
+    const authResult = await checkRole(['admin'])(request);
     if (!authResult.success) {
-      return errorResponse('未授权访问', 401);
+      return errorResponse(authResult.message || '未授权访问', 401);
     }
 
     // 确保用户存在
@@ -21,62 +24,57 @@ export async function POST(
       return errorResponse('无法获取用户信息', 401);
     }
 
-    // 验证权限 - 只允许管理员和员工审批工单
-    if (!['admin', 'staff'].includes(authResult.user.role)) {
-      return errorResponse('无权审批工单', 403);
-    }
+    const workOrderId = params.id;
 
     await connectDB();
 
-    const workOrder = await WorkOrder.findById(params.id);
+    // 获取工单信息
+    const workOrder = await WorkOrder.findById(workOrderId);
     if (!workOrder) {
-      return errorResponse('工单不存在', 404);
+      return notFoundResponse('工单不存在');
     }
 
-    // 验证工单状态
-    if (workOrder.status !== 'pending_check') {
-      return errorResponse('只有待验收的工单可以进行审批', 400);
+    // 验证工单状态，只有待审核的工单才能被审批
+    if (workOrder.status !== WORK_ORDER_STATUS.PENDING_CHECK) {
+      return errorResponse('只有待审核的工单才能被审批', 400);
     }
 
-    const data = await request.json();
-    const { approved, notes } = data;
-
-    if (approved === undefined) {
-      return errorResponse('请指定是否通过审批', 400);
+    // 检查是否有完成证明
+    if (!workOrder.completionProof || !workOrder.completionProof.proofImages || workOrder.completionProof.proofImages.length === 0) {
+      return errorResponse('该工单没有完成证明，无法审批', 400);
     }
 
-    // 根据审批结果更新工单状态
-    const newStatus = approved ? 'completed' : 'in_progress';
-    const statusMessage = approved 
-      ? '工单已完成并通过审核' 
-      : '工单未通过审核，需要返工';
+    // 更新工单状态为已完成
+    workOrder.status = WORK_ORDER_STATUS.COMPLETED;
+    workOrder.completionDate = new Date();
 
-    const updatedWorkOrder = await WorkOrder.findByIdAndUpdate(
-      params.id,
-      {
-        status: newStatus,
-        ...(approved ? { completionDate: new Date() } : {}),
-        updatedBy: authResult.user._id
-      },
-      { new: true }
-    );
+    // 更新完成证明的审批状态
+    if (workOrder.completionProof) {
+      workOrder.completionProof.approved = true;
+      workOrder.completionProof.approvedBy = authResult.user._id;
+      workOrder.completionProof.approvedAt = new Date();
+    }
 
-    // 记录工单进度
-    const progress = new WorkOrderProgress({
-      workOrder: params.id,
-      status: newStatus,
-      notes: notes || statusMessage,
-      updatedBy: authResult.user._id,
+    // 添加进度记录
+    workOrder.progress.push({
+      status: WORK_ORDER_STATUS.COMPLETED,
+      notes: '管理员已审核通过完成证明',
+      timestamp: new Date(),
+      user: authResult.user._id
     });
 
-    await progress.save();
+    await workOrder.save();
 
     return successResponse({
-      message: approved ? '工单已完成并通过审核' : '工单已退回返工',
-      workOrder: updatedWorkOrder
+      message: '工单已审核通过，状态已更新为已完成',
+      workOrder: {
+        _id: workOrder._id,
+        status: workOrder.status,
+        completionDate: workOrder.completionDate
+      }
     });
   } catch (error: any) {
-    console.error('审批工单失败:', error);
-    return errorResponse(error.message || '审批工单失败');
+    console.error('审核工单失败:', error);
+    return errorResponse(error.message || '审核工单失败');
   }
 } 

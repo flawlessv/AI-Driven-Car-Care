@@ -657,23 +657,13 @@ export default function Home() {
 
       {/* 添加预约表单模态框 */}
       <Modal
-        title={
-          <div className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
-            预约服务
-          </div>
-        }
+        title="在线预约"
         open={appointmentModalVisible}
         onCancel={() => setAppointmentModalVisible(false)}
         footer={null}
         width={600}
-        className="appointment-modal"
-        closeIcon={
-          <span className="text-gray-400 hover:text-gray-600 transition-colors">
-            ×
-          </span>
-        }
       >
-        <AppointmentForm
+        <AppointmentForm 
           onSuccess={() => setAppointmentModalVisible(false)}
           onCancel={() => setAppointmentModalVisible(false)}
         />
