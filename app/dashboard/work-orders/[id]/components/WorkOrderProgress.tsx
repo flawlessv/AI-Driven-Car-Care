@@ -2,19 +2,23 @@
 
 import { Timeline } from 'antd';
 import { ClockCircleOutlined } from '@ant-design/icons';
-import { WorkOrderProgress } from '@/types/workOrder';
+import { statusText, statusColor } from '../../components/StatusTag';
 
-const statusColor = {
-  pending: 'orange',
-  assigned: 'blue',
-  in_progress: 'processing',
-  pending_check: 'purple',
-  completed: 'green',
-  cancelled: 'red',
-};
+// 定义组件内部使用的进度记录接口
+interface ProgressRecord {
+  _id: string;
+  status: string;
+  notes?: string;
+  createdAt: string;
+  updatedBy: {
+    _id: string;
+    username: string;
+    role?: string;
+  };
+}
 
 interface WorkOrderProgressTimelineProps {
-  progress: WorkOrderProgress[];
+  progress: ProgressRecord[];
 }
 
 const WorkOrderProgressTimeline: React.FC<WorkOrderProgressTimelineProps> = ({ progress }) => {
@@ -28,20 +32,24 @@ const WorkOrderProgressTimeline: React.FC<WorkOrderProgressTimelineProps> = ({ p
       <Timeline
         mode="left"
         items={progress.map((item) => {
-          const timestamp = typeof item.timestamp === 'string' 
-            ? new Date(item.timestamp).toLocaleString() 
-            : item.timestamp.toLocaleString();
-            
-          const username = typeof item.user === 'string' 
-            ? '用户' 
-            : item.user.username || '用户';
+          const timestamp = new Date(item.createdAt).toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+          });
+          
+          const username = item.updatedBy?.username || '未知用户';
             
           return {
             color: statusColor[item.status] || 'blue',
             label: timestamp,
             children: (
               <div>
-                <strong>{getStatusText(item.status)}</strong>
+                <strong>{statusText[item.status] || getStatusText(item.status)}</strong>
                 <div>{item.notes}</div>
                 <div className="text-gray-500 text-sm">操作人: {username}</div>
               </div>
@@ -54,16 +62,7 @@ const WorkOrderProgressTimeline: React.FC<WorkOrderProgressTimelineProps> = ({ p
 };
 
 function getStatusText(status: string) {
-  const statusMap: Record<string, string> = {
-    pending: '待处理',
-    assigned: '已分配',
-    in_progress: '进行中',
-    pending_check: '待检查',
-    completed: '已完成',
-    cancelled: '已取消'
-  };
-  
-  return statusMap[status] || status;
+  return statusText[status as keyof typeof statusText] || status;
 }
 
 export default WorkOrderProgressTimeline; 

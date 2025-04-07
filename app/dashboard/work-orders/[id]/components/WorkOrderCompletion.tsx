@@ -72,31 +72,46 @@ const WorkOrderCompletion: React.FC<WorkOrderCompletionProps> = ({
     setUploading(true);
     
     try {
-      // 模拟文件上传，获取图片URL
-      const imageUrls = await Promise.all(
-        fileList.map(file => getBase64(file))
-      );
+      console.log('开始上传完成证明图片，数量:', fileList.length);
+      
+      // 创建FormData对象
+      const formData = new FormData();
+      
+      // 添加图片文件
+      fileList.forEach((file, index) => {
+        if (file.originFileObj) {
+          console.log(`添加文件 ${index + 1}/${fileList.length} 到FormData:`, file.name);
+          formData.append('proofImages', file.originFileObj);
+        } else {
+          console.warn(`文件 ${index + 1} 没有原始文件对象:`, file);
+        }
+      });
+      
+      // 添加备注
+      if (notes) {
+        console.log('添加备注到FormData:', notes);
+        formData.append('notes', notes);
+      }
       
       // 根据工单状态决定使用哪个API端点
       const endpoint = status === 'pending_check'
         ? `/api/work-orders/${workOrderId}/additional-proof`
         : `/api/work-orders/${workOrderId}/completion-proof`;
       
+      console.log('发送请求到:', endpoint);
+      
       // 提交到API
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          proofImages: imageUrls,
-          notes,
-        }),
+        body: formData,
       });
       
+      // 检查响应
+      const result = await response.json();
+      console.log('API响应:', result);
+      
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || '提交失败');
+        throw new Error(result.message || '提交失败');
       }
       
       // 成功处理

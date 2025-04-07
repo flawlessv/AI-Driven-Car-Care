@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { authMiddleware } from '@/lib/auth';
 import WorkOrder from '@/models/workOrder';
@@ -14,71 +14,126 @@ import {
   checkWorkOrderPermission,
   recordWorkOrderProgress,
   updateVehicleStatusByWorkOrder,
-  updateTechnicianStats,
 } from '@/lib/work-order-utils';
+import { WorkOrderStatus } from '@/types/workOrder';
 
 // 获取工单详情
 export async function GET(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await authMiddleware(request);
-    if (!authResult.success) {
-      return errorResponse('未授权访问', 401);
-    }
-
     await connectDB();
+    
+    // 验证身份
+    const authResult = await authMiddleware(req);
+    if (!authResult.success) {
+      return NextResponse.json(
+        { success: false, message: "未授权访问" },
+        { status: 401 }
+      );
+    }
 
     const workOrder = await WorkOrder.findById(params.id)
-      .populate('vehicle', 'brand model licensePlate')
-      .populate('customer', 'username email phone')
-      .populate('technician', 'username email phone')
-      .populate('createdBy', 'username');
+      .populate('vehicle')
+      .populate('customer')
+      .populate('technician')
+      .populate('createdBy')
+      .exec();
 
     if (!workOrder) {
-      return errorResponse('工单不存在', 404);
+      return NextResponse.json(
+        { success: false, message: "工单不存在" },
+        { status: 404 }
+      );
     }
 
-    // 获取工单进度历史
+    // 准备返回数据
+    const workOrderData = workOrder.toObject();
+    
+    // 确保正确处理completionProof
+    if (workOrder.completionProof) {
+      // 已经有completionProof数据，确保格式正确
+      if (typeof workOrder.completionProof === 'object' && workOrder.completionProof !== null) {
+        // 确保proofImages是数组
+        if (!Array.isArray(workOrder.completionProof.proofImages)) {
+          workOrderData.completionProof.proofImages = [];
+        }
+      } else if (Array.isArray(workOrder.completionProof)) {
+        // 如果是数组，转换为对象格式
+        workOrderData.completionProof = {
+          proofImages: workOrder.completionProof.filter((item: any) => typeof item === 'string'),
+          submittedAt: new Date(),
+          approved: false
+        };
+      } else if (typeof workOrder.completionProof === 'string' && workOrder.completionProof.length > 0) {
+        // 如果是字符串，可能是单张图片
+        workOrderData.completionProof = {
+          proofImages: [workOrder.completionProof],
+          submittedAt: new Date(),
+          approved: false
+        };
+      }
+    }
+
+    // 单独查询工单进度记录
     const progress = await WorkOrderProgress.find({ workOrder: params.id })
-      .populate({
-        path: 'updatedBy',
-        select: 'username'
-      })
-      .sort({ timestamp: -1 });
+      .populate('updatedBy', 'username role')
+      .sort({ createdAt: -1 })
+      .exec();
 
-    console.log('获取到的进度历史:', progress);  // 添加日志
-
-    return successResponse({
-      workOrder,
-      progress,
+    return NextResponse.json({
+      success: true,
+      message: "获取工单成功",
+      data: workOrderData,
+      progress
     });
   } catch (error: any) {
-    console.error('获取工单详情失败:', error);
-    return errorResponse(error.message || '获取工单详情失败');
+    console.error("获取工单失败:", error);
+    return NextResponse.json(
+      { success: false, message: `获取工单失败: ${error.message}` },
+      { status: 500 }
+    );
   }
+}
+
+// 工单状态常量
+const WORK_ORDER_STATUS = {
+  PENDING: 'pending',
+  ASSIGNED: 'assigned',
+  IN_PROGRESS: 'in_progress',
+  PENDING_CHECK: 'pending_check',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled'
+} as const;
+
+// 处理数组中的字符串项
+function filterStringItems(arr: any[]): string[] {
+  return arr.filter((item: unknown) => typeof item === 'string') as string[];
 }
 
 // 更新工单
 export async function PUT(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await authMiddleware(request);
-    if (!authResult.success) {
-      return errorResponse('未授权访问', 401);
-    }
-
     await connectDB();
+    
+    const authResult = await authMiddleware(req);
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        { success: false, message: "未授权访问" },
+        { status: 401 }
+      );
+    }
 
     const workOrder = await WorkOrder.findById(params.id);
     if (!workOrder) {
       return errorResponse('工单不存在', 404);
     }
 
-    const data = await request.json();
+    const data = await req.json();
     console.log('收到的更新数据:', data);
     
     if (data.status) {
@@ -240,4 +295,14 @@ const handleStatusChange = async (workOrderId: string, status: string, user: any
     console.error('创建进度记录失败:', error);
     throw error;
   }
+};
+
+// 状态显示文本
+const statusText = {
+  pending: '待处理',
+  assigned: '已分配',
+  in_progress: '进行中',
+  pending_check: '待审核',
+  completed: '已完成',
+  cancelled: '已取消'
 }; 

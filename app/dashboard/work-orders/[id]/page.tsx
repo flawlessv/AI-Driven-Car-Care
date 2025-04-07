@@ -29,31 +29,14 @@ import WorkOrderProgressTimeline from '../components/WorkOrderProgress';
 import WorkOrderEvaluation from '../components/WorkOrderEvaluation';
 import dayjs from 'dayjs';
 import MaintenanceForm from './components/MaintenanceForm';
-import { StarOutlined, UploadOutlined, CheckOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons';
+import { StarOutlined, UploadOutlined, CheckOutlined, CloseOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import WorkOrderCompletion from './components/WorkOrderCompletion';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { useParams } from 'next/navigation';
 import { RcFile } from 'antd/es/upload';
+import { statusText, statusColor } from '../components/StatusTag';
 
 const { TextArea } = Input;
-
-const statusText = {
-  pending: '待处理',
-  assigned: '已分配',
-  in_progress: '进行中',
-  pending_check: '待检查',
-  completed: '已完成',
-  cancelled: '已取消',
-};
-
-const statusColor = {
-  pending: 'orange',
-  assigned: 'blue',
-  in_progress: 'processing',
-  pending_check: 'purple',
-  completed: 'green',
-  cancelled: 'red',
-};
 
 const priorityText = {
   low: '低',
@@ -112,33 +95,104 @@ const WorkOrderDetailPage = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
   const [previewTitle, setPreviewTitle] = useState('');
+  const [debugInfo, setDebugInfo] = useState('');
+  const [completionProofData, setCompletionProofData] = useState<any>(null);
+  const [loadingProof, setLoadingProof] = useState(false);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectionNotes, setRejectionNotes] = useState('');
+  const [statusOptions, setStatusOptions] = useState<Array<{value: string, label: string, color: string}>>([]);
 
   const params = useParams();
   const user = useSelector((state: RootState) => state.auth.user);
+
+  // 获取可用的状态选项
+  const fetchStatusOptions = async () => {
+    try {
+      const response = await fetch('/api/work-orders/status-options');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data?.statusOptions) {
+          console.log('获取到的状态选项:', result.data.statusOptions);
+          setStatusOptions(result.data.statusOptions);
+        }
+      }
+    } catch (error) {
+      console.error('获取状态选项失败:', error);
+    }
+  };
 
   useEffect(() => {
     fetchWorkOrder();
     if (['admin', 'staff', 'technician'].includes(user?.role || '')) {
       fetchTechnicians();
+      fetchStatusOptions();
     }
-  }, [params.id]);
+  }, [params.id, user?.role]);
+
+  useEffect(() => {
+    if (workOrder && (workOrder.status === 'pending_check' || workOrder.status === 'completed')) {
+      fetchCompletionProof();
+    }
+  }, [workOrder?.status]);
 
   const fetchWorkOrder = async () => {
+    setLoading(true);
     try {
       const response = await fetch(`/api/work-orders/${params.id}`);
       const result = await response.json();
-      if (response.ok) {
-        console.log('获取到的工单数据:', result.data);
-        setWorkOrder(result.data.workOrder);
-        setProgress(result.data.progress);
-      } else {
-        message.error(result.message || '获取工单详情失败');
+      
+      if (!response.ok) {
+        throw new Error(result.message || '获取工单详情失败');
       }
-    } catch (error) {
+      
+      // 获取工单数据
+      if (result.data) {
+        console.log('获取到的工单数据:', result.data);
+        setWorkOrder(result.data);
+      } else {
+        console.error('工单数据格式错误:', result);
+        throw new Error('工单数据格式错误');
+      }
+      
+      // 获取进度数据
+      if (result.progress && Array.isArray(result.progress)) {
+        console.log('获取到的进度数据:', result.progress);
+        // 确保每条进度记录都有正确的时间戳
+        const formattedProgress = result.progress.map((item: any) => ({
+          ...item,
+          createdAt: item.createdAt || new Date().toISOString()
+        }));
+        setProgress(formattedProgress);
+      } else {
+        // 如果没有获取到进度数据，使用空数组
+        setProgress([]);
+        console.warn('未获取到进度数据');
+      }
+    } catch (error: any) {
       console.error('获取工单详情失败:', error);
-      message.error('获取工单详情失败');
+      message.error(error.message || '获取工单详情失败');
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // 单独获取工单进度
+  const fetchProgress = async () => {
+    try {
+      const response = await fetch(`/api/work-orders/${params.id}/progress`);
+      const result = await response.json();
+      
+      if (response.ok && result.data) {
+        console.log('单独获取的进度记录:', result.data);
+        // 确保每条进度记录都有正确的时间戳
+        const formattedProgress = result.data.map((item: any) => ({
+          ...item,
+          createdAt: item.createdAt || new Date().toISOString()
+        }));
+        setProgress(formattedProgress);
+      }
+    } catch (error) {
+      console.error('获取工单进度失败:', error);
     }
   };
 
@@ -169,6 +223,36 @@ const WorkOrderDetailPage = () => {
       setTechnicians([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCompletionProof = async () => {
+    if (!params.id) return;
+    
+    setLoadingProof(true);
+    try {
+      console.log('获取工单完成证明:', params.id);
+      const response = await fetch(`/api/work-orders/${params.id}/completion-proof`);
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('工单完成证明响应:', result);
+        
+        if (result.success && result.data && result.data.proofImages && result.data.proofImages.length > 0) {
+          setCompletionProofData(result.data);
+          console.log('使用完成证明API返回的数据');
+        } else if (!completionProofData) {
+          // 只有在之前没有从工单详情获取到数据时才更新
+          console.log('完成证明API返回空数据，保持现有数据不变');
+        }
+      } else {
+        console.error('获取完成证明接口错误:', response.status);
+        // 不清空completionProofData，可能已经从工单详情中获取了数据
+      }
+    } catch (error) {
+      console.error('获取工单完成证明错误:', error);
+    } finally {
+      setLoadingProof(false);
     }
   };
 
@@ -233,7 +317,10 @@ const WorkOrderDetailPage = () => {
         const response = await fetch(`/api/work-orders/${params.id}/status`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status }),
+          body: JSON.stringify({ 
+            status,
+            notes: progressNotes
+          }),
         });
         
         const result = await response.json();
@@ -242,11 +329,35 @@ const WorkOrderDetailPage = () => {
           throw new Error(result.message || '更新状态失败');
         }
         
+        // 如果接口返回了最新的进度记录，直接使用
+        if (result.progress && Array.isArray(result.progress)) {
+          console.log('API返回的进度记录:', result.progress);
+          // 确保每条进度记录都有正确的时间戳
+          const formattedProgress = result.progress.map((item: any) => ({
+            ...item,
+            createdAt: item.createdAt || new Date().toISOString()
+          }));
+          setProgress(formattedProgress);
+        }
+        
+        // 更新工单状态
+        if (result.data?.workOrder) {
+          setWorkOrder(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              status: result.data.workOrder.status,
+              completionDate: result.data.workOrder.completionDate
+            };
+          });
+        }
+        
         message.success('状态更新成功');
-        fetchWorkOrder();
       } catch (error: any) {
         message.error(error.message || '更新状态失败');
       } finally {
+        setProgressNotes(''); // 清空进度备注
+        setStatusModalVisible(false);
         setLoading(false);
       }
     }
@@ -366,6 +477,7 @@ const WorkOrderDetailPage = () => {
       message.success('完成证明提交成功，工单已变更为待审核状态');
       fetchWorkOrder();
       setCompletionModalVisible(false);
+      setStatusModalVisible(false);
       setFileList([]);
       setCompletionNotes('');
     } catch (error: any) {
@@ -391,10 +503,84 @@ const WorkOrderDetailPage = () => {
         throw new Error(result.message || '审核工单失败');
       }
       
+      // 如果接口返回了最新的进度记录，直接使用
+      if (result.progress && Array.isArray(result.progress)) {
+        console.log('API返回的进度记录:', result.progress);
+        // 确保每条进度记录都有正确的时间戳
+        const formattedProgress = result.progress.map((item: any) => ({
+          ...item,
+          createdAt: item.createdAt || new Date().toISOString()
+        }));
+        setProgress(formattedProgress);
+      }
+      
+      // 更新工单状态
+      if (result.data?.workOrder) {
+        setWorkOrder(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            status: result.data.workOrder.status,
+            completionDate: result.data.workOrder.completionDate
+          };
+        });
+      }
+      
       message.success('工单已审核通过，状态已更新为已完成');
-      fetchWorkOrder();
     } catch (error: any) {
       message.error(error.message || '审核工单失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRejectWorkOrder = async () => {
+    try {
+      setLoading(true);
+      
+      const response = await fetch(`/api/work-orders/${params.id}/completion-proof`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          approved: false,
+          notes: rejectionNotes 
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || '驳回工单失败');
+      }
+      
+      // 如果接口返回了最新的进度记录，直接使用
+      if (result.progress && Array.isArray(result.progress)) {
+        console.log('API返回的进度记录:', result.progress);
+        // 确保每条进度记录都有正确的时间戳
+        const formattedProgress = result.progress.map((item: any) => ({
+          ...item,
+          createdAt: item.createdAt || new Date().toISOString()
+        }));
+        setProgress(formattedProgress);
+      }
+      
+      // 更新工单状态
+      if (result.data) {
+        setWorkOrder(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            status: result.data.status,
+            completionDate: result.data.completionDate
+          };
+        });
+      }
+      
+      setRejectModalVisible(false);
+      setRejectionNotes('');
+      message.success('工单已驳回，状态已更新为进行中');
+    } catch (error: any) {
+      message.error(error.message || '驳回工单失败');
     } finally {
       setLoading(false);
     }
@@ -438,6 +624,13 @@ const WorkOrderDetailPage = () => {
             </Space>
           </div>
           <Space>
+            <Button 
+              type="default"
+              onClick={fetchWorkOrder}
+              loading={loading}
+            >
+              刷新
+            </Button>
             {canAssign && (
               <Button
                 type="primary"
@@ -569,100 +762,130 @@ const WorkOrderDetailPage = () => {
         )}
       </Card>
 
-      {workOrder && (
-        <WorkOrderCompletion
-          workOrderId={workOrder._id}
-          status={workOrder.status}
-          completionProof={workOrder.completionProof}
-          onSubmitSuccess={fetchWorkOrder}
-        />
-      )}
-
-      {workOrder?.completionProof && displayData && (
+      {/* 只在待审批状态且用户是管理员时显示完成证明卡片 */}
+      {workOrder && workOrder.status === 'pending_check' && user?.role === 'admin' && (
         <Card title="完成证明" className="mb-6">
-          <div className="mb-2">
-            {workOrder.completionProof.notes && (
-              <Typography.Paragraph className="mb-4">
-                <strong>技师备注:</strong> {workOrder.completionProof.notes}
-              </Typography.Paragraph>
+          <div>
+            {loadingProof ? (
+              <div className="text-center py-10">
+                <div className="text-lg mb-2">加载完成证明中...</div>
+              </div>
+            ) : completionProofData?.proofImages?.length > 0 ? (
+              <>
+                {/* 展示完成证明图片 */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {completionProofData.proofImages.map((image: string, index: number) => {
+                    if (!image) return null;
+                    
+                    // 确保图片路径格式正确，添加域名前缀
+                    const imgSrc = image.startsWith('http') 
+                      ? image 
+                      : `${window.location.origin}${image}`;
+                    
+                    return (
+                      <div key={index} className="relative border border-gray-300 p-1 group cursor-pointer">
+                        <div 
+                          className="relative w-40 h-40 bg-gray-50 overflow-hidden"
+                          onClick={() => {
+                            console.log('点击图片，打开预览', imgSrc);
+                            setPreviewImage(imgSrc);
+                            setPreviewTitle(`完成证明图片 ${index + 1}`);
+                            setPreviewOpen(true);
+                          }}
+                        >
+                          <img 
+                            src={imgSrc} 
+                            alt={`完成证明图片 ${index + 1}`} 
+                            className="w-full h-full object-cover rounded transition-transform duration-300 group-hover:scale-110" 
+                            onError={(e) => {
+                              console.error(`图片加载失败: ${imgSrc}`);
+                              // 使用一个内联的占位图替代
+                              e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZWVlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZpbGw9IiM5OTk5OTkiPuWbvueJh+WKoOi9veWksei0pTwvdGV4dD48L3N2Zz4=';
+                              // 添加提示边框
+                              e.currentTarget.style.border = '2px solid red';
+                            }}
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300">
+                            <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-1">
+                              <SearchOutlined /> 点击查看
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-xs text-center mt-1 text-blue-600">点击放大</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {completionProofData.notes && (
+                  <Typography.Paragraph className="mb-4">
+                    <strong>技师备注:</strong> {completionProofData.notes}
+                  </Typography.Paragraph>
+                )}
+              </>
+            ) : (
+              <Alert
+                message="暂无完成证明图片"
+                description="技师尚未上传工单完成证明图片或数据格式不正确"
+                type="info"
+                showIcon
+              />
             )}
             
-            <div className="flex flex-wrap gap-2">
-              {workOrder.completionProof.proofImages && 
-               Array.isArray(workOrder.completionProof.proofImages) && 
-               workOrder.completionProof.proofImages.map((image, index) => (
-                <div key={index} className="relative">
-                  <img 
-                    src={image} 
-                    alt={`完成证明图片 ${index + 1}`} 
-                    className="w-40 h-40 object-cover rounded"
-                    onClick={() => window.open(image, '_blank')}
-                    style={{ cursor: 'pointer' }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {user?.role === 'admin' && 
-           workOrder.status === 'pending_check' && 
-           typeof workOrder.completionProof.approved === 'boolean' && 
-           !workOrder.completionProof.approved && (
-            <div className="mt-4">
-              <Space>
-                <Button 
-                  type="primary" 
-                  icon={<CheckOutlined />}
-                  onClick={handleApproveWorkOrder}
-                  loading={loading}
-                >
-                  通过审批
-                </Button>
-                <Button 
-                  danger
-                  icon={<CloseOutlined />}
-                  onClick={() => {
-                    Modal.confirm({
-                      title: '拒绝审批',
-                      content: '确定拒绝这项工作的完成证明吗？',
-                      okType: 'danger',
-                      onOk: async () => {
-                        try {
-                          const response = await fetch(`/api/work-orders/${params.id}/completion-proof`, {
-                            method: 'PUT',
-                            headers: {
-                              'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                              approved: false,
-                              notes: '管理员已拒绝，请重新完成工作'
-                            }),
-                          });
-                          
-                          if (response.ok) {
-                            message.success('已拒绝通过');
-                            fetchWorkOrder();
-                          } else {
-                            const data = await response.json();
-                            message.error(data.message || '操作失败');
+            {/* 审批按钮区域 */}
+            {user?.role === 'admin' && workOrder.status === 'pending_check' && (
+              <div className="mt-4">
+                <Space>
+                  <Button 
+                    type="primary" 
+                    icon={<CheckOutlined />}
+                    onClick={handleApproveWorkOrder}
+                    loading={loading}
+                  >
+                    通过审批
+                  </Button>
+                  <Button 
+                    danger
+                    icon={<CloseOutlined />}
+                    onClick={() => {
+                      Modal.confirm({
+                        title: '拒绝审批',
+                        content: '确定拒绝这项工作的完成证明吗？',
+                        okType: 'danger',
+                        onOk: async () => {
+                          try {
+                            const response = await fetch(`/api/work-orders/${params.id}/completion-proof`, {
+                              method: 'PUT',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({
+                                approved: false,
+                                notes: '管理员已拒绝，请重新完成工作'
+                              }),
+                            });
+                            
+                            if (response.ok) {
+                              message.success('已拒绝通过');
+                              fetchWorkOrder();
+                            } else {
+                              const data = await response.json();
+                              message.error(data.message || '操作失败');
+                            }
+                          } catch (error) {
+                            console.error('审批操作失败:', error);
+                            message.error('审批操作失败');
                           }
-                        } catch (error) {
-                          console.error('审批操作失败:', error);
-                          message.error('审批操作失败');
                         }
-                      }
-                    });
-                  }}
-                >
-                  拒绝通过
-                </Button>
-              </Space>
-            </div>
-          )}
-          
-          {workOrder.completionProof.approved && (
-            <Tag color="green" className="mt-2">已审核通过</Tag>
-          )}
+                      });
+                    }}
+                  >
+                    拒绝通过
+                  </Button>
+                </Space>
+              </div>
+            )}
+          </div>
         </Card>
       )}
 
@@ -715,14 +938,12 @@ const WorkOrderDetailPage = () => {
               onChange={value => setWorkOrder({ ...workOrder, status: value })}
               style={{ width: '100%' }}
             >
-              {Object.entries(statusText).map(([key, text]) => (
+              {statusOptions.map(option => (
                 <Select.Option
-                  key={key}
-                  value={key}
-                  disabled={!['admin'].includes(user?.role || '') && 
-                    !['pending', 'assigned', 'in_progress', 'pending_check'].includes(key)}
+                  key={option.value}
+                  value={option.value}
                 >
-                  {text}
+                  {option.label}
                 </Select.Option>
               ))}
             </Select>
@@ -846,8 +1067,33 @@ const WorkOrderDetailPage = () => {
         title={previewTitle}
         footer={null}
         onCancel={() => setPreviewOpen(false)}
+        centered
+        width={1000}
+        destroyOnClose
+        maskStyle={{ backgroundColor: 'rgba(0,0,0,0.8)' }}
+        bodyStyle={{ padding: '24px' }}
       >
-        <img alt="预览图片" style={{ width: '100%' }} src={previewImage} />
+        <div className="flex justify-center items-center">
+          <img 
+            alt={previewTitle || "预览图片"} 
+            style={{ 
+              maxWidth: '100%', 
+              maxHeight: '80vh',
+              objectFit: 'contain',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            }} 
+            src={previewImage} 
+            onError={(e) => {
+              console.error('预览图片加载失败:', previewImage);
+              e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZWVlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZpbGw9IiM5OTk5OTkiPuWbvueJh+WKoOi9veWksei0pTwvdGV4dD48L3N2Zz4=';
+            }}
+          />
+        </div>
+        <div className="text-center mt-4 text-gray-500">
+          <Typography.Text>
+            使用鼠标滚轮可缩放图片，点击蒙层或按ESC键关闭预览
+          </Typography.Text>
+        </div>
       </Modal>
     </div>
   );

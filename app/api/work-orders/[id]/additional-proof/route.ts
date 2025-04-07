@@ -4,7 +4,7 @@ import getWorkOrderModel from '@/models/workOrder';
 import { ObjectId } from 'mongodb';
 import { connectDB } from '@/lib/mongodb';
 
-// POST 方法：追加工作完成证明（在待检查状态）
+// POST 方法：追加工作完成证明（在待审核状态）
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -50,7 +50,7 @@ export async function POST(
 
     if (!workOrder) {
       return NextResponse.json(
-        { success: false, message: '找不到处于待检查状态的工单' }, 
+        { success: false, message: '找不到处于待审核状态的工单' }, 
         { status: 404 }
       );
     }

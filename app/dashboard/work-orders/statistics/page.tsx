@@ -23,7 +23,7 @@ const statusText = {
   pending: '待处理',
   assigned: '已分配',
   in_progress: '进行中',
-  pending_check: '待检查',
+  pending_check: '待审核',
   completed: '已完成',
   cancelled: '已取消',
 };

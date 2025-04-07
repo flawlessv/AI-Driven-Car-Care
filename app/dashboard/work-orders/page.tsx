@@ -13,29 +13,12 @@ import {
   Select,
   Form,
 } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, CheckOutlined } from '@ant-design/icons';
 import type { RootState } from '@/lib/store';
 import type { Vehicle } from '@/types/vehicle';
 import type { WorkOrder } from '@/types/workOrder';
 import WorkOrderForm from './components/WorkOrderForm';
-
-const statusText = {
-  pending: '待处理',
-  assigned: '已分配',
-  in_progress: '进行中',
-  pending_check: '待检查',
-  completed: '已完成',
-  cancelled: '已取消',
-};
-
-const statusColor = {
-  pending: 'orange',
-  assigned: 'blue',
-  in_progress: 'processing',
-  pending_check: 'purple',
-  completed: 'green',
-  cancelled: 'red',
-};
+import { statusText, statusColor } from './components/StatusTag';
 
 const priorityText = {
   low: '低',
@@ -89,6 +72,9 @@ export default function WorkOrdersPage() {
       if (selectedStatus) queryParams.append('status', selectedStatus);
       if (selectedVehicle) queryParams.append('vehicle', selectedVehicle);
       if (selectedPriority) queryParams.append('priority', selectedPriority);
+
+      // 添加随机参数，确保不使用缓存结果
+      queryParams.append('_t', Date.now().toString());
 
       const response = await fetch(`/api/work-orders?${queryParams}`);
       const result = await response.json();
@@ -204,7 +190,7 @@ export default function WorkOrdersPage() {
     {
       title: '状态',
       dataIndex: 'status',
-      render: (status: keyof typeof statusText) => (
+      render: (status: keyof typeof statusText, record: WorkOrder) => (
         <Tag color={statusColor[status]}>
           {statusText[status]}
         </Tag>
@@ -236,6 +222,26 @@ export default function WorkOrdersPage() {
 
   return (
     <div className="p-6">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">维修工单管理</h1>
+        <div>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
+            onClick={handleAdd}
+            className="mr-2"
+          >
+            新建工单
+          </Button>
+          <Button 
+            onClick={fetchWorkOrders}
+            loading={loading}
+          >
+            刷新列表
+          </Button>
+        </div>
+      </div>
+
       <div className="mb-4 flex justify-between items-center">
         <div className="flex gap-4">
           <Select
@@ -279,15 +285,18 @@ export default function WorkOrdersPage() {
               </Select.Option>
             ))}
           </Select>
-        </div>
 
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleAdd}
-        >
-          创建工单
-        </Button>
+          {user?.role === 'admin' && (
+            <Button 
+              type="primary"
+              danger
+              onClick={() => setSelectedStatus('pending_check')}
+              icon={<CheckOutlined />}
+            >
+              查看待审批工单
+            </Button>
+          )}
+        </div>
       </div>
 
       <Table

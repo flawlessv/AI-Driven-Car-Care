@@ -5,7 +5,7 @@ export const WORK_ORDER_STATUS = {
   PENDING: 'pending',      // 待处理
   ASSIGNED: 'assigned',    // 已分配
   IN_PROGRESS: 'in_progress', // 处理中
-  PENDING_CHECK: 'pending_check', // 待验收
+  PENDING_CHECK: 'pending_check', // 待审核
   COMPLETED: 'completed',  // 已完成
   CANCELLED: 'cancelled'   // 已取消
 } as const;
