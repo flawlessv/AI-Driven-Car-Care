@@ -101,7 +101,21 @@ export default function AppointmentsPage() {
       // 确保我们获取到正确的数据
       const appointmentsData = Array.isArray(result.data) ? result.data : [];
       console.log('Appointments data:', appointmentsData);
-      setData(appointmentsData);
+      
+      // 按创建日期降序排序，使最新创建的预约显示在最上方
+      const sortedData = [...appointmentsData].sort((a, b) => {
+        // 如果有createdAt字段，按创建日期降序排序
+        if (a.createdAt && b.createdAt) {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        // 作为备选，也可以按预约日期排序
+        if (a.timeSlot?.date && b.timeSlot?.date) {
+          return new Date(b.timeSlot.date).getTime() - new Date(a.timeSlot.date).getTime();
+        }
+        return 0;
+      });
+      
+      setData(sortedData);
     } catch (error: any) {
       console.error('获取预约列表失败:', error);
       message.error(error.message || '获取预约列表失败');
@@ -225,16 +239,17 @@ export default function AppointmentsPage() {
   ];
 
   const handleEdit = (record: Appointment) => {
-    setEditingAppointment(record);
-    
     // 打印接收到的数据，方便调试
     console.log('Editing appointment:', record);
     
+    setEditingAppointment(record);
+    
+    // 确保timeSlot和其中的属性存在
     const formValues = {
       // 客户信息
-      'customer.name': record.customer.name,
-      'customer.phone': record.customer.phone,
-      'customer.email': record.customer.email,
+      'customer.name': record.customer?.name || '',
+      'customer.phone': record.customer?.phone || '',
+      'customer.email': record.customer?.email || '',
       
       // 车辆信息 - 添加空值检查
       'vehicle.brand': record.vehicle?.brand || '',
@@ -248,15 +263,15 @@ export default function AppointmentsPage() {
       'service.duration': record.service?.duration || 0,
       'service.basePrice': record.service?.basePrice || 0,
       
-      // 时间信息
-      'timeSlot.technician': record.timeSlot?.technician,
-      date: dayjs(record.timeSlot.date),
-      startTime: dayjs(record.timeSlot.startTime, 'HH:mm'),
-      endTime: dayjs(record.timeSlot.endTime, 'HH:mm'),
+      // 时间信息 - 添加安全检查
+      'timeSlot.technician': record.timeSlot?.technician || '',
+      date: record.timeSlot?.date ? dayjs(record.timeSlot.date) : null,
+      startTime: record.timeSlot?.startTime ? dayjs(record.timeSlot.startTime, 'HH:mm') : null,
+      endTime: record.timeSlot?.endTime ? dayjs(record.timeSlot.endTime, 'HH:mm') : null,
       
       // 其他信息
-      status: record.status,
-      notes: record.notes
+      status: record.status || 'pending',
+      notes: record.notes || ''
     };
 
     console.log('Form values:', formValues);
