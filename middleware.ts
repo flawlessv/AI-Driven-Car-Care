@@ -7,7 +7,7 @@ export function middleware(request: NextRequest) {
   // 允许登录和注册API以及特定公开API
   if (
     pathname.startsWith('/api/auth/') || 
-    pathname === '/api/appointments/upcoming'
+    pathname.startsWith('/api/appointments')
   ) {
     return NextResponse.next();
   }

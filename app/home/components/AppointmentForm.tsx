@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Form,
   Input,
@@ -30,12 +30,37 @@ const serviceTypes = [
 export default function AppointmentForm({ onSuccess, onCancel }: AppointmentFormProps) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [technicians, setTechnicians] = useState<any[]>([]);
   const router = useRouter();
+
+  // 获取技师列表
+  useEffect(() => {
+    const fetchTechnicians = async () => {
+      try {
+        const response = await fetch('/api/users?role=technician');
+        const result = await response.json();
+        
+        if (!response.ok) {
+          console.error('获取技师列表失败:', result.message);
+          return;
+        }
+        
+        const activeTechnicians = (result.data || []).filter((tech: any) => tech.status === 'active');
+        console.log('获取到技师列表:', activeTechnicians.length);
+        setTechnicians(activeTechnicians);
+      } catch (error) {
+        console.error('获取技师列表失败:', error);
+      }
+    };
+    
+    fetchTechnicians();
+  }, []);
 
   const handleSubmit = async (values: any) => {
     try {
       setLoading(true);
       
+      // 兼容新的数据结构，同时提供扁平结构和timeSlot结构
       const formattedData = {
         customer: {
           name: values.name,
@@ -46,9 +71,20 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
         licensePlate: values.licensePlate,
         serviceType: values.serviceType,
         serviceDescription: values.description,
+        // 提供扁平结构的日期和时间
         date: values.date.format('YYYY-MM-DD'),
-        time: values.time.format('HH:mm'),
+        startTime: values.time.format('HH:mm'),
+        // 如果选择了技师，则传递技师ID
+        technician: values.technician || null,
+        // 同时提供timeSlot结构以确保兼容性
+        timeSlot: {
+          date: values.date.format('YYYY-MM-DD'),
+          startTime: values.time.format('HH:mm'),
+          technician: values.technician || null
+        }
       };
+
+      console.log('正在提交预约数据:', JSON.stringify(formattedData, null, 2));
 
       const response = await fetch('/api/appointments/simple', {
         method: 'POST',
@@ -166,6 +202,19 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
           minuteStep={30}
           style={{ width: '100%' }}
         />
+      </Form.Item>
+
+      <Form.Item
+        name="technician"
+        label="选择技师"
+      >
+        <Select placeholder="请选择技师(可选)">
+          {technicians.map(tech => (
+            <Option key={tech._id} value={tech._id}>
+              {tech.name || tech.username || '未命名技师'}
+            </Option>
+          ))}
+        </Select>
       </Form.Item>
 
       <Form.Item>

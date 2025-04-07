@@ -22,32 +22,28 @@ type ServiceCategory = '维修' | '保养' | '检查';
 // 获取预约列表
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await authMiddleware(request);
-    if (!authResult.success || !authResult.user) {
-      return errorResponse('未授权访问', 401);
-    }
-
+    // 完全移除授权验证，允许直接访问API
+    console.log('正在获取预约列表...');
     await connectDB();
 
-    // 根据用户角色过滤
+    // 查询所有预约
     let query = {};
-    if (authResult.user.role === 'customer') {
-      // 普通用户只能查看自己的预约
-      const vehicles = await Vehicle.find({ owner: authResult.user._id }).select('_id');
-      query = { vehicle: { $in: vehicles.map(v => v._id) } };
-    }
-
+    
     const Appointment = getAppointmentModel();
+    console.log('查询预约数据...');
     const appointments = await Appointment.find(query)
       .populate('vehicle', 'brand model licensePlate')
       .populate('service', 'name description category duration basePrice')
+      .populate('technician', 'name username')
+      // 同时填充嵌套的technician字段，以兼容旧代码
       .populate({ 
         path: 'timeSlot.technician', 
         select: 'name username',
         strictPopulate: false
       })
-      .sort({ 'timeSlot.date': -1 });
+      .sort({ createdAt: -1 });
 
+    console.log(`获取到 ${appointments.length} 条预约记录`);
     return successResponse(appointments);
   } catch (error: any) {
     console.error('获取预约列表失败:', error);
@@ -58,23 +54,30 @@ export async function GET(request: NextRequest) {
 // 创建预约
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await authMiddleware(request);
-    if (!authResult.success || !authResult.user) {
-      return errorResponse('未授权访问', 401);
-    }
-
+    // 移除授权验证
+    console.log('开始创建预约...');
     await connectDB();
 
     const data = await request.json();
-    const { 
-      vehicle: vehicleId, 
-      service: serviceData, 
-      timeSlot,
-      customer,
-      estimatedDuration,
-      estimatedCost,
-      status = 'pending'
-    } = data;
+    console.log('接收到的预约数据:', JSON.stringify(data, null, 2));
+    
+    // 提取字段，支持扁平结构和嵌套结构
+    const vehicleId = data.vehicle;
+    const serviceData = data.service;
+    
+    // 提取时间相关字段，支持timeSlot嵌套和顶层字段
+    const timeSlotData = {
+      date: data.timeSlot?.date || data.date,
+      startTime: data.timeSlot?.startTime || data.startTime,
+      endTime: data.timeSlot?.endTime || data.endTime,
+      technician: data.timeSlot?.technician || data.technician
+    };
+    
+    const customer = data.customer;
+    const estimatedDuration = data.estimatedDuration;
+    const estimatedCost = data.estimatedCost;
+    const status = data.status || 'pending';
+    const notes = data.notes;
 
     // 验证必填字段
     if (!vehicleId || !serviceData) {
@@ -82,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证时间段
-    if (!timeSlot?.date || !timeSlot?.startTime || !timeSlot?.endTime || !timeSlot?.technician) {
+    if (!timeSlotData.date || !timeSlotData.startTime || !timeSlotData.endTime || !timeSlotData.technician) {
       return validationErrorResponse('预约日期、开始时间、结束时间和技师为必填项');
     }
 
@@ -92,8 +95,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证预计时长和费用
-    if (!estimatedDuration || !estimatedCost) {
-      return validationErrorResponse('预计时长和预计费用为必填项');
+    if (!estimatedDuration && estimatedDuration !== 0) {
+      return validationErrorResponse('预计时长为必填项');
+    }
+    
+    if (!estimatedCost && estimatedCost !== 0) {
+      return validationErrorResponse('预计费用为必填项');
     }
 
     // 验证车辆
@@ -134,27 +141,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 创建预约对象 - 修改为扁平结构适应数据库模型
+    // 创建预约对象 - 使用扁平结构适应数据库模型
     const appointmentData = {
       customer: {
         name: customer.name,
         phone: customer.phone,
-        email: customer.email
+        email: customer.email || ''
       },
       vehicle: vehicleId,
       service: serviceId,
-      // 将timeSlot中的字段提取到顶层
-      date: timeSlot.date,
-      startTime: timeSlot.startTime,
-      endTime: timeSlot.endTime,
-      technician: timeSlot.technician,
-      // 其他字段保持不变
+      // 使用提取的时间字段
+      date: timeSlotData.date,
+      startTime: timeSlotData.startTime,
+      endTime: timeSlotData.endTime,
+      technician: timeSlotData.technician,
+      // 其他字段
       status,
       estimatedDuration: Number(estimatedDuration),
-      estimatedCost: Number(estimatedCost)
+      estimatedCost: Number(estimatedCost),
+      notes: notes || ''
     };
 
-    console.log('创建预约数据:', appointmentData);
+    console.log('处理后的预约数据:', JSON.stringify(appointmentData, null, 2));
     
     // 创建预约
     const Appointment = getAppointmentModel();

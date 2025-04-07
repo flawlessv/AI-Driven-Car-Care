@@ -64,7 +64,7 @@ const timeSlotSchema = new Schema<ITimeSlot>({
   technician: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, '技师为必填项'],
+    required: false,
   },
 });
 

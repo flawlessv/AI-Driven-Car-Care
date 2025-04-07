@@ -37,10 +37,15 @@ export interface User {
   phone?: string;
   createdAt?: string;
   updatedAt?: string;
+  // 技师特有字段
+  level?: string;                // 技师等级
+  specialties?: string[];        // 专长领域
+  certifications?: string[];     // 持有证书
+  workExperience?: number;       // 工作年限
 }
 
-// 登录请求参数
-export interface LoginParams {
+// 登录表单接口
+export interface LoginForm {
   email: string;
   password: string;
 }

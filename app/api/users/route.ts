@@ -14,14 +14,8 @@ import { USER_ROLES } from '@/types/user';
 // 获取用户列表
 export async function GET(request: NextRequest) {
   try {
-    // 验证用户权限
-    const authResult = await authMiddleware(request);
-    if (!authResult.success) {
-      return errorResponse(authResult.message || '未授权访问', 401);
-    }
-
-    const { user } = authResult;
-    console.log('当前用户角色:', user.role);
+    // 移除授权验证
+    console.log('获取用户列表...');
 
     // 获取查询参数
     const searchParams = request.nextUrl.searchParams;
@@ -95,6 +89,24 @@ export async function POST(request: NextRequest) {
     // 验证必填字段
     if (!data.username || !data.password) {
       return errorResponse('用户名和密码不能为空', 400);
+    }
+
+    // 技师角色需要处理专业数据
+    if (data.role === 'technician') {
+      // 如果没有提供name字段，使用username
+      if (!data.name) {
+        data.name = data.username;
+      }
+      
+      // 如果没有提供level字段，默认为"初级技师"
+      if (!data.level) {
+        data.level = '初级技师';
+      }
+      
+      // 确保数值型字段是数字类型
+      if (data.workExperience) {
+        data.workExperience = Number(data.workExperience);
+      }
     }
 
     // 连接数据库

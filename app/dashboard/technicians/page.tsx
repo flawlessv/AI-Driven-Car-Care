@@ -30,7 +30,7 @@ import {
 import { USER_ROLES, USER_STATUS } from '../../lib/constants';
 import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
-import type { RootState } from '../../lib/store';
+import type { RootState } from '@/lib/store';
 import type { User } from '@/types/user';
 
 const { TextArea } = Input;
@@ -99,7 +99,7 @@ const TechniciansPage = () => {
         console.error('技师列表数据格式错误:', result);
         setTechnicians([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('获取技师列表失败:', error);
       message.error(error.message || '获取技师列表失败');
       setTechnicians([]);
@@ -144,6 +144,20 @@ const TechniciansPage = () => {
 
   const handleSubmit = async (values: any) => {
     try {
+      // 确保技师信息完整
+      if (!values.name) {
+        values.name = values.username;
+      }
+      
+      if (!values.level) {
+        values.level = '初级技师';
+      }
+      
+      // 转换数值类型
+      if (values.workExperience) {
+        values.workExperience = Number(values.workExperience);
+      }
+      
       const url = editingTechnician
         ? `/api/users/${editingTechnician._id}`
         : '/api/users';
@@ -161,16 +175,17 @@ const TechniciansPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('操作失败');
+        const errorData = await response.json();
+        throw new Error(errorData.message || '操作失败');
       }
 
       message.success('操作成功');
       setModalVisible(false);
       form.resetFields();
       fetchTechnicians();
-    } catch (error) {
+    } catch (error: any) {
       console.error('保存技师信息失败:', error);
-      message.error('保存失败');
+      message.error(error.message || '保存失败');
     }
   };
 
@@ -182,8 +197,8 @@ const TechniciansPage = () => {
         <Space>
           <Avatar icon={<UserOutlined />} />
           <div>
-            <div>{record.name}</div>
-            <div className="text-gray-500 text-sm">{record.level}</div>
+            <div>{record.name || record.username || '未命名'}</div>
+            <div className="text-gray-500 text-sm">{record.level || '初级技师'}</div>
           </div>
         </Space>
       ),
@@ -194,9 +209,9 @@ const TechniciansPage = () => {
       key: 'specialties',
       render: (specialties: string[]) => (
         <Space wrap>
-          {Array.isArray(specialties) ? specialties.map(specialty => (
+          {Array.isArray(specialties) && specialties.length > 0 ? specialties.map(specialty => (
             <Tag key={specialty} color="blue">{specialty}</Tag>
-          )) : null}
+          )) : <span className="text-gray-400">暂无专长</span>}
         </Space>
       ),
     },
@@ -206,9 +221,9 @@ const TechniciansPage = () => {
       key: 'certifications',
       render: (certifications: string[]) => (
         <Space wrap>
-          {Array.isArray(certifications) ? certifications.map(cert => (
+          {Array.isArray(certifications) && certifications.length > 0 ? certifications.map(cert => (
             <Tag key={cert} color="green">{cert}</Tag>
-          )) : null}
+          )) : <span className="text-gray-400">暂无认证</span>}
         </Space>
       ),
     },
@@ -216,30 +231,40 @@ const TechniciansPage = () => {
       title: '工作年限',
       dataIndex: 'workExperience',
       key: 'workExperience',
-      render: (years: number) => `${years}年`,
+      render: (years: string | number) => years ? `${years}年` : '未填写',
     },
     {
       title: '完成率',
       key: 'completion',
-      render: (record: TechnicianWithStats) => (
-        <Tooltip title={`完成${record.stats?.completedOrders || 0}个订单，共${record.stats?.totalOrders || 0}个订单`}>
-          <Progress
-            percent={record.stats?.completionRate || 0}
-            size="small"
-            format={percent => `${percent?.toFixed(1)}%`}
-          />
-        </Tooltip>
-      ),
+      render: (record: TechnicianWithStats) => {
+        if (!record.stats?.completionRate && record.stats?.completionRate !== 0) {
+          return <span className="text-gray-400">无数据</span>;
+        }
+        return (
+          <Tooltip title={`完成${record.stats?.completedOrders || 0}个订单，共${record.stats?.totalOrders || 0}个订单`}>
+            <Progress
+              percent={Number(record.stats.completionRate) || 0}
+              size="small"
+              format={percent => percent ? `${percent.toFixed(1)}%` : '0%'}
+            />
+          </Tooltip>
+        );
+      }
     },
     {
       title: '评分',
       key: 'rating',
-      render: (record: TechnicianWithStats) => (
-        <Space>
-          <StarOutlined style={{ color: '#faad14' }} />
-          <span>{record.stats?.averageRating?.toFixed(1) || '-'}</span>
-        </Space>
-      ),
+      render: (record: TechnicianWithStats) => {
+        if (!record.stats?.averageRating && record.stats?.averageRating !== 0) {
+          return <span className="text-gray-400">无评分</span>;
+        }
+        return (
+          <Space>
+            <StarOutlined style={{ color: '#faad14' }} />
+            <span>{record.stats.averageRating.toFixed(1)}</span>
+          </Space>
+        );
+      }
     },
     {
       title: '状态',
@@ -318,11 +343,29 @@ const TechniciansPage = () => {
           onFinish={handleSubmit}
         >
           <Form.Item
+            name="username"
+            label="登录账号"
+            rules={[{ required: true, message: '请输入登录账号' }]}
+            tooltip="用于技师登录系统的账号名"
+          >
+            <Input placeholder="请输入英文字母或数字的组合" />
+          </Form.Item>
+
+          <Form.Item
+            name="password"
+            label="登录密码"
+            rules={[{ required: !editingTechnician, message: '请输入登录密码' }]}
+            tooltip={editingTechnician ? "修改密码，留空则保持不变" : "设置技师初始登录密码"}
+          >
+            <Input.Password placeholder="请输入至少6位的密码" />
+          </Form.Item>
+
+          <Form.Item
             name="name"
             label="姓名"
             rules={[{ required: true, message: '请输入姓名' }]}
           >
-            <Input />
+            <Input placeholder="请输入技师姓名" />
           </Form.Item>
 
           <Form.Item

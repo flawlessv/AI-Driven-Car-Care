@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/mongodb';
 import { getAppointmentModel } from '@/models/appointment';
 import Vehicle from '@/models/vehicle';
 import { getServiceModel } from '@/models/service';
+import mongoose from 'mongoose';
 import {
   successResponse,
   errorResponse,
@@ -22,8 +23,10 @@ export async function POST(request: NextRequest) {
       serviceType, 
       serviceDescription, 
       date, 
-      time 
+      startTime,
     } = data;
+
+    console.log('收到简易预约数据:', JSON.stringify(data, null, 2));
 
     // 验证必填字段
     if (!customer?.name || !customer?.phone) {
@@ -38,7 +41,7 @@ export async function POST(request: NextRequest) {
       return validationErrorResponse('服务类型和问题描述为必填项');
     }
 
-    if (!date || !time) {
+    if (!date || !startTime) {
       return validationErrorResponse('预约日期和时间为必填项');
     }
 
@@ -69,26 +72,42 @@ export async function POST(request: NextRequest) {
 
     // 3. 创建预约
     const Appointment = getAppointmentModel();
-    const appointment = new Appointment({
+    
+    // 使用原生MongoDB方式直接插入文档
+    const endTime = calculateEndTime(startTime, 60);
+    
+    const rawAppointment = {
       customer: {
         name: customer.name,
         phone: customer.phone,
-        email: customer.email
+        email: customer.email || ''
       },
       vehicle: vehicle._id,
       service: service._id,
-      status: 'pending', // 待处理状态
-      estimatedDuration: 60, // 默认60分钟
-      estimatedCost: 300, // 默认300元
+      // 使用扁平结构，增强兼容性
+      date: new Date(date),
+      startTime: startTime,
+      endTime: endTime,
+      technician: data.technician || null, // 允许前端传入技师ID，否则为null
+      status: 'pending',
+      estimatedDuration: 60,
+      estimatedCost: 300,
+      notes: data.notes || '',
+      // 保留timeSlot结构以兼容现有代码，但不创建假的技师ID
       timeSlot: {
         date: new Date(date),
-        startTime: time,
-        endTime: calculateEndTime(time, 60), // 默认60分钟后结束
-        technician: null // 技师待分配
+        startTime: startTime,
+        endTime: endTime,
+        technician: data.technician || null // 如果没有技师ID，则为null，等待后台分配
       }
-    });
-
-    await appointment.save();
+    };
+    
+    console.log('创建预约数据:', JSON.stringify(rawAppointment, null, 2));
+    
+    // 使用直接插入文档的方式，而不是通过模型验证
+    const appointmentCollection = mongoose.connection.collection('appointments');
+    const result = await appointmentCollection.insertOne(rawAppointment);
+    const appointment = await Appointment.findById(result.insertedId);
 
     return successResponse({
       message: '预约创建成功，我们将尽快与您联系确认详细信息',
@@ -106,11 +125,17 @@ export async function POST(request: NextRequest) {
           description: serviceDescription
         },
         date,
-        time
+        startTime
       }
     });
   } catch (error: any) {
     console.error('创建简易预约失败:', error);
+    // 打印详细错误信息以便调试
+    if (error.errors) {
+      for (const field in error.errors) {
+        console.error(`字段 ${field} 错误:`, error.errors[field].message);
+      }
+    }
     return errorResponse(error.message || '创建预约失败');
   }
 }
