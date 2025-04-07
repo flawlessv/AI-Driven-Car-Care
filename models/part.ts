@@ -45,7 +45,8 @@ const partSchema = new mongoose.Schema(
     },
     unit: {
       type: String,
-      required: [true, '单位是必需的'],
+      required: false,
+      default: '个',
       trim: true,
     },
     location: {

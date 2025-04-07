@@ -108,16 +108,30 @@ export async function POST(request: NextRequest) {
       // 转换服务类型为中文
       const inputCategory = serviceData.category?.toLowerCase() as keyof typeof SERVICE_CATEGORY_MAP;
       const category = SERVICE_CATEGORY_MAP[inputCategory] || serviceData.category;
+      
+      console.log('Service category mapping:', {
+        originalCategory: serviceData.category,
+        inputCategory,
+        mappedCategory: category
+      });
 
       const Service = getServiceModel();
       const service = new Service({
         name: serviceData.name,
         category,
         duration: serviceData.duration,
-        basePrice: serviceData.basePrice
+        basePrice: serviceData.basePrice,
+        description: serviceData.description || ''
       });
-      await service.save();
-      serviceId = service._id;
+      
+      try {
+        await service.save();
+        serviceId = service._id;
+        console.log('Created new service with ID:', serviceId);
+      } catch (error: any) {
+        console.error('Service validation error:', error);
+        return errorResponse('创建服务失败: ' + error.message);
+      }
     }
 
     // 创建预约对象 - 修改为扁平结构适应数据库模型

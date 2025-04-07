@@ -139,8 +139,9 @@ export async function POST(request: NextRequest) {
       price,
       stock,
       minStock,
-      unit,
+      unit: unit || '个',
       location,
+      status: data.status || 'active'
     });
 
     await part.save();

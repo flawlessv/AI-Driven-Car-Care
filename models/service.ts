@@ -26,6 +26,10 @@ const serviceSchema = new Schema<IService>(
     category: {
       type: String,
       required: [true, '服务类型为必填项'],
+      enum: {
+        values: ['维修', '保养', '检查'],
+        message: '服务类型必须是以下之一: 维修, 保养, 检查'
+      }
     },
     duration: {
       type: Number,

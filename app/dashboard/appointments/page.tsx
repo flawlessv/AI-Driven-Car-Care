@@ -236,17 +236,17 @@ export default function AppointmentsPage() {
       'customer.phone': record.customer.phone,
       'customer.email': record.customer.email,
       
-      // 车辆信息 - 直接使用内嵌的车辆信息
-      'vehicle.brand': record.vehicle.brand,
-      'vehicle.model': record.vehicle.model,
-      'vehicle.licensePlate': record.vehicle.licensePlate,
+      // 车辆信息 - 添加空值检查
+      'vehicle.brand': record.vehicle?.brand || '',
+      'vehicle.model': record.vehicle?.model || '',
+      'vehicle.licensePlate': record.vehicle?.licensePlate || '',
       
-      // 服务信息
-      'service.type': record.service.type,
-      'service.name': record.service.name,
-      'service.description': record.service.description,
-      'service.duration': record.service.duration,
-      'service.basePrice': record.service.basePrice,
+      // 服务信息 - 添加空值检查
+      'service.type': record.service?.type || '',
+      'service.name': record.service?.name || '',
+      'service.description': record.service?.description || '',
+      'service.duration': record.service?.duration || 0,
+      'service.basePrice': record.service?.basePrice || 0,
       
       // 时间信息
       'timeSlot.technician': record.timeSlot?.technician,

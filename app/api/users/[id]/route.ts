@@ -72,7 +72,7 @@ export async function PUT(
       return errorResponse('未授权访问', 401);
     }
 
-    await connectDB();
+    await dbConnect();
     const User = getUserModel();
 
     const data = await request.json();

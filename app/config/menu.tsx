@@ -90,10 +90,13 @@ export const menuItems = [
     label: '配件库存',
     path: '/dashboard/parts',
   },
+  // 统计报表菜单项已移除
+  /*
   {
     key: 'reports',
     icon: <BarChartOutlined />,
     label: '统计报表',
+    adminOnly: true,
     children: [
       {
         key: 'maintenance-stats',
@@ -112,6 +115,7 @@ export const menuItems = [
       },
     ],
   },
+  */
   {
     key: 'reviews',
     icon: <MessageOutlined />,

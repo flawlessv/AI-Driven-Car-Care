@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { authMiddleware } from '@/lib/auth';
-import { getMaintenanceRuleModel } from '@/models/maintenanceRule';
+import MaintenanceRule from '@/models/maintenanceRule';
 import Vehicle from '@/models/vehicle';
 import {
   successResponse,
@@ -28,7 +28,6 @@ export async function GET(request: NextRequest) {
       query = { vehicle: { $in: vehicles.map(v => v._id) } };
     }
 
-    const MaintenanceRule = getMaintenanceRuleModel();
     const rules = await MaintenanceRule.find(query)
       .populate('vehicle', 'brand model licensePlate')
       .sort({ createdAt: -1 });
@@ -77,7 +76,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查是否已存在规则
-    const MaintenanceRule = getMaintenanceRuleModel();
     const existingRule = await MaintenanceRule.findOne({ vehicle: vehicleId });
     if (existingRule) {
       return validationErrorResponse('该车辆已存在维修规则');

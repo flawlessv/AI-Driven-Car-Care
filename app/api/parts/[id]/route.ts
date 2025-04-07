@@ -36,11 +36,18 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const {user} = await authMiddleware(request);
-    if ('status' in user) return user;
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return errorResponse(authResult.message || '未授权访问', 401);
+    }
+
+    // 确保用户存在
+    if (!authResult.user) {
+      return errorResponse('无法获取用户信息', 401);
+    }
 
     // 检查用户权限
-    if (user.role !== 'admin' && user.role !== 'staff') {
+    if (authResult.user.role !== 'admin' && authResult.user.role !== 'staff') {
       return errorResponse('没有权限更新配件', 403);
     }
 
@@ -63,18 +70,18 @@ export async function PUT(
       minStock,
       unit,
       location,
+      status
     } = data;
 
     // 验证必填字段
     const requiredFields = ['name', 'code', 'price', 'stock'];
     const missingFields = requiredFields.filter(field => !data[field]);
     if (missingFields.length > 0) {
-      return validationErrorResponse(
-        missingFields.reduce((acc, field) => ({
-          ...acc,
-          [field]: `${field}是必需的`,
-        }), {})
-      );
+      const errorObj: Record<string, string[]> = {};
+      missingFields.forEach(field => {
+        errorObj[field] = [`${field}是必需的`];
+      });
+      return validationErrorResponse(errorObj);
     }
 
     // 检查编号是否已被其他配件使用
@@ -100,11 +107,16 @@ export async function PUT(
         price,
         stock,
         minStock,
-        unit,
+        unit: unit || '个', // 确保有默认单位
         location,
+        status: status || 'active', // 默认状态
       },
       { new: true }
     );
+
+    if (!updatedPart) {
+      return errorResponse('更新配件失败', 500);
+    }
 
     return successResponse(updatedPart);
   } catch (error: any) {
@@ -118,11 +130,18 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const {user} = await authMiddleware(request);
-    if ('status' in user) return user;
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return errorResponse(authResult.message || '未授权访问', 401);
+    }
+
+    // 确保用户存在
+    if (!authResult.user) {
+      return errorResponse('无法获取用户信息', 401);
+    }
 
     // 检查用户权限
-    if (user.role !== 'admin' && user.role !== 'staff') {
+    if (authResult.user.role !== 'admin' && authResult.user.role !== 'staff') {
       return errorResponse('没有权限删除配件', 403);
     }
 
