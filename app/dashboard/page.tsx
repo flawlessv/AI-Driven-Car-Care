@@ -6,503 +6,532 @@ import {
   Row,
   Col,
   Statistic,
-  Table,
-  Tag,
-  Space,
-  DatePicker,
   Spin,
-  Empty,
   message,
-  List,
-  Button,
+  Typography,
+  Divider,
 } from 'antd';
 import {
   CarOutlined,
   ToolOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
-  DollarOutlined,
   UserOutlined,
-  AlertOutlined,
+  AppstoreOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { Line, Pie } from '@ant-design/plots';
-import dayjs from 'dayjs';
-import { useSelector } from 'react-redux';
-import type { RootState } from '@/lib/store';
-import { useRouter } from 'next/navigation';
+import { Column, Pie } from '@ant-design/plots';
 
-interface DashboardStats {
+const { Title, Text } = Typography;
+
+// 状态颜色映射
+const STATUS_COLORS = {
+  pending: '#faad14',
+  in_progress: '#1890ff',
+  completed: '#52c41a',
+  cancelled: '#d9d9d9',
+};
+
+// 工单类型颜色映射
+const TYPE_COLORS = {
+  regular: '#1890ff',
+  repair: '#eb2f96',
+  inspection: '#52c41a',
+  maintenance: '#722ed1',
+  emergency: '#fa541c',
+};
+
+// 配件类型颜色映射
+const PART_CATEGORY_COLORS = {
+  engine: '#1890ff',
+  transmission: '#eb2f96',
+  brake: '#52c41a',
+  electrical: '#722ed1',
+  body: '#fa541c',
+  other: '#fa8c16',
+};
+
+interface DashboardDataType {
+  username: string;
   overview: {
-    totalVehicles: number;
-    totalMaintenance: number;
-    completedMaintenance: number;
-    pendingMaintenance: number;
-    todayAppointments: number;
-    monthlyRevenue: number;
-    activeTechnicians: number;
-    alerts: number;
+    vehicles: {
+      total: number;
+      active: number;
+      inMaintenance: number;
+    };
+    appointments: {
+      total: number;
+      pending: number;
+      today: number;
+    };
+    workOrders: {
+      total: number;
+      pending: number;
+      inProgress: number;
+      completed: number;
+      thisMonth: number;
+    };
+    technicians: {
+      total: number;
+      active: number;
+    };
+    parts: {
+      total: number;
+      lowStock: number;
+      outOfStock: number;
+    };
   };
-  maintenanceByType: {
-    type: string;
-    count: number;
-  }[];
-  maintenanceByStatus: {
-    status: string;
-    count: number;
-  }[];
-  recentMaintenance: any[];
-  monthlyStats: {
-    month: string;
-    maintenance: number;
-    revenue: number;
-  }[];
+  charts: {
+    workOrderStatus: {
+      status: string;
+      count: number;
+    }[];
+    workOrderTypes: {
+      type: string;
+      count: number;
+    }[];
+    partCategories: {
+      category: string;
+      count: number;
+    }[];
+    monthlyWorkOrders: {
+      month: string;
+      count: number;
+    }[];
+  };
 }
 
-// 将 getStatusColor 移到组件外部作为工具函数
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'completed':
-      return 'success';
-    case 'in_progress':
-      return 'processing';
-    case 'pending':
-      return 'warning';
-    case 'cancelled':
-      return 'default';
-    default:
-      return 'default';
-  }
-};
+export default function DashboardPage() {
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<DashboardDataType | null>(null);
 
+  // 中文状态映射
+  const statusMap: Record<string, string> = {
+    'pending': '待处理',
+    'in_progress': '进行中',
+    'completed': '已完成',
+    'cancelled': '已取消'
+  };
 
-// 添加类型和状态的映射
-const TYPE_MAP = {
-  regular: '常规保养',
-  repair: '维修',
-  inspection: '检查'
-};
+  // 中文工单类型映射
+  const typeMap: Record<string, string> = {
+    'regular': '常规保养',
+    'repair': '维修',
+    'inspection': '检查',
+    'maintenance': '保养',
+    'emergency': '紧急维修'
+  };
 
-const STATUS_MAP = {
-  pending: '待处理',
-  in_progress: '进行中',
-  completed: '已完成',
-  cancelled: '已取消'
-};
-
-const formatVehicleInfo = (vehicle: any) => {
-  if (!vehicle) return '未知车辆';
-  
-  const brand = vehicle.brand || '';
-  const model = vehicle.model || '';
-  const licensePlate = vehicle.licensePlate || '';
-  
-  return (
-    <>
-      <span className="font-medium">{brand} {model}</span>
-      {licensePlate && <span className="text-gray-500 ml-2">({licensePlate})</span>}
-    </>
-  );
-};
-
-const DashboardPage = () => {
-  const router = useRouter();
-  const { user } = useSelector((state: RootState) => state.auth);
-  const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentMaintenance, setRecentMaintenance] = useState<any[]>([]);
-  const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
-  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
-    dayjs().subtract(30, 'days'),
-    dayjs(),
-  ]);
+  // 中文配件类型映射
+  const partCategoryMap: Record<string, string> = {
+    'engine': '发动机',
+    'transmission': '变速箱',
+    'brake': '刹车系统',
+    'electrical': '电气系统',
+    'body': '车身部件',
+    'other': '其他配件'
+  };
 
   useEffect(() => {
-    const fetchAllData = async () => {
+    const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const [startDate, endDate] = dateRange;
-
-        // 并行请求所有数据
-        const [statsResponse, maintenanceResponse] = await Promise.all([
-          // 获取仪表盘统计数据
-          fetch(`/api/dashboard/stats?startDate=${startDate.format('YYYY-MM-DD')}&endDate=${endDate.format('YYYY-MM-DD')}`),
-          // 获取最近保养记录
-          fetch('/api/maintenance/recent')
-        ]);
+        const response = await fetch('/api/dashboard/stats');
         
-        // 单独处理预约请求以便更好地处理错误
-        const appointmentsResponse = await fetch('/api/appointments/upcoming');
-
-        // 处理统计数据
-        const statsResult = await statsResponse.json();
-        if (!statsResponse.ok) {
-          throw new Error(statsResult.message || '获取统计数据失败');
-        }
-
-        // 处理保养记录
-        const maintenanceResult = await maintenanceResponse.json();
-        if (!maintenanceResponse.ok) {
-          throw new Error(maintenanceResult.message || '获取保养记录失败');
-        }
-
-        // 处理预约数据
-        // 检查响应状态
-        if (!appointmentsResponse.ok) {
-          const errorText = await appointmentsResponse.text();
-          console.error('预约API返回错误状态:', appointmentsResponse.status, appointmentsResponse.statusText);
-          console.log('错误响应内容:', errorText.substring(0, 200) + '...');
-          throw new Error(`获取预约数据失败: HTTP ${appointmentsResponse.status}`);
+        console.log('API响应状态:', response.status);
+        
+        if (response.status === 401) {
+          message.error('您未登录或登录已过期，请重新登录');
+          setLoading(false);
+          return;
         }
         
-        // 解析JSON
-        let appointmentsResult;
-        try {
-          appointmentsResult = await appointmentsResponse.json();
-        } catch (error) {
-          console.error('解析预约数据JSON失败:', error);
-          throw new Error('获取预约数据失败: 返回格式错误');
+        if (!response.ok) {
+          throw new Error('获取仪表盘数据失败');
         }
-
-        // 更新所有状态
-        setStats(statsResult.data);
-        setRecentMaintenance(maintenanceResult.data);
-        setUpcomingAppointments(appointmentsResult.data);
-
+        
+        const result = await response.json();
+        console.log('仪表盘数据:', result); // 添加调试信息
+        
+        if (!result.data) {
+          message.error('服务器返回的数据格式不正确');
+          setLoading(false);
+          return;
+        }
+        
+        setDashboardData(result.data);
       } catch (error) {
-        console.error('获取数据失败:', error);
-        message.error('获取数据失败: ' + (error as Error).message);
+        console.error('加载仪表盘数据失败:', error);
+        message.error('加载仪表盘数据失败，请稍后再试');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAllData();
-  }, [dateRange]);
+    fetchDashboardData();
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="dashboard-container">
-        <Spin spinning={loading} tip="Loading...">
-          <div className="dashboard-content">
-            <div className="welcome-section mb-6">
-              <h1 className="text-2xl font-bold mb-2">欢迎回来, {user?.name || '用户'}</h1>
-              <p className="text-gray-600">这里是您的汽车保养管理中心</p>
-            </div>
-
-            <Row gutter={[16, 16]}>
-              <Col xs={24} sm={12} lg={8}>
-                <Card>
-                  <Statistic
-                    title="我的车辆"
-                    value={0}
-                    prefix={<CarOutlined />}
-                    suffix="辆"
-                  />
-                </Card>
-              </Col>
-              <Col xs={24} sm={12} lg={8}>
-                <Card>
-                  <Statistic
-                    title="待处理保养"
-                    value={0}
-                    prefix={<ToolOutlined />}
-                    suffix="项"
-                  />
-                </Card>
-              </Col>
-              <Col xs={24} sm={12} lg={8}>
-                <Card>
-                  <Statistic
-                    title="预约服务"
-                    value={0}
-                    prefix={<ClockCircleOutlined />}
-                    suffix="个"
-                  />
-                </Card>
-              </Col>
-            </Row>
-
-            <Row gutter={[16, 16]} className="mt-6">
-              <Col xs={24} lg={12}>
-                <Card 
-                  title="最近保养记录" 
-                  extra={
-                    <Button type="link" onClick={() => router.push('/dashboard/maintenance')}>
-                      查看全部
-                    </Button>
-                  }
-                >
-                  <List
-                    dataSource={recentMaintenance}
-                    renderItem={item => (
-                      <List.Item>
-                        <div className="w-full flex justify-between items-center">
-                          <div>
-                            <div className="font-medium">
-                              {formatVehicleInfo(item.vehicle)}
-                            </div>
-                            <div className="text-gray-500 text-sm">
-                              {TYPE_MAP[item.type as keyof typeof TYPE_MAP] || item.type} - {' '}
-                              {dayjs(item.startDate).format('YYYY-MM-DD')}
-                            </div>
-                          </div>
-                          <Tag color={getStatusColor(item.status)}>
-                            {STATUS_MAP[item.status as keyof typeof STATUS_MAP] || item.status}
-                          </Tag>
-                        </div>
-                      </List.Item>
-                    )}
-                    locale={{
-                      emptyText: <Empty description="暂无保养记录" />
-                    }}
-                  />
-                </Card>
-              </Col>
-              <Col xs={24} lg={12}>
-                <Card 
-                  title="即将到来的预约" 
-                  extra={
-                    <Button 
-                      type="link" 
-                      onClick={() => router.push('/dashboard/appointments')}
-                    >
-                      查看全部
-                    </Button>
-                  }
-                >
-                  <List
-                    dataSource={upcomingAppointments}
-                    renderItem={item => (
-                      <List.Item>
-                        <div className="w-full">
-                          <div className="font-medium">{item.vehicleName}</div>
-                          <div className="text-gray-500 text-sm">
-                            {item.service}
-                          </div>
-                          <div className="text-gray-400 text-sm">
-                            预约时间: {item.date}
-                          </div>
-                        </div>
-                      </List.Item>
-                    )}
-                  />
-                </Card>
-              </Col>
-            </Row>
-          </div>
-        </Spin>
-      </div>
-    );
-  }
-
-  if (!stats || !stats.overview) {
-    return (
-      <div className="p-6">
-        <Empty description="暂无数据" />
-      </div>
-    );
-  }
-
-  console.log('Dashboard stats:', stats);
-
-  const maintenanceTypeConfig = {
-    data: stats.maintenanceByType,
-    angleField: 'count',
+  // 准备默认图表数据
+  const emptyPieData = [{ type: '暂无数据', value: 1 }];
+  const emptyColumnData = [{ month: '暂无数据', count: 0 }];
+  
+  // 工单状态饼图配置
+  const workOrderStatusConfig = {
+    data: dashboardData?.charts?.workOrderStatus?.length 
+      ? dashboardData.charts.workOrderStatus.map(item => ({
+          type: statusMap[item.status] || item.status,
+          value: item.count,
+        }))
+      : emptyPieData,
+    angleField: 'value',
     colorField: 'type',
     radius: 0.8,
+    legend: {
+      position: 'bottom',
+    },
     label: {
-      type: 'outer',
-      content: '{name} {percentage}',
+      type: 'inner',
+      offset: '-30%',
+      content: ({ percent }: { percent: number }) => `${(percent * 100).toFixed(0)}%`,
+      style: {
+        textAlign: 'center',
+        fontSize: 14,
+      },
+    },
+    tooltip: {
+      formatter: (datum: any) => {
+        return { name: datum.type, value: `${datum.value} 个` };
+      },
     },
     interactions: [{ type: 'element-active' }],
+    color: (datum: any) => {
+      if (datum.type === '暂无数据') return '#c0c0c0';
+      const status = Object.keys(statusMap).find(
+        key => statusMap[key] === datum.type
+      );
+      return status ? STATUS_COLORS[status as keyof typeof STATUS_COLORS] : '#d9d9d9';
+    },
   };
 
-  const monthlyStatsConfig = {
-    data: stats.monthlyStats,
+  // 工单类型饼图配置
+  const workOrderTypeConfig = {
+    data: dashboardData?.charts?.workOrderTypes?.length 
+      ? dashboardData.charts.workOrderTypes.map(item => ({
+          type: typeMap[item.type] || item.type,
+          value: item.count,
+        }))
+      : emptyPieData,
+    angleField: 'value',
+    colorField: 'type',
+    radius: 0.8,
+    legend: {
+      position: 'bottom',
+    },
+    label: {
+      type: 'inner',
+      offset: '-30%',
+      content: ({ percent }: { percent: number }) => `${(percent * 100).toFixed(0)}%`,
+      style: {
+        textAlign: 'center',
+        fontSize: 14,
+      },
+    },
+    tooltip: {
+      formatter: (datum: any) => {
+        return { name: datum.type, value: `${datum.value} 个` };
+      },
+    },
+    interactions: [{ type: 'element-active' }],
+    color: (datum: any) => {
+      if (datum.type === '暂无数据') return '#c0c0c0';
+      const type = Object.keys(typeMap).find(
+        key => typeMap[key] === datum.type
+      );
+      return type ? TYPE_COLORS[type as keyof typeof TYPE_COLORS] : '#d9d9d9';
+    },
+  };
+
+  // 配件类型饼图配置
+  const partCategoryConfig = {
+    data: dashboardData?.charts?.partCategories?.length 
+      ? dashboardData.charts.partCategories.map(item => ({
+          category: partCategoryMap[item.category] || item.category,
+          value: item.count,
+        }))
+      : emptyPieData.map(item => ({ category: item.type, value: item.value })),
+    angleField: 'value',
+    colorField: 'category',
+    radius: 0.8,
+    legend: {
+      position: 'bottom',
+    },
+    label: {
+      type: 'inner',
+      offset: '-30%',
+      content: ({ percent }: { percent: number }) => `${(percent * 100).toFixed(0)}%`,
+      style: {
+        textAlign: 'center',
+        fontSize: 14,
+      },
+    },
+    tooltip: {
+      formatter: (datum: any) => {
+        return { name: datum.category, value: `${datum.value} 个` };
+      },
+    },
+    interactions: [{ type: 'element-active' }],
+    color: (datum: any) => {
+      if (datum.category === '暂无数据') return '#c0c0c0';
+      const category = Object.keys(partCategoryMap).find(
+        key => partCategoryMap[key] === datum.category
+      );
+      return category ? PART_CATEGORY_COLORS[category as keyof typeof PART_CATEGORY_COLORS] : '#d9d9d9';
+    },
+  };
+
+  // 月度工单柱状图配置
+  const monthlyWorkOrdersConfig = {
+    data: dashboardData?.charts?.monthlyWorkOrders?.length 
+      ? dashboardData.charts.monthlyWorkOrders 
+      : emptyColumnData,
     xField: 'month',
-    yField: 'maintenance',
-    seriesField: 'type',
-    smooth: true,
-    animation: {
-      appear: {
-        animation: 'path-in',
-        duration: 1000,
+    yField: 'count',
+    meta: {
+      month: {
+        alias: '月份',
+      },
+      count: {
+        alias: '工单数量',
       },
     },
+    label: {
+      position: 'middle',
+      style: {
+        fill: '#FFFFFF',
+        opacity: 0.6,
+      },
+    },
+    xAxis: {
+      label: {
+        formatter: (val: string) => {
+          // 转换YYYY-MM为MM月
+          return val.includes('-') ? val.split('-')[1] + '月' : val;
+        },
+      },
+    },
+    yAxis: {
+      title: {
+        text: '工单数量',
+      },
+    },
+    tooltip: {
+      formatter: (datum: any) => {
+        return { name: '工单数量', value: `${datum.count} 个` };
+      },
+    },
+    color: '#1890ff',
   };
 
-  const recentMaintenanceColumns = [
-    {
-      title: '车辆',
-      dataIndex: ['vehicle', 'licensePlate'],
-      render: (text: string, record: any) => (
-        <span>
-          {record.vehicle.brand} {record.vehicle.model}
-          <br />
-          {text}
-        </span>
-      ),
-    },
-    {
-      title: '维修类型',
-      dataIndex: 'type',
-      render: (type: string) => {
-        const typeText = {
-          regular: '常规保养',
-          repair: '维修',
-          inspection: '检查',
-        };
-        return typeText[type as keyof typeof typeText] || type;
-      },
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      render: (status: string) => {
-        const statusColors = {
-          pending: 'orange',
-          in_progress: 'blue',
-          completed: 'green',
-          cancelled: 'red',
-        };
-        const statusText = {
-          pending: '待处理',
-          in_progress: '进行中',
-          completed: '已完成',
-          cancelled: '已取消',
-        };
-        return (
-          <Tag color={statusColors[status as keyof typeof statusColors]}>
-            {statusText[status as keyof typeof statusText]}
-          </Tag>
-        );
-      },
-    },
-    {
-      title: '技师',
-      dataIndex: ['technician', 'name'],
-      render: (name: string, record: any) => record.technician?.name || record.technician?.username || '-',
-    },
-    {
-      title: '开始日期',
-      dataIndex: 'startDate',
-      render: (date: string) => dayjs(date).format('YYYY-MM-DD'),
-    },
-  ];
+  // 加载中状态
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <Spin size="large" tip="加载中..." />
+      </div>
+    );
+  }
+
+  // 无数据状态
+  if (!dashboardData) {
+    return (
+      <div className="p-6">
+        <div className="mb-6">
+          <Title level={2}>欢迎使用汽车维修管理系统</Title>
+          <Text type="secondary">仪表盘数据加载失败，可能是因为网络问题或您尚未有相关数据</Text>
+        </div>
+        <Divider />
+        <div className="flex justify-center items-center h-96 flex-col">
+          <ExclamationCircleOutlined style={{ fontSize: 48, color: '#faad14', marginBottom: 16 }} />
+          <Title level={4}>暂无数据</Title>
+          <Text type="secondary">系统未能获取到仪表盘数据，请稍后刷新页面或联系管理员</Text>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="dashboard-container">
-      <Spin spinning={loading} tip="Loading...">
-        <div className="dashboard-content">
-          <div className="welcome-section mb-6">
-            <h1 className="text-2xl font-bold mb-2">欢迎回来, {user?.name || '用户'}</h1>
-            <p className="text-gray-600">这里是您的汽车保养管理中心</p>
-          </div>
-
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="我的车辆"
-                  value={stats?.overview.totalVehicles || 0}
-                  prefix={<CarOutlined />}
-                  suffix="辆"
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="待处理保养"
-                  value={stats?.overview.pendingMaintenance || 0}
-                  prefix={<ToolOutlined />}
-                  suffix="项"
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="预约服务"
-                  value={stats?.overview.todayAppointments || 0}
-                  prefix={<ClockCircleOutlined />}
-                  suffix="个"
-                />
-              </Card>
-            </Col>
-          </Row>
-
-          <Row gutter={[16, 16]} className="mt-6">
-            <Col xs={24} lg={12}>
-              <Card 
-                title="最近保养记录" 
-                extra={
-                  <Button type="link" onClick={() => router.push('/dashboard/maintenance')}>
-                    查看全部
-                  </Button>
-                }
-              >
-                <List
-                  dataSource={recentMaintenance}
-                  renderItem={item => (
-                    <List.Item>
-                      <div className="w-full flex justify-between items-center">
-                        <div>
-                          <div className="font-medium">
-                            {formatVehicleInfo(item.vehicle)}
-                          </div>
-                          <div className="text-gray-500 text-sm">
-                            {TYPE_MAP[item.type as keyof typeof TYPE_MAP] || item.type} - {' '}
-                            {dayjs(item.startDate).format('YYYY-MM-DD')}
-                          </div>
-                        </div>
-                        <Tag color={getStatusColor(item.status)}>
-                          {STATUS_MAP[item.status as keyof typeof STATUS_MAP] || item.status}
-                        </Tag>
-                      </div>
-                    </List.Item>
-                  )}
-                  locale={{
-                    emptyText: <Empty description="暂无保养记录" />
-                  }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Card 
-                title="即将到来的预约" 
-                extra={
-                  <Button 
-                    type="link" 
-                    onClick={() => router.push('/dashboard/appointments')}
-                  >
-                    查看全部
-                  </Button>
-                }
-              >
-                <List
-                  dataSource={upcomingAppointments}
-                  renderItem={item => (
-                    <List.Item>
-                      <div className="w-full">
-                        <div className="font-medium">{item.vehicleName}</div>
-                        <div className="text-gray-500 text-sm">
-                          {item.service}
-                        </div>
-                        <div className="text-gray-400 text-sm">
-                          预约时间: {item.date}
-                        </div>
-                      </div>
-                    </List.Item>
-                  )}
-                />
-              </Card>
-            </Col>
-          </Row>
-        </div>
-      </Spin>
+    <div className="p-6">
+      {/* 欢迎信息 */}
+      <div className="mb-6">
+        <Title level={2}>欢迎，{dashboardData?.username || '用户'}！</Title>
+        <Text type="secondary">这里是您的汽车维修管理系统仪表盘</Text>
+      </div>
+      
+      <Divider />
+      
+      {/* 统计卡片 */}
+      <div className="mb-8">
+        <Title level={4}>系统概览</Title>
+        <Row gutter={[16, 16]}>
+          {/* 车辆统计 */}
+          <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+            <Card bordered={false}>
+              <Statistic
+                title="车辆总数"
+                value={dashboardData?.overview?.vehicles?.total || 0}
+                prefix={<CarOutlined />}
+                valueStyle={{ color: '#1890ff' }}
+              />
+              <div className="mt-2 flex justify-between">
+                <Text type="secondary">
+                  激活: {dashboardData?.overview?.vehicles?.active || 0}
+                </Text>
+                <Text type="secondary">
+                  维修中: {dashboardData?.overview?.vehicles?.inMaintenance || 0}
+                </Text>
+              </div>
+            </Card>
+          </Col>
+          
+          {/* 工单统计 */}
+          <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+            <Card bordered={false}>
+              <Statistic
+                title="工单总数"
+                value={dashboardData?.overview?.workOrders?.total || 0}
+                prefix={<ToolOutlined />}
+                valueStyle={{ color: '#722ed1' }}
+              />
+              <div className="mt-2 flex justify-between text-xs">
+                <Text type="secondary">
+                  待处理: {dashboardData?.overview?.workOrders?.pending || 0}
+                </Text>
+                <Text type="secondary">
+                  进行中: {dashboardData?.overview?.workOrders?.inProgress || 0}
+                </Text>
+                <Text type="secondary">
+                  已完成: {dashboardData?.overview?.workOrders?.completed || 0}
+                </Text>
+              </div>
+            </Card>
+          </Col>
+          
+          {/* 预约统计 */}
+          <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+            <Card bordered={false}>
+              <Statistic
+                title="预约总数"
+                value={dashboardData?.overview?.appointments?.total || 0}
+                prefix={<ClockCircleOutlined />}
+                valueStyle={{ color: '#fa8c16' }}
+              />
+              <div className="mt-2 flex justify-between">
+                <Text type="secondary">
+                  待处理: {dashboardData?.overview?.appointments?.pending || 0}
+                </Text>
+                <Text type="secondary">
+                  今日预约: {dashboardData?.overview?.appointments?.today || 0}
+                </Text>
+              </div>
+            </Card>
+          </Col>
+          
+          {/* 技师统计 */}
+          <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+            <Card bordered={false}>
+              <Statistic
+                title="技师总数"
+                value={dashboardData?.overview?.technicians?.total || 0}
+                prefix={<UserOutlined />}
+                valueStyle={{ color: '#13c2c2' }}
+              />
+              <div className="mt-2 flex justify-between">
+                <Text type="secondary">
+                  在岗技师: {dashboardData?.overview?.technicians?.active || 0}
+                </Text>
+              </div>
+            </Card>
+          </Col>
+          
+          {/* 配件统计 */}
+          <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+            <Card bordered={false}>
+              <Statistic
+                title="配件总数"
+                value={dashboardData?.overview?.parts?.total || 0}
+                prefix={<AppstoreOutlined />}
+                valueStyle={{ color: '#eb2f96' }}
+              />
+              <div className="mt-2 flex justify-between">
+                <Text type="secondary">
+                  低库存: {dashboardData?.overview?.parts?.lowStock || 0}
+                </Text>
+                <Text type="secondary">
+                  缺货: {dashboardData?.overview?.parts?.outOfStock || 0}
+                </Text>
+              </div>
+            </Card>
+          </Col>
+          
+          {/* 本月工单 */}
+          <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+            <Card bordered={false}>
+              <Statistic
+                title="本月工单"
+                value={dashboardData?.overview?.workOrders?.thisMonth || 0}
+                prefix={<CheckCircleOutlined />}
+                valueStyle={{ color: '#52c41a' }}
+              />
+              <div className="mt-2 flex justify-center">
+                <Text type="secondary">
+                  当月处理的工单总数
+                </Text>
+              </div>
+            </Card>
+          </Col>
+        </Row>
+      </div>
+      
+      <Divider />
+      
+      {/* 图表区域 - 暂时注释掉
+      <div>
+        <Title level={4}>数据分析与统计</Title>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={24} md={12}>
+            <Card title="工单状态分布" bordered={false}>
+              <div style={{ height: 300 }}>
+                <Pie {...workOrderStatusConfig} />
+              </div>
+            </Card>
+          </Col>
+          
+          <Col xs={24} sm={24} md={12}>
+            <Card title="工单类型分布" bordered={false}>
+              <div style={{ height: 300 }}>
+                <Pie {...workOrderTypeConfig} />
+              </div>
+            </Card>
+          </Col>
+          
+          <Col xs={24} sm={24} md={12}>
+            <Card title="配件类别分布" bordered={false}>
+              <div style={{ height: 300 }}>
+                <Pie {...partCategoryConfig} />
+              </div>
+            </Card>
+          </Col>
+          
+          <Col xs={24} sm={24} md={12}>
+            <Card title="半年工单趋势" bordered={false}>
+              <div style={{ height: 300 }}>
+                <Column {...monthlyWorkOrdersConfig} />
+              </div>
+            </Card>
+          </Col>
+        </Row>
+      </div>
+      */}
     </div>
   );
-};
-
-export default DashboardPage; 
+} 
