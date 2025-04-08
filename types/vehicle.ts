@@ -9,6 +9,7 @@ export interface Vehicle {
   lastMaintenance?: Date; // 上次保养时间
   nextMaintenance?: Date; // 下次保养时间
   status: 'active' | 'inactive' | 'maintenance'; // 状态
+  owner?: string; // 车主ID
   ownerName: string; // 车主姓名
   ownerContact: string; // 联系方式
   createdAt: Date;

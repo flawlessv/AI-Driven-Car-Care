@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
     
     // 根据用户角色过滤
     if (authResult.user.role === 'customer') {
+      console.log('客户查询工单，只显示自己的：', authResult.user._id);
       query.customer = authResult.user._id;
     } else if (authResult.user.role === 'technician') {
       query.technician = authResult.user._id;

@@ -22,15 +22,39 @@ type ServiceCategory = '维修' | '保养' | '检查';
 // 获取预约列表
 export async function GET(request: NextRequest) {
   try {
-    // 完全移除授权验证，允许直接访问API
+    // 添加授权验证
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return errorResponse('未授权访问', 401);
+    }
+    
+    // 确保用户存在
+    if (!authResult.user) {
+      return errorResponse('无法获取用户信息', 401);
+    }
+    
+    const user = authResult.user;
+
     console.log('正在获取预约列表...');
     await connectDB();
 
-    // 查询所有预约
+    // 查询条件，根据用户角色过滤预约
     let query = {};
     
+    // 如果是客户，只能查看自己的预约
+    if (user.role === 'customer') {
+      console.log('客户查询预约，只显示自己的：', user._id);
+      
+      // 首先获取该客户的所有车辆
+      const vehicles = await Vehicle.find({ owner: user._id }).select('_id');
+      const vehicleIds = vehicles.map(v => v._id);
+      
+      console.log('客户车辆IDs:', vehicleIds);
+      query = { vehicle: { $in: vehicleIds } };
+    }
+    
     const Appointment = getAppointmentModel();
-    console.log('查询预约数据...');
+    console.log('查询预约数据..., 过滤条件:', query);
     const appointments = await Appointment.find(query)
       .populate('vehicle', 'brand model licensePlate')
       .populate('service', 'name description category duration basePrice')

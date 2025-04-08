@@ -15,6 +15,10 @@ const vehicleSchema = new mongoose.Schema({
     required: [true, '请输入车牌号'],
     unique: true
   },
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
   ownerName: String,
   ownerContact: String,
   year: {
@@ -42,6 +46,7 @@ const vehicleSchema = new mongoose.Schema({
 vehicleSchema.index({ licensePlate: 1 }, { unique: true });
 vehicleSchema.index({ vin: 1 }, { unique: true });
 vehicleSchema.index({ status: 1 });
+vehicleSchema.index({ owner: 1 });
 
 // 添加方法
 vehicleSchema.methods.updateMileage = async function (newMileage: number) {

@@ -3,9 +3,22 @@ import { connectDB } from '../../../lib/mongodb';
 import Review from '../../../models/review';
 import WorkOrder from '../../../models/workOrder';
 import User from '../../../models/user';
+import { authMiddleware } from '@/lib/auth';
+import { errorResponse } from '@/lib/api-response';
 
 export async function GET(request: Request) {
   try {
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return errorResponse('未授权访问', 401);
+    }
+    
+    // 确保用户存在
+    if (!authResult.user) {
+      return errorResponse('无法获取用户信息', 401);
+    }
+    
+    const user = authResult.user;
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -20,6 +33,12 @@ export async function GET(request: Request) {
     if (targetType) query.targetType = targetType;
     if (rating) query.rating = parseInt(rating);
     if (status) query.status = status;
+    
+    // 客户角色只能查看自己的评价
+    if (user.role === 'customer') {
+      console.log('客户查询评价，只显示自己的：', user._id);
+      query.author = user._id;
+    }
 
     console.log('评价查询条件:', query);
     console.log('分页参数: page=', page, 'limit=', limit);

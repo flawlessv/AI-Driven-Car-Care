@@ -64,13 +64,6 @@ const TechniciansPage = () => {
       return;
     }
 
-    // 检查用户权限
-    if (!['admin', 'technician'].includes(user.role)) {
-      console.log('用户无权限访问，重定向到首页', user.role);
-      router.push('/dashboard');
-      return;
-    }
-
     console.log('用户已登录，角色:', user.role);
     fetchTechnicians();
   }, [user, router]);
@@ -107,11 +100,6 @@ const TechniciansPage = () => {
     }
   };
 
-  const handleAdd = () => {
-    setEditingTechnician(null);
-    form.resetFields();
-    setModalVisible(true);
-  };
 
   const handleEdit = (record: TechnicianWithStats) => {
     setEditingTechnician(record);

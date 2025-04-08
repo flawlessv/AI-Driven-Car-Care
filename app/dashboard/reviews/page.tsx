@@ -69,17 +69,12 @@ export default function ReviewsPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [newReviewModalVisible, setNewReviewModalVisible] = useState(false);
-  const [newReviewForm] = Form.useForm();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [submitting, setSubmitting] = useState(false);
   const { user } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     fetchReviews();
     fetchTechnicians();
-    
-    console.log('组件挂载或依赖更新，当前技师列表:', technicians);
   }, [page, pageSize]);
 
   useEffect(() => {
@@ -143,36 +138,6 @@ export default function ReviewsPage() {
     }
   };
 
-  const handleCreateReview = async () => {
-    try {
-      const values = await newReviewForm.validateFields();
-      setSubmitting(true);
-      
-      const response = await fetch('/api/reviews', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok) {
-        message.success('添加评价成功');
-        setNewReviewModalVisible(false);
-        newReviewForm.resetFields();
-        fetchReviews();
-      } else {
-        throw new Error(result.message || '添加评价失败');
-      }
-    } catch (error: any) {
-      message.error(error.message || '添加评价失败');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleStatusChange = async (record: Review, status: Review['status']) => {
     try {
       const response = await fetch(`/api/reviews/${record._id}`, {
@@ -193,11 +158,6 @@ export default function ReviewsPage() {
     } catch (error: any) {
       message.error(error.message || '更新状态失败');
     }
-  };
-
-  const openNewReviewModal = () => {
-    console.log('打开添加评价弹窗，技师列表状态:', technicians);
-    setNewReviewModalVisible(true);
   };
 
   const columns: ColumnsType<Review> = [
@@ -297,20 +257,6 @@ export default function ReviewsPage() {
             评价管理
           </Title>
         }
-        extra={
-          <PermissionChecker
-            menuKey="reviews"
-            requiredPermission="write"
-            buttonProps={{
-              type: "primary",
-              icon: <PlusOutlined />,
-              onClick: openNewReviewModal
-            }}
-            noPermissionTip="您没有添加评价的权限"
-          >
-            添加评价
-          </PermissionChecker>
-        }
       >
         <Table
           loading={loading}
@@ -368,107 +314,6 @@ export default function ReviewsPage() {
           }}
         />
       </Card>
-
-      <Modal
-        title="添加评价"
-        open={newReviewModalVisible}
-        onOk={handleCreateReview}
-        onCancel={() => setNewReviewModalVisible(false)}
-        confirmLoading={submitting}
-        width={600}
-        destroyOnClose={true}
-      >
-        <Form form={newReviewForm} layout="vertical">
-          <Form.Item
-            name="author"
-            label="评价人信息"
-            rules={[{ required: true, message: '请输入评价人信息' }]}
-          >
-            <Input.Group compact>
-              <Form.Item
-                name={['author', 'name']}
-                noStyle
-                rules={[{ required: true, message: '请输入姓名' }]}
-              >
-                <Input style={{ width: '50%' }} placeholder="姓名" />
-              </Form.Item>
-              <Form.Item
-                name={['author', 'phone']}
-                noStyle
-                rules={[{ required: true, message: '请输入联系方式' }]}
-              >
-                <Input style={{ width: '50%' }} placeholder="联系方式" />
-              </Form.Item>
-            </Input.Group>
-          </Form.Item>
-
-          <Form.Item
-            name="targetType"
-            label="评价对象类型"
-            rules={[{ required: true, message: '请选择评价对象类型' }]}
-          >
-            <Select placeholder="请选择评价对象类型">
-              <Option value="technician">技师</Option>
-              <Option value="shop">门店</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) => 
-              prevValues.targetType !== currentValues.targetType
-            }
-          >
-            {({ getFieldValue }) => {
-              const targetType = getFieldValue('targetType');
-              console.log('渲染技师选择组件，当前选择的类型:', targetType);
-              console.log('当前技师列表数据:', technicians);
-              
-              return targetType === 'technician' ? (
-                <Form.Item
-                  name={['targetId', '_id']}
-                  label="选择技师"
-                  rules={[{ required: true, message: '请选择技师' }]}
-                >
-                  <Select placeholder="请选择技师">
-                    {technicians && technicians.length > 0 ? (
-                      technicians.map(tech => (
-                        <Option key={tech._id} value={tech._id}>{tech.name}</Option>
-                      ))
-                    ) : (
-                      <Option value="" disabled>暂无技师数据</Option>
-                    )}
-                  </Select>
-                </Form.Item>
-              ) : targetType === 'shop' ? (
-                <Form.Item
-                  name={['targetId', 'name']}
-                  label="门店名称"
-                  rules={[{ required: true, message: '请输入门店名称' }]}
-                >
-                  <Input placeholder="请输入门店名称" />
-                </Form.Item>
-              ) : null;
-            }}
-          </Form.Item>
-
-          <Form.Item
-            name="rating"
-            label="评分"
-            rules={[{ required: true, message: '请评分' }]}
-          >
-            <Rate />
-          </Form.Item>
-
-          <Form.Item
-            name="content"
-            label="评价内容"
-            rules={[{ required: true, message: '请输入评价内容' }]}
-          >
-            <TextArea rows={4} placeholder="请输入评价内容" />
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   );
 } 

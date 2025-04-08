@@ -17,7 +17,17 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const {user} = await authMiddleware(request);
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return errorResponse('未授权访问', 401);
+    }
+    
+    // 确保用户存在
+    if (!authResult.user) {
+      return errorResponse('无法获取用户信息', 401);
+    }
+    
+    const user = authResult.user;
     await connectDB();
 
     // 获取车辆信息并填充关联数据
@@ -26,6 +36,15 @@ export async function GET(
 
     if (!vehicle) {
       return notFoundResponse('车辆不存在');
+    }
+    
+    // 检查权限：客户只能查看自己的车辆
+    if (user.role === 'customer' && vehicle.owner && vehicle.owner.toString() !== user._id.toString()) {
+      console.log('权限拒绝：客户尝试查看非自己的车辆', {
+        userId: user._id,
+        vehicleOwner: vehicle.owner
+      });
+      return errorResponse('您没有权限查看该车辆', 403);
     }
 
     // 获取最近的维修记录

@@ -16,6 +16,12 @@ import mongoose from 'mongoose';
 export async function GET(request: NextRequest) {
   try {
     const {user} = await authMiddleware(request);
+    console.log('当前用户:', {
+      id: user?._id?.toString(),
+      role: user?.role,
+      username: user?.username || user?.name
+    });
+    
     await connectDB();
 
     const searchParams = request.nextUrl.searchParams;
@@ -25,6 +31,13 @@ export async function GET(request: NextRequest) {
     const withoutRule = searchParams.get('withoutRule') === 'true';
 
     let query = {};
+    
+    // 添加客户角色过滤，只显示自己的车辆
+    if (user && user.role === 'customer') {
+      const ownerId = user._id.toString();
+      console.log('客户用户查询车辆，只显示自己的车辆ID：', ownerId);
+      query = { ...query, owner: ownerId };
+    }
 
     if (withoutRule) {
       // 获取已有保养规则的车辆ID
@@ -33,8 +46,33 @@ export async function GET(request: NextRequest) {
       
       // 添加条件：排除已有规则的车辆
       query = {
+        ...query,
         _id: { $nin: vehicleIdsWithRules }
       };
+    }
+
+    console.log('最终查询条件:', JSON.stringify(query));
+
+    // 先进行直接查询以验证数据
+    const allVehicles = await Vehicle.find({}).limit(10);
+    console.log(`数据库中有 ${allVehicles.length} 辆车总数`);
+    
+    // 查询所有有owner字段的车辆
+    const vehiclesWithOwner = await Vehicle.find({ owner: { $exists: true } }).limit(10);
+    console.log(`有owner字段的车辆: ${vehiclesWithOwner.length} 辆`);
+    
+    if (vehiclesWithOwner.length > 0) {
+      console.log('示例车辆owner字段:', {
+        vehicleId: vehiclesWithOwner[0]._id,
+        owner: vehiclesWithOwner[0].owner,
+        ownerType: typeof vehiclesWithOwner[0].owner
+      });
+    }
+
+    // 如果是客户，尝试直接使用ID查询
+    if (user && user.role === 'customer') {
+      const directOwnerQuery = await Vehicle.find({ owner: user._id }).limit(10);
+      console.log(`直接用ID查询到 ${directOwnerQuery.length} 辆车`);
     }
 
     const [vehicles, total] = await Promise.all([
@@ -44,6 +82,8 @@ export async function GET(request: NextRequest) {
         .sort({ createdAt: -1 }),
       Vehicle.countDocuments(query),
     ]);
+
+    console.log(`查询结果: 找到 ${vehicles.length} 辆车，总计 ${total} 辆`);
 
     return successResponse({
       data: vehicles,
@@ -62,14 +102,19 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // 验证用户身份
-    let user;
-    try {
-      user = await authMiddleware(request);
-    } catch (error: any) {
-      console.error('认证错误:', error);
-      return unauthorizedResponse(error.message);
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      console.error('认证错误:', authResult.message);
+      return unauthorizedResponse(authResult.message || '未授权访问');
     }
 
+    // 确保用户存在
+    if (!authResult.user) {
+      return errorResponse('无法获取用户信息', 401);
+    }
+    
+    const user = authResult.user;
+    
     // 连接数据库
     try {
       await connectDB();
@@ -149,6 +194,7 @@ export async function POST(request: NextRequest) {
     // 创建新车辆记录
     const vehicle = new Vehicle({
       ...data,
+      owner: user._id
     });
 
     try {
