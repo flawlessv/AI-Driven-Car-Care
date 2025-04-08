@@ -38,6 +38,7 @@ export default function UsersPage() {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
   
   const currentUser = useSelector((state: RootState) => state.auth.user);
 
@@ -144,6 +145,17 @@ export default function UsersPage() {
     fetchUsers();
   };
 
+  const handleEditSuccess = () => {
+    setEditModalVisible(false);
+    setSelectedUser(null);
+    fetchUsers();
+  };
+
+  const showEditModal = (user: User) => {
+    setSelectedUser(user);
+    setEditModalVisible(true);
+  };
+
   const columns: ColumnsType<User> = [
     {
       title: '用户名',
@@ -213,7 +225,7 @@ export default function UsersPage() {
             <Button 
               icon={<EditOutlined />} 
               size="small"
-              onClick={() => router.push(`/dashboard/users/${record._id}`)}
+              onClick={() => showEditModal(record)}
             >
               编辑
             </Button>
@@ -316,6 +328,28 @@ export default function UsersPage() {
           <UserForm
             onSuccess={handleCreateSuccess}
             onCancel={() => setCreateModalVisible(false)}
+          />
+        </Modal>
+
+        {/* 编辑用户弹窗 */}
+        <Modal
+          title="编辑用户"
+          open={editModalVisible}
+          onCancel={() => {
+            setEditModalVisible(false);
+            setSelectedUser(null);
+          }}
+          footer={null}
+          width={600}
+        >
+          <UserForm
+            initialData={selectedUser}
+            onSuccess={handleEditSuccess}
+            onCancel={() => {
+              setEditModalVisible(false);
+              setSelectedUser(null);
+            }}
+            isEdit={true}
           />
         </Modal>
 

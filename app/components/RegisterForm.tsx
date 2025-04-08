@@ -123,13 +123,13 @@ export default function RegisterForm() {
         <Divider className="text-gray-300">
           <span className="text-gray-500 text-sm px-4">已有账号?</span>
         </Divider>
-        <Link 
-          href="/login" 
-          className="inline-block text-blue-500 hover:text-blue-600 text-sm font-medium 
-            hover:underline transition-colors duration-300"
+        <Button 
+          type="link" 
+          onClick={() => router.push('/login')}
+          className="text-blue-500 hover:text-blue-600 font-medium"
         >
-          立即登录
-        </Link>
+          去登录
+        </Button>
       </div>
     </div>
   );
