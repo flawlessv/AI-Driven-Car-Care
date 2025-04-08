@@ -47,6 +47,7 @@ export interface Appointment {
   confirmationSent?: boolean;
   reminderSent?: boolean;
   sourceWorkOrder?: string; // 来源工单ID
+  user?: string; // 关联用户ID
 }
 
 // 维修保养服务类型

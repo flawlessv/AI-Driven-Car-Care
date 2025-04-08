@@ -22,56 +22,32 @@ type ServiceCategory = '维修' | '保养' | '检查';
 // 获取预约列表
 export async function GET(request: NextRequest) {
   try {
-    // 添加授权验证
-    const authResult = await authMiddleware(request);
-    if (!authResult.success) {
-      return errorResponse('未授权访问', 401);
-    }
-    
-    // 确保用户存在
-    if (!authResult.user) {
-      return errorResponse('无法获取用户信息', 401);
-    }
-    
-    const user = authResult.user;
-
-    console.log('正在获取预约列表...');
     await connectDB();
-
-    // 查询条件，根据用户角色过滤预约
-    let query = {};
     
-    // 如果是客户，只能查看自己的预约
-    if (user.role === 'customer') {
-      console.log('客户查询预约，只显示自己的：', user._id);
-      
-      // 首先获取该客户的所有车辆
-      const vehicles = await Vehicle.find({ owner: user._id }).select('_id');
-      const vehicleIds = vehicles.map(v => v._id);
-      
-      console.log('客户车辆IDs:', vehicleIds);
-      query = { vehicle: { $in: vehicleIds } };
+    // 获取当前用户信息
+    const authResult = await authMiddleware(request);
+    const isCustomer = authResult.success && authResult.user?.role === 'customer';
+    const userId = authResult.success && authResult.user ? authResult.user._id.toString() : null;
+    
+    // 构建查询条件
+    let query: any = {};
+    
+    // 如果是客户角色，只能查看自己的预约
+    if (isCustomer && userId) {
+      query.user = userId;
     }
     
+    // 执行查询
     const Appointment = getAppointmentModel();
-    console.log('查询预约数据..., 过滤条件:', query);
     const appointments = await Appointment.find(query)
-      .populate('vehicle', 'brand model licensePlate')
-      .populate('service', 'name description category duration basePrice')
-      .populate('technician', 'name username')
-      // 同时填充嵌套的technician字段，以兼容旧代码
-      .populate({ 
-        path: 'timeSlot.technician', 
-        select: 'name username',
-        strictPopulate: false
-      })
+      .populate('vehicle')
+      .populate('service')
       .sort({ createdAt: -1 });
-
-    console.log(`获取到 ${appointments.length} 条预约记录`);
+    
     return successResponse(appointments);
   } catch (error: any) {
     console.error('获取预约列表失败:', error);
-    return errorResponse(error.message);
+    return errorResponse(error.message || '获取预约列表失败');
   }
 }
 

@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
       serviceDescription, 
       date, 
       startTime,
+      userId // 获取可选的用户ID
     } = data;
 
     console.log('收到简易预约数据:', JSON.stringify(data, null, 2));
@@ -46,16 +47,24 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. 创建或获取车辆信息
-    let vehicle = await Vehicle.findOne({ licensePlate });
+    let vehicle;
+    const vehicleQuery = { licensePlate };
+    
+    vehicle = await Vehicle.findOne(vehicleQuery);
 
     if (!vehicle) {
-      // 创建新车辆
+      // 创建新车辆，如果有userId则关联到用户
       vehicle = new Vehicle({
         brand: vehicleBrand,
         model: vehicleModel,
         licensePlate,
         registrationDate: new Date(),
+        owner: userId || null // 如果有用户ID，关联车辆和用户
       });
+      await vehicle.save();
+    } else if (userId && !vehicle.owner) {
+      // 如果找到了车辆但没有关联用户，且提供了用户ID，则更新车辆所有者
+      vehicle.owner = userId;
       await vehicle.save();
     }
 
@@ -99,7 +108,9 @@ export async function POST(request: NextRequest) {
         startTime: startTime,
         endTime: endTime,
         technician: data.technician || null // 如果没有技师ID，则为null，等待后台分配
-      }
+      },
+      // 如果提供了用户ID，存储用户ID关联
+      user: userId || null
     };
     
     console.log('创建预约数据:', JSON.stringify(rawAppointment, null, 2));
@@ -140,17 +151,14 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 计算结束时间
+// 辅助函数：计算结束时间
 function calculateEndTime(startTime: string, durationMinutes: number): string {
   const [hours, minutes] = startTime.split(':').map(Number);
+  let endMinutes = minutes + durationMinutes;
+  let endHours = hours + Math.floor(endMinutes / 60);
+  endMinutes = endMinutes % 60;
   
-  // 计算总分钟数
-  let totalMinutes = hours * 60 + minutes + durationMinutes;
-  
-  // 转换回小时和分钟
-  const endHours = Math.floor(totalMinutes / 60) % 24;
-  const endMinutes = totalMinutes % 60;
-  
-  // 格式化为 HH:mm
-  return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+  // 确保格式是两位数
+  const formattedHours = endHours % 24;
+  return `${formattedHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
 } 

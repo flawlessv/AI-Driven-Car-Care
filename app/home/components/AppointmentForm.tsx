@@ -9,9 +9,12 @@ import {
   TimePicker,
   Button,
   message,
+  Alert,
 } from 'antd';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/lib/store';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -32,6 +35,22 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
   const [loading, setLoading] = useState(false);
   const [technicians, setTechnicians] = useState<any[]>([]);
   const router = useRouter();
+  
+  // 获取当前用户登录状态
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+
+  // 如果用户未登录，显示提示信息并重定向
+  useEffect(() => {
+    if (!isAuthenticated) {
+      message.warning('请先登录后再进行预约');
+      router.push('/login?redirect=/appointment');
+    }
+  }, [isAuthenticated, router]);
+
+  // 如果用户未登录，不显示表单
+  if (!isAuthenticated) {
+    return null;
+  }
 
   // 获取技师列表
   useEffect(() => {
@@ -55,6 +74,16 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
     
     fetchTechnicians();
   }, []);
+
+  // 当用户登录状态变化时，自动填充用户信息
+  useEffect(() => {
+    if (user) {
+      form.setFieldsValue({
+        name: user.name || user.username,
+        phone: user.phone || '',
+      });
+    }
+  }, [user, form]);
 
   const handleSubmit = async (values: any) => {
     try {
@@ -81,7 +110,9 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
           date: values.date.format('YYYY-MM-DD'),
           startTime: values.time.format('HH:mm'),
           technician: values.technician || null
-        }
+        },
+        // 添加用户ID关联
+        userId: user?._id
       };
 
       console.log('正在提交预约数据:', JSON.stringify(formattedData, null, 2));

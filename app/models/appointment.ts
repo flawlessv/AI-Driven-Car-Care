@@ -27,6 +27,7 @@ export interface IAppointment {
   createdAt: Date;
   updatedAt: Date;
   sourceWorkOrder?: mongoose.Types.ObjectId;
+  user?: mongoose.Types.ObjectId; // 关联用户ID
 }
 
 // 定义客户信息 Schema
@@ -107,6 +108,11 @@ const appointmentSchema = new Schema<IAppointment>(
     sourceWorkOrder: {
       type: Schema.Types.ObjectId,
       ref: 'WorkOrder',
+    },
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: false,
     },
   },
   {

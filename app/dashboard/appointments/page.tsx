@@ -21,6 +21,8 @@ import type { ColumnsType } from 'antd/es/table';
 import { EditOutlined, DeleteOutlined, PlusOutlined, SyncOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Appointment } from '@/types/appointment';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/lib/store';
 
 const { TextArea } = Input;
 
@@ -80,6 +82,10 @@ export default function AppointmentsPage() {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [technicians, setTechnicians] = useState<any[]>([]);
   const [form] = Form.useForm();
+  
+  // 获取当前用户信息和角色
+  const { user } = useSelector((state: RootState) => state.auth);
+  const isCustomer = user?.role === 'customer';
 
   useEffect(() => {
     fetchAppointments();
@@ -270,39 +276,56 @@ export default function AppointmentsPage() {
     {
       title: '操作',
       key: 'action',
-      render: (_, record) => (
-        <Space size="small" direction="vertical">
-          <Button
-            type="text"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
-            编辑
-          </Button>
-          {record.status === 'processed' && (
-            <Button
-              type="primary"
-              ghost
-              size="small"
-              icon={<SyncOutlined />}
-              onClick={() => handleConvertToWorkOrder(record)}
-              style={{ padding: '0 8px' }}
-            >
-              转为工单
-            </Button>
-          )}
-          <Button
-            type="text"
-            danger
-            size="small"
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record)}
-          >
-            删除
-          </Button>
-        </Space>
-      ),
+      render: (_, record) => {
+        // 获取预约关联的用户ID
+        const appointmentUserId = record.user as string | undefined;
+        
+        // 判断是否为客户本人的预约，或是否为客户角色
+        const isOwnAppointment = isCustomer && appointmentUserId === user?._id;
+        
+        return (
+          <Space size="small" direction="vertical">
+            <Tooltip title={isCustomer ? "客户无法编辑预约" : ""}>
+              <Button
+                type="text"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => handleEdit(record)}
+                disabled={isCustomer}
+              >
+                编辑
+              </Button>
+            </Tooltip>
+            {record.status === 'processed' && (
+              <Tooltip title={isCustomer ? "客户无法转换工单" : ""}>
+                <Button
+                  type="primary"
+                  ghost
+                  size="small"
+                  icon={<SyncOutlined />}
+                  onClick={() => handleConvertToWorkOrder(record)}
+                  disabled={isCustomer}
+                  style={{ padding: '0 8px' }}
+                >
+                  转为工单
+                </Button>
+              </Tooltip>
+            )}
+            <Tooltip title={isCustomer ? "客户无法删除预约" : ""}>
+              <Button
+                type="text"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                onClick={() => handleDelete(record)}
+                disabled={isCustomer}
+              >
+                删除
+              </Button>
+            </Tooltip>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -602,13 +625,16 @@ export default function AppointmentsPage() {
       <Card
         title="预约管理"
         extra={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleAdd}
-          >
-            新增预约
-          </Button>
+          <Tooltip title={isCustomer ? "客户无法新增预约" : ""}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleAdd}
+              disabled={isCustomer}
+            >
+              新增预约
+            </Button>
+          </Tooltip>
         }
       >
         <Table
