@@ -32,7 +32,7 @@ export async function GET(
   const { role } = params;
   
   // 验证角色参数
-  const validRoles = ['admin', 'staff', 'customer', 'technician'];
+  const validRoles = ['admin', 'customer', 'technician'];
   if (!validRoles.includes(role)) {
     return ApiResponseUtil.error(400, `无效的角色: ${role}`);
   }
@@ -102,7 +102,7 @@ export async function POST(
     const { role } = params;
     
     // 验证角色是否有效
-    if (!role || !['customer', 'technician', 'admin', 'staff'].includes(role)) {
+    if (!role || !['customer', 'technician', 'admin'].includes(role)) {
       return ApiResponseUtil.error(400, '无效的角色');
     }
     

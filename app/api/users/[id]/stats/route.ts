@@ -18,7 +18,7 @@ export async function GET(
     }
 
     // 只允许管理员和员工访问统计数据
-    if (!['admin', 'staff'].includes(user.role)) {
+    if (!['admin'].includes(user.role)) {
       return errorResponse('无权访问', 403);
     }
 

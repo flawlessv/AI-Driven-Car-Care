@@ -20,7 +20,7 @@ const defineUserModel = () => {
     username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String, enum: ['admin', 'staff', 'customer'], default: 'customer' }
+    role: { type: String, enum: ['admin', 'customer'], default: 'customer' }
   }, { timestamps: true });
 
   return mongoose.models.User || mongoose.model('User', userSchema);

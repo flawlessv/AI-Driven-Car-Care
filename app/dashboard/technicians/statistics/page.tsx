@@ -35,11 +35,6 @@ export default function TechnicianStatisticsPage() {
       return;
     }
 
-    // 检查用户权限
-    if (!['admin', 'staff'].includes(user.role)) {
-      router.push('/dashboard');
-      return;
-    }
 
     // 获取技师列表
     fetchTechnicians();

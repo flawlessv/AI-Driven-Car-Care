@@ -4,7 +4,6 @@ import { hash } from 'bcryptjs';
 // 用户角色
 export const USER_ROLES = {
   ADMIN: 'admin',
-  STAFF: 'staff',
   TECHNICIAN: 'technician',
   CUSTOMER: 'customer'
 } as const;
@@ -66,7 +65,7 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String,
     enum: {
-      values: ['admin', 'staff', 'technician', 'customer'],
+      values: ['admin', 'technician', 'customer'],
       message: '无效的用户角色'
     },
     default: 'customer'

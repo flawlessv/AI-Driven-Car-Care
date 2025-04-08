@@ -67,7 +67,6 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const getRoleTag = (role: string) => {
     const colorMap: Record<string, string> = {
       admin: 'red',
-      staff: 'blue',
       customer: 'green',
       technician: 'purple',
     };

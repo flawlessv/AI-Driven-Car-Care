@@ -142,10 +142,7 @@ export async function DELETE(
       return errorResponse('无法获取用户信息', 401);
     }
 
-    // 检查用户权限
-    if (authResult.user.role !== 'admin' && authResult.user.role !== 'staff') {
-      return errorResponse('没有权限删除配件', 403);
-    }
+
 
     await connectDB();
 

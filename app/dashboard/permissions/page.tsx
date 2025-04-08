@@ -77,7 +77,6 @@ export default function PermissionsPage() {
         axios.get('/api/roles/admin/permissions'),
         axios.get('/api/roles/technician/permissions'),
         axios.get('/api/roles/customer/permissions'),
-        axios.get('/api/roles/staff/permissions')
       ]);
       
       const allRolePermissions = responses.map(res => res.data.data);

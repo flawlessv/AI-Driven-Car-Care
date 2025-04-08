@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     let query: any = {};
     if (user.role === 'customer') {
       query.customer = user._id;
-    } else if (user.role === 'staff') {
+    } else if (user.role === 'technician') {
       query.technician = user._id;
     }
 

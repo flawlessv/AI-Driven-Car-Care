@@ -27,7 +27,7 @@ export async function POST(
     await connectDB();
 
     // 验证权限 - 允许管理员和员工分配工单
-    if (!['admin', 'staff'].includes(authResult.user.role)) {
+    if (!['admin'].includes(authResult.user.role)) {
       return errorResponse('无权分配工单', 403);
     }
 

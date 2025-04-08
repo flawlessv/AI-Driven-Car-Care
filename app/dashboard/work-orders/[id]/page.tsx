@@ -123,7 +123,7 @@ const WorkOrderDetailPage = () => {
 
   useEffect(() => {
     fetchWorkOrder();
-    if (['admin', 'staff', 'technician'].includes(user?.role || '')) {
+    if (['admin',  'technician'].includes(user?.role || '')) {
       fetchTechnicians();
       fetchStatusOptions();
     }

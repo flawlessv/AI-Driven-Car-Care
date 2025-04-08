@@ -39,7 +39,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await checkRole(['admin', 'staff', 'technician'])(request);
+    const authResult = await checkRole(['admin','technician'])(request);
     if (!authResult.success) {
       return errorResponse(authResult.message || '未授权访问', 401);
     }

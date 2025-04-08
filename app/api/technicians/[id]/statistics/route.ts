@@ -14,10 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return errorResponse('未授权访问', 401);
     }
 
-    // 检查用户权限
-    if (!['admin', 'staff'].includes(authResult.user.role)) {
-      return errorResponse('无权访问', 403);
-    }
+
 
     // 连接数据库
     await connectDB();

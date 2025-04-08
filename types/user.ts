@@ -3,7 +3,6 @@ export const USER_ROLES = {
   ADMIN: 'admin',
   TECHNICIAN: 'technician',
   CUSTOMER: 'customer',
-  STAFF: 'staff'
 } as const;
 
 export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
@@ -13,7 +12,6 @@ export const ROLE_NAMES = {
   admin: '管理员',
   technician: '技师',
   customer: '客户',
-  staff: '职员'
 } as const;
 
 // 菜单权限类型
@@ -66,7 +64,7 @@ export interface UserResponse {
   _id: string;
   username: string;
   email: string;
-  role: 'admin' | 'staff' | 'customer';
+  role: 'admin'  | 'customer';
 }
 
 export interface RegisterForm extends LoginForm {
@@ -80,5 +78,5 @@ export interface RegisterData {
   phone: string;
   password: string;
   confirmPassword: string;
-  role: 'admin' | 'staff' | 'technician' | 'customer';
+  role: 'admin'  | 'technician' | 'customer';
 } 

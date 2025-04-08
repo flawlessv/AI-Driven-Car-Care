@@ -35,7 +35,7 @@ const permissionSchema = new mongoose.Schema({
   description: String,
   roles: {
     type: [String],
-    enum: ['admin', 'staff', 'customer'],
+    enum: ['admin', 'customer'],
     default: []
   },
   users: {
@@ -80,7 +80,7 @@ const userSchema = new mongoose.Schema({
   phone: String,
   role: {
     type: String,
-    enum: ['admin', 'staff', 'customer'],
+    enum: ['admin',  'customer'],
     default: 'customer',
   },
   permissions: {
