@@ -769,11 +769,16 @@ const WorkOrderDetailPage = () => {
                   _id: item._id,
                   status: item.status,
                   note: noteText,
-                  timestamp: item.createdAt
+                  timestamp: item.createdAt,
+                  // 处理可能的不同数据结构
+                  updatedBy: item.updatedBy || { 
+                    username: item.user?.username || '未知' 
+                  }
                 };
               })} 
             />
-            {(workOrder.rating && workOrder.feedback !== '已隐藏') && (
+            {/* 仅当工单有评价且评价未被隐藏时显示评价组件 */}
+            {(workOrder.rating && workOrder.feedback && workOrder.feedback !== '已隐藏') && (
               <div className="mt-4">
                 <WorkOrderEvaluation
                   workOrderId={params.id}

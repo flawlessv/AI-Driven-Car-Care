@@ -34,6 +34,11 @@ const workOrderEvaluationSchema = new mongoose.Schema(
       },
       username: String,
       email: String
+    },
+    status: {
+      type: String,
+      enum: ['visible', 'hidden'],
+      default: 'visible'
     }
   },
   {

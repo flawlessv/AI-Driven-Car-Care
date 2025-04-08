@@ -3,19 +3,12 @@ import { connectDB } from '@/lib/mongodb';
 import { authMiddleware } from '@/lib/auth';
 import WorkOrder from '@/models/workOrder';
 import WorkOrderProgress from '@/models/workOrderProgress';
+import WorkOrderEvaluation from '@/models/workOrderEvaluation';
 import {
   successResponse,
   errorResponse,
   validationErrorResponse,
 } from '@/lib/api-response';
-import {
-  validateWorkOrder,
-  isValidStatusTransition,
-  checkWorkOrderPermission,
-  recordWorkOrderProgress,
-  updateVehicleStatusByWorkOrder,
-} from '@/lib/work-order-utils';
-import { WorkOrderStatus } from '@/types/workOrder';
 
 // 获取工单详情
 export async function GET(
@@ -81,12 +74,15 @@ export async function GET(
       .populate('updatedBy', 'username role')
       .sort({ createdAt: -1 })
       .exec();
-
+    const evaluation = await WorkOrderEvaluation.findOne({ workOrder: params.id })
+      .populate('createdBy', 'username')
+      .exec();
     return NextResponse.json({
       success: true,
       message: "获取工单成功",
       data: workOrderData,
-      progress
+      progress,
+      evaluation,
     });
   } catch (error: any) {
     console.error("获取工单失败:", error);

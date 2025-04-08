@@ -118,9 +118,19 @@ export async function PUT(
     if (data.status === 'hidden' && review.workOrder) {
       try {
         const WorkOrder = require('@/models/workOrder');
+        const WorkOrderEvaluation = require('@/models/workOrderEvaluation');
+        
+        // 首先更新专门的评价模型状态
+        await WorkOrderEvaluation.findOneAndUpdate(
+          { workOrder: review.workOrder },
+          { status: 'hidden' }
+        );
+        
+        // 然后更新工单中的评价字段
         await WorkOrder.findByIdAndUpdate(review.workOrder, {
-          feedback: '已隐藏'  // 标记评价已被隐藏
+          feedback: '已隐藏'  // 保持向后兼容的旧方式
         });
+        
         console.log(`已更新工单${review.workOrder}的评价为隐藏状态`);
       } catch (workOrderError) {
         console.error('更新工单评价状态失败:', workOrderError);

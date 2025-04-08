@@ -28,6 +28,7 @@ export async function GET(
     // 首先尝试从WorkOrderEvaluation获取评价
     const evaluation = await WorkOrderEvaluation.findOne({
       workOrder: params.id,
+      status: 'visible' // 只获取可见的评价
     })
       .populate('createdBy', 'username email')
       .populate('customer', 'username')
@@ -41,8 +42,12 @@ export async function GET(
           workOrder: params.id
         });
 
-        // 如果找到对应的Review并且状态不是published，则不返回评价
+        // 如果找到对应的Review并且状态不是published，则更新评价状态
         if (review && review.status !== 'published') {
+          // 如果评价对应的评论被隐藏，同步更新评价状态
+          await WorkOrderEvaluation.findByIdAndUpdate(evaluation._id, {
+            status: 'hidden'
+          });
           return errorResponse('工单评价不存在或已被隐藏', 404);
         }
       } catch (err) {
@@ -137,7 +142,8 @@ export async function POST(
         userId: authResult.user._id,
         username: authResult.user.username || userName || '用户',
         email: authResult.user.email
-      }
+      },
+      status: 'visible' // 设置初始状态为可见
     });
 
     const savedEvaluation = await evaluation.save();
