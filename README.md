@@ -108,6 +108,62 @@ JWT_SECRET=你的JWT密钥
 | 评价管理 | 管理(manage) | 只读(read) | 读写(write) |
 | 权限管理 | 管理(manage) | 无权限(none) | 无权限(none) |
 
+### 按钮级权限控制
+
+系统实现了细粒度的按钮级权限控制，确保用户只能执行其角色允许的操作：
+
+#### 预约管理按钮权限
+
+| 按钮/操作 | 管理员(admin) | 技师(technician) | 客户(customer) |
+|----------|--------------|-----------------|--------------|
+| 创建预约 | ✅ | ✅ | ✅ |
+| 编辑预约 | ✅ | ✅ | ✅(仅自己的) |
+| 取消预约 | ✅ | ✅ | ✅(仅自己的) |
+| 预约转工单 | ✅ | ✅ | ❌ |
+
+#### 工单管理按钮权限
+
+| 按钮/操作 | 管理员(admin) | 技师(technician) | 客户(customer) |
+|----------|--------------|-----------------|--------------|
+| 创建工单 | ✅ | ✅ | ❌ |
+| 编辑工单 | ✅ | ✅ | ❌ |
+| 分配技师 | ✅ | ❌ | ❌ |
+| 更改状态 | ✅ | ✅ | ❌ |
+| 上传证明 | ✅ | ✅ | ❌ |
+| 审核工单 | ✅ | ❌ | ❌ |
+| 评价工单 | ✅ | ❌ | ✅(仅自己的) |
+| 删除工单 | ✅ | ❌ | ❌ |
+
+#### 用户管理按钮权限
+
+| 按钮/操作 | 管理员(admin) | 技师(technician) | 客户(customer) |
+|----------|--------------|-----------------|--------------|
+| 创建用户 | ✅ | ❌ | ❌ |
+| 编辑用户 | ✅ | ❌ | ❌ |
+| 删除用户 | ✅ | ❌ | ❌ |
+| 重置密码 | ✅ | ❌ | ❌ |
+
+#### 按钮权限实现方式
+
+系统使用以下方式实现按钮级权限控制：
+
+1. **条件渲染**：根据用户角色和权限条件性渲染按钮
+   ```tsx
+   {userRole === 'admin' && <Button>管理员操作</Button>}
+   ```
+
+2. **禁用状态**：对于某些情况，按钮会显示但处于禁用状态
+   ```tsx
+   <Button disabled={!hasPermission}>操作按钮</Button>
+   ```
+
+3. **权限守卫组件**：使用PermissionGuard组件保护按钮
+   ```tsx
+   <PermissionGuard requiredPermission="write" menuKey="work-orders">
+     <Button>创建工单</Button>
+   </PermissionGuard>
+   ```
+
 ### 权限级别
 
 - **只读(read)**: 用户可以查看此功能但不能编辑
@@ -268,6 +324,249 @@ npm run init-permissions
 推荐使用 [Vercel 平台](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) 部署，这是 Next.js 创建者开发的平台。
 
 查看 [Next.js 部署文档](https://nextjs.org/docs/app/building-your-application/deploying) 了解更多部署详情。
+
+## 数据库设计
+
+系统使用 MongoDB 作为数据库，以下是主要数据模型的结构和关系：
+
+### 数据库模型结构
+
+#### 1. 用户模型 (User)
+
+| 字段 | 类型 | 长度 | 必填 | 默认值 | 说明 |
+|------|------|------|------|--------|------|
+| _id | ObjectId | - | 是 | 自动生成 | 主键 |
+| username | String | - | 是 | - | 用户名，唯一 |
+| name | String | - | 否 | - | 姓名 |
+| email | String | - | 是 | - | 邮箱，唯一 |
+| password | String | - | 是 | - | 密码，自动加密 |
+| phone | String | - | 否 | - | 电话，唯一 |
+| role | String | - | 是 | 'customer' | 角色：admin/technician/customer |
+| permissions | Array | - | 否 | [] | 菜单权限配置 |
+| status | String | - | 是 | 'active' | 状态：active/inactive/suspended |
+| specialties | Array | - | 否 | [] | 技师专长（仅技师） |
+| workExperience | Number | - | 否 | 0 | 工作经验（仅技师） |
+| certifications | Array | - | 否 | [] | 证书（仅技师） |
+| rating | Number | - | 否 | 0 | 评分（仅技师） |
+| totalOrders | Number | - | 否 | 0 | 总订单数 |
+| completedOrders | Number | - | 否 | 0 | 已完成订单数 |
+| notes | String | - | 否 | - | 备注 |
+| createdAt | Date | - | 是 | 自动生成 | 创建时间 |
+| updatedAt | Date | - | 是 | 自动生成 | 更新时间 |
+
+**索引**：username(唯一)、email(唯一)、phone(唯一)
+
+#### 2. 车辆模型 (Vehicle)
+
+| 字段 | 类型 | 长度 | 必填 | 默认值 | 说明 |
+|------|------|------|------|--------|------|
+| _id | ObjectId | - | 是 | 自动生成 | 主键 |
+| brand | String | - | 是 | - | 品牌 |
+| model | String | - | 是 | - | 型号 |
+| year | Number | - | 是 | 当前年份 | 年份 |
+| licensePlate | String | - | 是 | - | 车牌号，唯一 |
+| vin | String | - | 是 | 临时生成 | 车架号，唯一 |
+| owner | ObjectId | - | 是 | - | 车主ID，关联User表 |
+| ownerName | String | - | 否 | - | 车主姓名 |
+| ownerContact | String | - | 否 | - | 车主联系方式 |
+| mileage | Number | - | 否 | 0 | 里程数 |
+| lastMaintenanceDate | Date | - | 否 | - | 上次保养日期 |
+| nextMaintenanceDate | Date | - | 否 | - | 下次保养日期 |
+| status | String | - | 是 | 'active' | 状态：active/inactive/maintenance/scrapped |
+| notes | String | - | 否 | - | 备注 |
+| createdAt | Date | - | 是 | 自动生成 | 创建时间 |
+| updatedAt | Date | - | 是 | 自动生成 | 更新时间 |
+
+**索引**：licensePlate(唯一)
+
+#### 3. 预约模型 (Appointment)
+
+| 字段 | 类型 | 长度 | 必填 | 默认值 | 说明 |
+|------|------|------|------|--------|------|
+| _id | ObjectId | - | 是 | 自动生成 | 主键 |
+| customer | Object | - | 是 | - | 客户信息 |
+| customer.name | String | - | 是 | - | 客户姓名 |
+| customer.phone | String | - | 是 | - | 客户电话 |
+| customer.email | String | - | 否 | - | 客户邮箱 |
+| vehicle | ObjectId | - | 是 | - | 关联车辆ID |
+| service | ObjectId | - | 是 | - | 关联服务项目ID |
+| date | Date | - | 是 | - | 预约日期 |
+| startTime | String | - | 是 | - | 开始时间 |
+| endTime | String | - | 否 | - | 结束时间 |
+| technician | ObjectId | - | 否 | - | 关联技师ID |
+| status | String | - | 是 | 'pending' | 状态：pending/confirmed/in_progress/completed/cancelled |
+| notes | String | - | 否 | - | 备注 |
+| estimatedDuration | Number | - | 是 | - | 预计时长(分钟) |
+| estimatedCost | Number | - | 是 | - | 预计费用 |
+| confirmationSent | Boolean | - | 是 | false | 是否已发送确认通知 |
+| reminderSent | Boolean | - | 是 | false | 是否已发送提醒通知 |
+| sourceWorkOrder | ObjectId | - | 否 | - | 关联工单ID |
+| user | ObjectId | - | 否 | - | 关联用户ID |
+| createdAt | Date | - | 是 | 自动生成 | 创建时间 |
+| updatedAt | Date | - | 是 | 自动生成 | 更新时间 |
+
+#### 4. 工单模型 (WorkOrder)
+
+| 字段 | 类型 | 长度 | 必填 | 默认值 | 说明 |
+|------|------|------|------|--------|------|
+| _id | ObjectId | - | 是 | 自动生成 | 主键 |
+| orderNumber | String | - | 是 | - | 工单编号，唯一 |
+| vehicle | ObjectId | - | 是 | - | 关联车辆ID |
+| customer | ObjectId | - | 是 | - | 关联客户ID |
+| technician | ObjectId | - | 否 | - | 关联技师ID |
+| maintenanceRecord | ObjectId | - | 否 | - | 关联维修记录ID |
+| type | String | - | 是 | - | 工单类型：repair/maintenance/inspection |
+| description | String | - | 是 | - | 问题描述 |
+| diagnosis | String | - | 否 | - | 故障诊断 |
+| solution | String | - | 否 | - | 解决方案 |
+| priority | String | - | 是 | 'medium' | 优先级：low/medium/high/urgent |
+| status | String | - | 是 | 'pending' | 状态：pending/assigned/in_progress/pending_check/completed/cancelled |
+| estimatedHours | Number | - | 是 | - | 预计工时 |
+| actualHours | Number | - | 否 | - | 实际工时 |
+| startDate | Date | - | 是 | - | 开始日期 |
+| completionDate | Date | - | 否 | - | 完成日期 |
+| customerNotes | String | - | 否 | - | 客户备注 |
+| technicianNotes | String | - | 否 | - | 技师备注 |
+| parts | Array | - | 否 | - | 使用的配件列表 |
+| parts[].part | ObjectId | - | 是 | - | 配件ID |
+| parts[].quantity | Number | - | 是 | - | 数量 |
+| parts[].price | Number | - | 是 | - | 价格 |
+| completionProof | Object | - | 否 | - | 完成证明 |
+| completionProof.proofImages | Array | - | 否 | - | 证明图片 |
+| completionProof.notes | String | - | 否 | - | 备注 |
+| completionProof.submittedBy | ObjectId | - | 是 | - | 提交人ID |
+| completionProof.submittedAt | Date | - | 是 | 当前时间 | 提交时间 |
+| completionProof.approved | Boolean | - | 是 | false | 是否审批通过 |
+| completionProof.approvedBy | ObjectId | - | 否 | - | 审批人ID |
+| completionProof.approvedAt | Date | - | 否 | - | 审批时间 |
+| progress | Array | - | 否 | - | 工单进度记录 |
+| progress[].status | String | - | 是 | - | 状态 |
+| progress[].notes | String | - | 否 | - | 备注 |
+| progress[].timestamp | Date | - | 是 | 当前时间 | 时间戳 |
+| progress[].user | ObjectId | - | 是 | - | 操作人ID |
+| rating | Number | - | 否 | - | 评分(1-5) |
+| feedback | String | - | 否 | - | 客户反馈 |
+| createdBy | ObjectId | - | 是 | - | 创建人ID |
+| createdAt | Date | - | 是 | 自动生成 | 创建时间 |
+| updatedAt | Date | - | 是 | 自动生成 | 更新时间 |
+
+**索引**：orderNumber(唯一)
+
+#### 5. 配件模型 (Part)
+
+| 字段 | 类型 | 长度 | 必填 | 默认值 | 说明 |
+|------|------|------|------|--------|------|
+| _id | ObjectId | - | 是 | 自动生成 | 主键 |
+| name | String | - | 是 | - | 配件名称 |
+| code | String | - | 是 | - | 配件编号，唯一 |
+| category | String | - | 是 | - | 类别 |
+| description | String | - | 否 | - | 描述 |
+| manufacturer | String | - | 是 | - | 制造商 |
+| price | Number | - | 是 | - | 单价 |
+| stock | Number | - | 是 | 0 | 库存数量 |
+| minStock | Number | - | 是 | 5 | 最低库存 |
+| unit | String | - | 否 | '个' | 单位 |
+| location | String | - | 否 | - | 库存位置 |
+| status | String | - | 是 | 'active' | 状态：active/inactive/discontinued |
+| createdAt | Date | - | 是 | 自动生成 | 创建时间 |
+| updatedAt | Date | - | 是 | 自动生成 | 更新时间 |
+
+**索引**：code(唯一)、name、category、manufacturer
+
+#### 6. 服务项目模型 (Service)
+
+| 字段 | 类型 | 长度 | 必填 | 默认值 | 说明 |
+|------|------|------|------|--------|------|
+| _id | ObjectId | - | 是 | 自动生成 | 主键 |
+| name | String | - | 是 | - | 服务名称 |
+| description | String | - | 否 | - | 服务描述 |
+| category | String | - | 是 | - | 服务类型：维修/保养/检查 |
+| duration | Number | - | 是 | - | 预计时长(分钟) |
+| basePrice | Number | - | 是 | - | 基础价格 |
+| createdAt | Date | - | 是 | 自动生成 | 创建时间 |
+| updatedAt | Date | - | 是 | 自动生成 | 更新时间 |
+
+#### 7. 评价模型 (Review)
+
+| 字段 | 类型 | 长度 | 必填 | 默认值 | 说明 |
+|------|------|------|------|--------|------|
+| _id | ObjectId | - | 是 | 自动生成 | 主键 |
+| author | ObjectId | - | 是 | - | 评价人ID，关联User表 |
+| authorName | String | - | 否 | - | 评价人姓名 |
+| authorPhone | String | - | 否 | - | 评价人电话 |
+| authorEmail | String | - | 否 | - | 评价人邮箱 |
+| targetType | String | - | 是 | - | 评价对象类型：technician/shop |
+| targetId | ObjectId | - | 是 | - | 评价对象ID |
+| maintenanceRecord | ObjectId | - | 是 | - | 关联维修记录ID |
+| rating | Number | - | 是 | - | 评分(1-5) |
+| content | String | - | 是 | - | 评价内容 |
+| images | Array | - | 否 | - | 图片列表 |
+| tags | Array | - | 否 | - | 标签列表 |
+| likes | Number | - | 是 | 0 | 点赞数 |
+| status | String | - | 是 | 'published' | 状态：published/hidden/deleted |
+| workOrder | ObjectId | - | 否 | - | 关联工单ID |
+| workOrderNumber | String | - | 否 | - | 工单编号 |
+| createdAt | Date | - | 是 | 自动生成 | 创建时间 |
+| updatedAt | Date | - | 是 | 自动生成 | 更新时间 |
+
+#### 8. 角色权限模型 (RolePermission)
+
+| 字段 | 类型 | 长度 | 必填 | 默认值 | 说明 |
+|------|------|------|------|--------|------|
+| _id | ObjectId | - | 是 | 自动生成 | 主键 |
+| role | String | - | 是 | - | 角色名称，唯一，admin/customer/technician |
+| permissions | Array | - | 否 | [] | 权限列表 |
+| permissions[].menuKey | String | - | 是 | - | 菜单键名 |
+| permissions[].permission | String | - | 是 | 'none' | 权限级别：read/write/manage/none |
+| isDefault | Boolean | - | 是 | false | 是否为系统默认 |
+| description | String | - | 否 | '' | 描述 |
+| createdAt | Date | - | 是 | 自动生成 | 创建时间 |
+| updatedAt | Date | - | 是 | 自动生成 | 更新时间 |
+
+**索引**：role(唯一)
+
+### 数据库表关联关系
+
+1. **用户(User) 与 车辆(Vehicle)**
+   - User.\_id → Vehicle.owner (一对多，一个用户可以拥有多个车辆)
+
+2. **用户(User) 与 工单(WorkOrder)**
+   - User.\_id → WorkOrder.customer (一对多，一个用户可以有多个工单)
+   - User.\_id → WorkOrder.technician (一对多，一个技师可以负责多个工单)
+   - User.\_id → WorkOrder.createdBy (一对多，一个用户可以创建多个工单)
+   - User.\_id → WorkOrder.completionProof.submittedBy (一对多)
+   - User.\_id → WorkOrder.completionProof.approvedBy (一对多)
+   - User.\_id → WorkOrder.progress[].user (一对多)
+
+3. **用户(User) 与 预约(Appointment)**
+   - User.\_id → Appointment.technician (一对多，一个技师可以有多个预约)
+   - User.\_id → Appointment.user (一对多，一个用户可以有多个预约)
+
+4. **用户(User) 与 评价(Review)**
+   - User.\_id → Review.author (一对多，一个用户可以发表多个评价)
+   - User.\_id → Review.targetId (当targetType为technician时，一对多)
+
+5. **车辆(Vehicle) 与 工单(WorkOrder)**
+   - Vehicle.\_id → WorkOrder.vehicle (一对多，一个车辆可以有多个工单)
+
+6. **车辆(Vehicle) 与 预约(Appointment)**
+   - Vehicle.\_id → Appointment.vehicle (一对多，一个车辆可以有多个预约)
+
+7. **配件(Part) 与 工单(WorkOrder)**
+   - Part.\_id → WorkOrder.parts[].part (多对多，一个工单可以使用多个配件，一个配件可以用于多个工单)
+
+8. **服务(Service) 与 预约(Appointment)**
+   - Service.\_id → Appointment.service (一对多，一个服务项目可以有多个预约)
+
+9. **工单(WorkOrder) 与 评价(Review)**
+   - WorkOrder.\_id → Review.workOrder (一对一，一个工单可以有一个评价)
+
+10. **工单(WorkOrder) 与 预约(Appointment)**
+    - WorkOrder.\_id → Appointment.sourceWorkOrder (一对一，一个预约可以转化为一个工单)
+
+11. **角色权限(RolePermission) 与 用户(User)**
+    - RolePermission.role → User.role (一对多，一个角色可以分配给多个用户)
+    - RolePermission.permissions → User.permissions (继承关系，用户的权限继承自角色权限)
 
 ## 许可证
 
