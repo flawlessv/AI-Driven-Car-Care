@@ -82,6 +82,7 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
       form.setFieldsValue({
         name: user.name || user.username,
         phone: user.phone || '',
+        email: user.email || '',
       });
     }
   }, [user, form]);
@@ -93,12 +94,14 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
       // 确保使用用户登录信息
       const name = user?.name || user?.username || values.name;
       const phone = user?.phone || values.phone;
+      const email = user?.email || values.email;
       
       // 兼容新的数据结构，同时提供扁平结构和timeSlot结构
       const formattedData = {
         customer: {
           name,
           phone,
+          email,
         },
         vehicleBrand: values.vehicleBrand,
         vehicleModel: values.vehicleModel,
@@ -169,6 +172,16 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
         ]}
       >
         <Input placeholder="请输入手机号码" disabled={!!user} />
+      </Form.Item>
+
+      <Form.Item
+        name="email"
+        label="电子邮箱"
+        rules={[
+          { type: 'email', message: '请输入有效的邮箱地址' }
+        ]}
+      >
+        <Input placeholder="请输入电子邮箱" disabled={true} />
       </Form.Item>
 
       <Form.Item
