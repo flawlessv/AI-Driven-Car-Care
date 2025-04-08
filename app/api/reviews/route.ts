@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { connectDB } from '../../../lib/mongodb';
 import Review from '../../../models/review';
 import WorkOrder from '../../../models/workOrder';
@@ -6,7 +6,7 @@ import User from '../../../models/user';
 import { authMiddleware } from '@/lib/auth';
 import { errorResponse } from '@/lib/api-response';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const authResult = await authMiddleware(request);
     if (!authResult.success) {
@@ -34,11 +34,7 @@ export async function GET(request: Request) {
     if (rating) query.rating = parseInt(rating);
     if (status) query.status = status;
     
-    // 客户角色只能查看自己的评价
-    if (user.role === 'customer') {
-      console.log('客户查询评价，只显示自己的：', user._id);
-      query.author = user._id;
-    }
+    // 客户角色可以查看所有评价
 
     console.log('评价查询条件:', query);
     console.log('分页参数: page=', page, 'limit=', limit);

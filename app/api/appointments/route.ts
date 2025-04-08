@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       .populate('vehicle')
       .populate('service')
       .populate('technician')
-      .sort({ createdAt: 1 });
+      .sort({ createdAt: -1 });
     
     return successResponse(appointments);
   } catch (error: any) {

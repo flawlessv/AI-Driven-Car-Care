@@ -266,36 +266,51 @@ export default function ReviewsPage() {
             {
               title: '操作',
               key: 'action',
-              render: (_: any, record: Review) => (
-                <Space>
-                  {record.status === 'published' ? (
-                    <PermissionChecker
-                      menuKey="reviews"
-                      requiredPermission="manage"
-                      buttonProps={{
-                        size: "small",
-                        onClick: () => handleStatusChange(record, 'hidden')
-                      }}
-                      noPermissionTip="您没有管理评价的权限"
-                    >
-                      隐藏
-                    </PermissionChecker>
-                  ) : (
-                    <PermissionChecker
-                      menuKey="reviews"
-                      requiredPermission="manage"
-                      buttonProps={{
-                        type: "primary",
-                        size: "small",
-                        onClick: () => handleStatusChange(record, 'published')
-                      }}
-                      noPermissionTip="您没有管理评价的权限"
-                    >
-                      发布
-                    </PermissionChecker>
-                  )}
-                </Space>
-              ),
+              render: (_: any, record: Review) => {
+                // 判断当前用户是否为评价作者，或是否具有管理权限
+                const isAuthor = user && 
+                  ((typeof record.author === 'object' && record.author?._id === user._id) || 
+                   (typeof record.author === 'string' && record.author === user._id));
+                
+                // 判断是否有权限操作评价：管理员拥有所有权限，客户只能操作自己的评价
+                const canManageReview = user?.role === 'admin' || 
+                  (user?.role === 'customer' && isAuthor);
+                
+                if (!canManageReview) {
+                  return <span className="text-gray-500">无操作权限</span>;
+                }
+                
+                return (
+                  <Space>
+                    {record.status === 'published' ? (
+                      <PermissionChecker
+                        menuKey="reviews"
+                        requiredPermission={isAuthor ? "write" : "manage"}
+                        buttonProps={{
+                          size: "small",
+                          onClick: () => handleStatusChange(record, 'hidden')
+                        }}
+                        noPermissionTip="您没有管理评价的权限"
+                      >
+                        隐藏
+                      </PermissionChecker>
+                    ) : (
+                      <PermissionChecker
+                        menuKey="reviews"
+                        requiredPermission={isAuthor ? "write" : "manage"}
+                        buttonProps={{
+                          type: "primary",
+                          size: "small",
+                          onClick: () => handleStatusChange(record, 'published')
+                        }}
+                        noPermissionTip="您没有管理评价的权限"
+                      >
+                        发布
+                      </PermissionChecker>
+                    )}
+                  </Space>
+                );
+              },
             },
           ]}
           pagination={{

@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import dbConnect from '@/lib/db-connect';
 import Review from '@/models/review';
+import { authMiddleware } from '@/lib/auth';
 
 export async function GET(
   request: Request,
@@ -11,10 +12,20 @@ export async function GET(
 
     const review = await Review.findById(params.id)
       .populate('author', 'username name email phone')
-      .populate('maintenanceRecord', 'date type cost')
-      .populate({
-        path: 'targetId',
-        model: 'User'
+      // .populate('maintenanceRecord', 'date type cost')
+      // 先获取review，再根据targetType决定如何填充targetId
+      .then(async (foundReview) => {
+        if (!foundReview) return null;
+        
+        // 只有当targetType为technician时才填充User模型
+        if (foundReview.targetType === 'technician') {
+          return foundReview.populate({
+            path: 'targetId',
+            model: 'User',
+            select: 'username name'
+          });
+        }
+        return foundReview;
       });
 
     if (!review) {
@@ -41,12 +52,50 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const data = await request.json();
+    // 鉴权：确保用户已登录
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return NextResponse.json(
+        { success: false, message: '未授权操作' },
+        { status: 401 }
+      );
+    }
+
+    const currentUser = authResult.user;
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, message: '无法获取用户信息' },
+        { status: 401 }
+      );
+    }
+    
+    // 查找评价
     await dbConnect();
+    const existingReview = await Review.findById(params.id);
+    
+    if (!existingReview) {
+      return NextResponse.json(
+        { success: false, message: '评价不存在' },
+        { status: 404 }
+      );
+    }
+    
+    // 权限检查：只有管理员或评价作者可以修改
+    const isAuthor = existingReview.author && 
+      existingReview.author.toString() === currentUser._id.toString();
+    
+    if (currentUser.role !== 'admin' && !isAuthor) {
+      return NextResponse.json(
+        { success: false, message: '无权操作此评价' },
+        { status: 403 }
+      );
+    }
+
+    const data = await request.json();
 
     const review = await Review.findByIdAndUpdate(
       params.id,
@@ -54,17 +103,29 @@ export async function PUT(
       { new: true, runValidators: true }
     )
       .populate('author', 'username name email phone')
-      .populate('maintenanceRecord', 'date type cost')
-      .populate({
-        path: 'targetId',
-        model: data.targetType === 'technician' ? 'User' : 'Shop'
+      .then(async (updatedReview) => {
+        if (updatedReview && updatedReview.targetType === 'technician') {
+          return updatedReview.populate({
+            path: 'targetId',
+            model: 'User',
+            select: 'username name'
+          });
+        }
+        return updatedReview;
       });
-
-    if (!review) {
-      return NextResponse.json(
-        { success: false, message: '评价不存在' },
-        { status: 404 }
-      );
+      
+    // 如果评价状态变为隐藏，同时更新对应工单中的评价字段
+    if (data.status === 'hidden' && review.workOrder) {
+      try {
+        const WorkOrder = require('@/models/workOrder');
+        await WorkOrder.findByIdAndUpdate(review.workOrder, {
+          feedback: '已隐藏'  // 标记评价已被隐藏
+        });
+        console.log(`已更新工单${review.workOrder}的评价为隐藏状态`);
+      } catch (workOrderError) {
+        console.error('更新工单评价状态失败:', workOrderError);
+        // 不影响主流程
+      }
     }
 
     return NextResponse.json({
@@ -85,20 +146,50 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // 鉴权：确保用户已登录
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return NextResponse.json(
+        { success: false, message: '未授权操作' },
+        { status: 401 }
+      );
+    }
+
+    const currentUser = authResult.user;
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, message: '无法获取用户信息' },
+        { status: 401 }
+      );
+    }
+    
+    // 查找评价
     await dbConnect();
-
-    const review = await Review.findByIdAndDelete(params.id);
-
-    if (!review) {
+    const existingReview = await Review.findById(params.id);
+    
+    if (!existingReview) {
       return NextResponse.json(
         { success: false, message: '评价不存在' },
         { status: 404 }
       );
     }
+    
+    // 权限检查：只有管理员或评价作者可以删除
+    const isAuthor = existingReview.author && 
+      existingReview.author.toString() === currentUser._id.toString();
+    
+    if (currentUser.role !== 'admin' && !isAuthor) {
+      return NextResponse.json(
+        { success: false, message: '无权删除此评价' },
+        { status: 403 }
+      );
+    }
+
+    const review = await Review.findByIdAndDelete(params.id);
 
     return NextResponse.json({
       success: true,

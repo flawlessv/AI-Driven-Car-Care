@@ -411,16 +411,30 @@ const WorkOrderDetailPage = () => {
   };
 
   const handleAddReview = () => {
-    if (workOrder.status === 'completed' && !workOrder.review) {
-      return (
-        <Button 
-          type="primary"
-          icon={<StarOutlined />}
-          onClick={() => setReviewModalVisible(true)}
-        >
-          添加评价
-        </Button>
-      );
+    // 只有当工单已完成、尚未评价，并且当前用户是工单客户时才可以添加评价
+    if (workOrder && workOrder.status === 'completed' && !workOrder.rating) {
+      if (canEvaluate) {
+        return (
+          <Button 
+            type="primary"
+            icon={<StarOutlined />}
+            onClick={() => setReviewModalVisible(true)}
+          >
+            添加评价
+          </Button>
+        );
+      } else if (user?.role !== 'customer') {
+        // 对于非客户角色，显示禁用的按钮
+        return (
+          <Button 
+            icon={<StarOutlined />}
+            disabled
+            title="只有客户可以评价"
+          >
+            添加评价
+          </Button>
+        );
+      }
     }
     return null;
   };
@@ -606,14 +620,12 @@ const WorkOrderDetailPage = () => {
     return <div className="p-6">加载中...</div>;
   }
 
-  const canEdit = user?.role === 'admin' || 
-    (user?.role === 'staff' && workOrder.technician?._id === user._id);
+  const canEdit = user?.role === 'admin' || user?.role === 'technician'
   
-  const canAssign = ['admin', 'staff'].includes(user?.role || '') && 
+  const canAssign = ['admin', 'technician'].includes(user?.role || '') && 
     workOrder.status === 'pending';
 
-  const canChangeStatus = canEdit && workOrder.status !== 'completed' && 
-    workOrder.status !== 'cancelled';
+  const canChangeStatus =workOrder.status !== 'completed' && workOrder.status !== 'cancelled';
 
   const canEvaluate = user?.role === 'customer' && 
     workOrder.customer._id === user._id &&
@@ -741,9 +753,27 @@ const WorkOrderDetailPage = () => {
           </Col>
           <Col span={8}>
             <WorkOrderProgressTimeline 
-              progress={progress} 
+              progress={progress.map(item => {
+                // 检查notes是否包含状态代码并替换为对应的中文状态名
+                let noteText = item.notes || '';
+                if (noteText && noteText.includes('状态更新为')) {
+                  Object.entries(statusText).forEach(([code, text]) => {
+                    noteText = noteText.replace(
+                      new RegExp(`状态更新为 ${code}`, 'g'), 
+                      `状态更新为 ${text}`
+                    );
+                  });
+                }
+                
+                return {
+                  _id: item._id,
+                  status: item.status,
+                  note: noteText,
+                  timestamp: item.createdAt
+                };
+              })} 
             />
-            {(workOrder.rating || canEvaluate) && (
+            {(workOrder.rating && workOrder.feedback !== '已隐藏') && (
               <div className="mt-4">
                 <WorkOrderEvaluation
                   workOrderId={params.id}
@@ -756,6 +786,15 @@ const WorkOrderDetailPage = () => {
                     _id: '',
                   } : undefined}
                   canEvaluate={canEvaluate}
+                  onEvaluationSubmit={handleEvaluationSubmit}
+                />
+              </div>
+            )}
+            {canEvaluate && !workOrder.rating && (
+              <div className="mt-4">
+                <WorkOrderEvaluation
+                  workOrderId={params.id}
+                  canEvaluate={true}
                   onEvaluationSubmit={handleEvaluationSubmit}
                 />
               </div>
@@ -776,8 +815,9 @@ const WorkOrderDetailPage = () => {
         )}
       </Card>
 
-      {/* 只在待审批状态且用户是管理员时显示完成证明卡片 */}
-      {workOrder && workOrder.status === 'pending_check' && user?.role === 'admin' && (
+      {/* 在待审批状态下允许管理员和技师查看完成证明卡片 */}
+      {workOrder && workOrder.status === 'pending_check' && 
+        (user?.role === 'admin' || user?.role === 'technician') && (
         <Card title="完成证明" className="mb-6">
           <div>
             {loadingProof ? (
@@ -1018,7 +1058,7 @@ const WorkOrderDetailPage = () => {
       >
         <WorkOrderEvaluation
           workOrderId={params.id}
-          canEvaluate={true}
+          canEvaluate={canEvaluate}
           onEvaluationSubmit={() => {
             setReviewModalVisible(false);
             fetchWorkOrder();

@@ -36,8 +36,7 @@ export async function GET(request: NextRequest) {
     // 定义不同角色可用的状态
     const roleBasedStatusOptions = {
       admin: ['pending', 'assigned', 'in_progress', 'completed', 'cancelled'],
-      staff: ['pending', 'assigned', 'in_progress', 'completed', 'cancelled'],
-      technician: ['assigned', 'in_progress'],
+      technician: ['pending', 'assigned', 'in_progress', 'completed', 'cancelled'],
       customer: ['pending', 'cancelled']
     };
     

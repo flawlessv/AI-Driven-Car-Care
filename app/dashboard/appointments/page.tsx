@@ -125,15 +125,15 @@ export default function AppointmentsPage() {
       
       // 按创建日期降序排序，使最新创建的预约显示在最上方
       const sortedData = [...appointmentsData].sort((a, b) => {
-        // 如果有createdAt字段，按创建日期升序排序
+        // 如果有createdAt字段，按创建日期降序排序
         if (a.createdAt && b.createdAt) {
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
         // 作为备选，也可以按预约日期排序
         const aDate = a.date || a.timeSlot?.date;
         const bDate = b.date || b.timeSlot?.date;
         if (aDate && bDate) {
-          return new Date(aDate).getTime() - new Date(bDate).getTime();
+          return new Date(bDate).getTime() - new Date(aDate).getTime();
         }
         return 0;
       });

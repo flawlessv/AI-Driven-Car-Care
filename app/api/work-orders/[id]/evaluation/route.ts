@@ -25,6 +25,7 @@ export async function GET(
 
     await connectDB();
 
+    // 首先尝试从WorkOrderEvaluation获取评价
     const evaluation = await WorkOrderEvaluation.findOne({
       workOrder: params.id,
     })
@@ -32,16 +33,32 @@ export async function GET(
       .populate('customer', 'username')
       .populate('technician', 'username');
 
-    if (!evaluation) {
-      return errorResponse('工单评价不存在', 404);
+    // 如果找到了评价，检查对应的Review是否被隐藏
+    if (evaluation) {
+      // 查找对应的Review记录
+      try {
+        const review = await Review.findOne({ 
+          workOrder: params.id
+        });
+
+        // 如果找到对应的Review并且状态不是published，则不返回评价
+        if (review && review.status !== 'published') {
+          return errorResponse('工单评价不存在或已被隐藏', 404);
+        }
+      } catch (err) {
+        console.error('查询评价状态失败:', err);
+        // 继续执行，不影响流程
+      }
+
+      const evaluationWithUser = {
+        ...evaluation.toObject(),
+        evaluator: evaluation.createdBy || evaluation.customer
+      };
+
+      return successResponse(evaluationWithUser);
     }
 
-    const evaluationWithUser = {
-      ...evaluation.toObject(),
-      evaluator: evaluation.createdBy || evaluation.customer
-    };
-
-    return successResponse(evaluationWithUser);
+    return errorResponse('工单评价不存在', 404);
   } catch (error: any) {
     console.error('获取工单评价失败:', error);
     return errorResponse('获取工单评价失败', 500);
