@@ -170,9 +170,9 @@ export default function WorkOrdersPage() {
         
         return (
           <span>
-            {customer?.username || customer?.name || '未知姓名'}
-            <br />
-            {customer?.phone || '无联系方式'}
+            <div>{customer?.name || customer?.username || '未知姓名'}</div>
+            <div className="text-gray-500">{customer?.phone || ''}</div>
+            <div className="text-gray-500">{customer?.email || ''}</div>
           </span>
         );
       },

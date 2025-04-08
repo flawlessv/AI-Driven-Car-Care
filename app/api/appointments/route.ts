@@ -42,7 +42,8 @@ export async function GET(request: NextRequest) {
     const appointments = await Appointment.find(query)
       .populate('vehicle')
       .populate('service')
-      .sort({ createdAt: -1 });
+      .populate('technician')
+      .sort({ createdAt: 1 });
     
     return successResponse(appointments);
   } catch (error: any) {
@@ -85,8 +86,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证时间段
-    if (!timeSlotData.date || !timeSlotData.startTime || !timeSlotData.endTime || !timeSlotData.technician) {
-      return validationErrorResponse('预约日期、开始时间、结束时间和技师为必填项');
+    if (!timeSlotData.date || !timeSlotData.startTime || !timeSlotData.technician) {
+      return validationErrorResponse('预约日期、开始时间和技师为必填项');
     }
 
     // 验证客户信息

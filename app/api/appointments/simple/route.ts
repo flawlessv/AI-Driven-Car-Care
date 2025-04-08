@@ -59,13 +59,32 @@ export async function POST(request: NextRequest) {
         model: vehicleModel,
         licensePlate,
         registrationDate: new Date(),
-        owner: userId || null // 如果有用户ID，关联车辆和用户
+        owner: userId || null, // 如果有用户ID，关联车辆和用户
+        ownerName: customer.name, // 添加车主姓名
+        ownerContact: customer.phone // 添加车主联系方式
       });
       await vehicle.save();
-    } else if (userId && !vehicle.owner) {
-      // 如果找到了车辆但没有关联用户，且提供了用户ID，则更新车辆所有者
-      vehicle.owner = userId;
-      await vehicle.save();
+    } else {
+      // 如果找到了车辆，更新车主信息（如果缺少）
+      let needsUpdate = false;
+      
+      // 如果有userId且车辆没有关联用户，更新车辆所有者
+      if (userId && !vehicle.owner) {
+        vehicle.owner = userId;
+        needsUpdate = true;
+      }
+      
+      // 如果车辆没有车主姓名或联系方式，则更新
+      if (!vehicle.ownerName || !vehicle.ownerContact) {
+        vehicle.ownerName = customer.name;
+        vehicle.ownerContact = customer.phone;
+        needsUpdate = true;
+      }
+      
+      // 如果需要更新，保存车辆信息
+      if (needsUpdate) {
+        await vehicle.save();
+      }
     }
 
     // 2. 创建服务
@@ -110,7 +129,10 @@ export async function POST(request: NextRequest) {
         technician: data.technician || null // 如果没有技师ID，则为null，等待后台分配
       },
       // 如果提供了用户ID，存储用户ID关联
-      user: userId || null
+      user: userId || null,
+      // 添加创建时间
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
     
     console.log('创建预约数据:', JSON.stringify(rawAppointment, null, 2));

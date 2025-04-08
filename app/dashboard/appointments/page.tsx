@@ -125,15 +125,15 @@ export default function AppointmentsPage() {
       
       // 按创建日期降序排序，使最新创建的预约显示在最上方
       const sortedData = [...appointmentsData].sort((a, b) => {
-        // 如果有createdAt字段，按创建日期降序排序
+        // 如果有createdAt字段，按创建日期升序排序
         if (a.createdAt && b.createdAt) {
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         }
         // 作为备选，也可以按预约日期排序
         const aDate = a.date || a.timeSlot?.date;
         const bDate = b.date || b.timeSlot?.date;
         if (aDate && bDate) {
-          return new Date(bDate).getTime() - new Date(aDate).getTime();
+          return new Date(aDate).getTime() - new Date(bDate).getTime();
         }
         return 0;
       });
@@ -226,15 +226,20 @@ export default function AppointmentsPage() {
         
         if (!date) return '-';
         
-        // 改进日期格式化
-        const formattedDate = typeof date === 'string' 
-          ? dayjs(date).format('YYYY年MM月DD日') 
-          : dayjs(date).format('YYYY年MM月DD日');
+        // 确保日期是有效的
+        let formattedDate = '-';
+        try {
+          formattedDate = typeof date === 'string' 
+            ? dayjs(date).format('YYYY年MM月DD日') 
+            : dayjs(date).format('YYYY年MM月DD日');
+        } catch (error) {
+          console.error('日期格式化错误:', error);
+        }
           
         return (
           <span>
             <div>{formattedDate}</div>
-            <div className="text-gray-500">{startTime} - {endTime}</div>
+            <div className="text-gray-500">{startTime} - {endTime || '未指定'}</div>
           </span>
         );
       },
@@ -243,6 +248,9 @@ export default function AppointmentsPage() {
       title: '技师',
       key: 'technicianName',
       render: (_, record: any) => {
+        // 调试技师数据
+        console.log('技师数据:', record.technician);
+        
         // 先尝试从已填充的对象中获取技师名称
         if (record.technician?.name) {
           return record.technician.name;
@@ -261,7 +269,27 @@ export default function AppointmentsPage() {
           return record.timeSlot.technician.username;
         }
         
+        // 如果technician是字符串ID，显示ID的最后6位
+        if (typeof record.technician === 'string' && record.technician.length > 0) {
+          return `技师ID: ${record.technician.slice(-6)}`;
+        }
+        
         return '-';
+      },
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (createdAt: string) => {
+        if (!createdAt) return '-';
+        
+        try {
+          return dayjs(createdAt).format('YYYY-MM-DD HH:mm');
+        } catch (error) {
+          console.error('创建时间格式化错误:', error);
+          return '-';
+        }
       },
     },
     {
@@ -298,13 +326,13 @@ export default function AppointmentsPage() {
               </Button>
             </Tooltip>
             {record.status === 'processed' && (
-              <Tooltip title={isCustomer ? "客户无法转换工单" : ""}>
+              <Tooltip title={isCustomer ? "客户无法转换工单" : "将预约转换为工单"}>
                 <Button
                   type="primary"
                   size="small"
                   icon={<SyncOutlined />}
                   onClick={() => handleConvertToWorkOrder(record)}
-                  disabled={isCustomer}
+                  disabled={isCustomer} 
                   style={{ padding: '0 8px', borderRadius: '4px' }}
                 >
                   转为工单
@@ -453,12 +481,6 @@ export default function AppointmentsPage() {
         return;
       }
       
-      if (!values.endTime) {
-        message.error('请选择结束时间');
-        setLoading(false);
-        return;
-      }
-      
       // 打印关键字段的值
       console.log('日期:', values.date);
       console.log('开始时间:', values.startTime);
@@ -487,7 +509,15 @@ export default function AppointmentsPage() {
         const createVehicleResponse = await fetch('/api/vehicles', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(vehicleData),
+          body: JSON.stringify({
+            ...vehicleData,
+            ownerName: values['customer.name'],
+            ownerContact: values['customer.phone'],
+            status: 'active',
+            year: new Date().getFullYear(),
+            vin: `TEMP${Date.now()}`, // 临时VIN，可以后续更新
+            mileage: 0
+          }),
         });
         
         if (!createVehicleResponse.ok) {
@@ -521,13 +551,13 @@ export default function AppointmentsPage() {
         // 同时提供扁平结构和嵌套结构，确保两种格式的接口都能正常工作
         date: values.date.format('YYYY-MM-DD'),
         startTime: values.startTime.format('HH:mm'),
-        endTime: values.endTime.format('HH:mm'),
+        endTime: values.endTime ? values.endTime.format('HH:mm') : null,
         technician: values['timeSlot.technician'],
         // 保留嵌套结构，确保兼容性
         timeSlot: {
           date: values.date.format('YYYY-MM-DD'),
           startTime: values.startTime.format('HH:mm'),
-          endTime: values.endTime.format('HH:mm'),
+          endTime: values.endTime ? values.endTime.format('HH:mm') : null,
           technician: values['timeSlot.technician']
         },
         status: values.status || 'pending',
@@ -803,7 +833,6 @@ export default function AppointmentsPage() {
           <Form.Item
             name="endTime"
             label="结束时间"
-            rules={[{ required: true, message: '请选择结束时间' }]}
           >
             <TimePicker format="HH:mm" style={{ width: '100%' }} />
           </Form.Item>
