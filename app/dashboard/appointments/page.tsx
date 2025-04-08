@@ -15,9 +15,10 @@ import {
   TimePicker,
   Card,
   InputNumber,
+  Tooltip,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, PlusOutlined, SyncOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Appointment } from '@/types/appointment';
 
@@ -204,6 +205,7 @@ export default function AppointmentsPage() {
       title: '服务项目',
       dataIndex: ['service', 'name'],
       key: 'serviceName',
+      ellipsis: true,
     },
     {
       title: '预约时间',
@@ -217,11 +219,17 @@ export default function AppointmentsPage() {
         
         if (!date) return '-';
         
+        // 改进日期格式化
         const formattedDate = typeof date === 'string' 
-          ? date 
+          ? dayjs(date).format('YYYY-MM-DD') 
           : dayjs(date).format('YYYY-MM-DD');
           
-        return `${formattedDate} ${startTime}-${endTime}`;
+        return (
+          <span>
+            <div>{formattedDate}</div>
+            <div className="text-gray-500">{startTime} - {endTime}</div>
+          </span>
+        );
       },
     },
     {
@@ -263,9 +271,10 @@ export default function AppointmentsPage() {
       title: '操作',
       key: 'action',
       render: (_, record) => (
-        <Space size="middle">
+        <Space size="small" direction="vertical">
           <Button
             type="text"
+            size="small"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
@@ -274,7 +283,11 @@ export default function AppointmentsPage() {
           {record.status === 'processed' && (
             <Button
               type="primary"
+              ghost
+              size="small"
+              icon={<SyncOutlined />}
               onClick={() => handleConvertToWorkOrder(record)}
+              style={{ padding: '0 8px' }}
             >
               转为工单
             </Button>
@@ -282,6 +295,7 @@ export default function AppointmentsPage() {
           <Button
             type="text"
             danger
+            size="small"
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(record)}
           >

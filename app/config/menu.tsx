@@ -122,7 +122,8 @@ export const menuItems = [
     label: '评价管理',
     path: '/dashboard/reviews',
   },
-  // 权限管理菜单
+  // 权限管理菜单已移除
+  /*
   {
     key: 'permissions',
     icon: <LockOutlined />,
@@ -130,4 +131,5 @@ export const menuItems = [
     path: '/dashboard/permissions',
     adminOnly: true, // 标记仅管理员可见
   },
+  */
 ]; 
