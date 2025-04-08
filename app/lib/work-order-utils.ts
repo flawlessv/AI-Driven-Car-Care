@@ -52,9 +52,9 @@ export async function checkWorkOrderPermission(
     return true;
   }
 
-  // 技师只能操作分配给自己的工单
+  // 技师可以操作所有工单
   if (userRole === 'technician') {
-    return workOrder.technician === userId;
+    return true;
   }
 
   // 客户只能操作自己的工单

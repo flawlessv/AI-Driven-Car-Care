@@ -144,8 +144,7 @@ export default function RegisterPage() {
               placeholder="请选择角色"
               options={[
                 { value: 'customer', label: '客户' },
-                { value: 'technician', label: '技师' },
-                { value: 'admin', label: '管理员' }
+                { value: 'technician', label: '技师' }
               ]}
             />
           </Form.Item>

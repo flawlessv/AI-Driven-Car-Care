@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     console.log('查询日期范围:', { startDate, endDate });
 
-    // 构建查询条件
+    // 构建日期查询条件
     const dateQuery = {
       createdAt: {
         $gte: startDate ? new Date(startDate) : new Date(dayjs().subtract(30, 'days').format('YYYY-MM-DD')),
@@ -31,6 +31,42 @@ export async function GET(request: NextRequest) {
     };
 
     console.log('构建的日期查询:', dateQuery);
+    
+    // 根据用户角色构建车辆和保养查询条件
+    const isCustomer = user.role === 'customer';
+    
+    // 车辆查询条件 - 客户只能看到自己的车辆
+    const vehicleQuery = isCustomer ? { owner: user._id } : {};
+    console.log('车辆查询条件:', vehicleQuery);
+    
+    // 获取客户的车辆ID列表，用于查询保养记录
+    let customerVehicleIds = [];
+    if (isCustomer) {
+      const customerVehicles = await Vehicle.find({ owner: user._id }).select('_id');
+      customerVehicleIds = customerVehicles.map(v => v._id);
+      console.log('客户车辆ID列表:', customerVehicleIds);
+    }
+    
+    // 保养查询条件 - 客户只能看到自己车辆的保养
+    const maintenanceBaseQuery = isCustomer 
+      ? { vehicle: { $in: customerVehicleIds } } 
+      : {};
+    
+    // 合并日期查询条件
+    const maintenanceQuery = { ...maintenanceBaseQuery, ...dateQuery };
+    const pendingMaintenanceQuery = { 
+      ...maintenanceBaseQuery, 
+      status: 'pending' 
+    };
+    
+    // 今日预约查询
+    const todayAppointmentQuery = {
+      ...maintenanceBaseQuery,
+      startDate: {
+        $gte: new Date(dayjs().startOf('day').format()),
+        $lte: new Date(dayjs().endOf('day').format()),
+      },
+    };
 
     // 获取基础统计数据
     const [
@@ -41,22 +77,16 @@ export async function GET(request: NextRequest) {
       todayAppointments,
       monthlyRevenue,
       activeTechnicians,
-      alerts,
     ] = await Promise.all([
-      Vehicle.countDocuments({}),
-      Maintenance.countDocuments(dateQuery),
-      Maintenance.countDocuments({ ...dateQuery, status: 'completed' }),
-      Maintenance.countDocuments({ status: 'pending' }),
-      Maintenance.countDocuments({
-        startDate: {
-          $gte: new Date(dayjs().startOf('day').format()),
-          $lte: new Date(dayjs().endOf('day').format()),
-        },
-      }),
+      Vehicle.countDocuments(vehicleQuery),
+      Maintenance.countDocuments(maintenanceQuery),
+      Maintenance.countDocuments({ ...maintenanceQuery, status: 'completed' }),
+      Maintenance.countDocuments(pendingMaintenanceQuery),
+      Maintenance.countDocuments(todayAppointmentQuery),
       Maintenance.aggregate([
         {
           $match: {
-            ...dateQuery,
+            ...maintenanceQuery,
             status: 'completed',
           },
         },
@@ -68,7 +98,6 @@ export async function GET(request: NextRequest) {
         },
       ]).then(result => (result[0]?.total || 0)),
       getUserModel().countDocuments({ role: 'technician', status: 'active' }),
-      Maintenance.countDocuments({ status: 'pending' }),
     ]);
 
     console.log('基础统计数据:', {
@@ -79,12 +108,11 @@ export async function GET(request: NextRequest) {
       todayAppointments,
       monthlyRevenue,
       activeTechnicians,
-      alerts,
     });
 
     // 获取维修类型分布
     const maintenanceByType = await Maintenance.aggregate([
-      { $match: dateQuery },
+      { $match: maintenanceQuery },
       {
         $group: {
           _id: '$type',
@@ -103,7 +131,11 @@ export async function GET(request: NextRequest) {
     console.log('维修类型分布:', maintenanceByType);
 
     // 获取最近维修记录
-    const recentMaintenance = await Maintenance.find({})
+    const recentMaintenanceQuery = isCustomer 
+      ? { vehicle: { $in: customerVehicleIds } } 
+      : {};
+    
+    const recentMaintenance = await Maintenance.find(recentMaintenanceQuery)
       .populate('vehicle', 'brand model licensePlate')
       .populate('technician', 'name username')
       .sort({ createdAt: -1 })
@@ -113,7 +145,7 @@ export async function GET(request: NextRequest) {
 
     // 获取月度统计数据
     const monthlyStats = await Maintenance.aggregate([
-      { $match: dateQuery },
+      { $match: maintenanceQuery },
       {
         $group: {
           _id: {
@@ -158,11 +190,10 @@ export async function GET(request: NextRequest) {
         todayAppointments,
         monthlyRevenue,
         activeTechnicians,
-        alerts,
       },
       maintenanceByType,
       maintenanceByStatus: await Maintenance.aggregate([
-        { $match: dateQuery },
+        { $match: maintenanceQuery },
         {
           $group: {
             _id: '$status',

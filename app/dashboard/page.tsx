@@ -24,7 +24,6 @@ import {
   DollarOutlined,
   UserOutlined,
   AlertOutlined,
-  BellOutlined,
 } from '@ant-design/icons';
 import { Line, Pie } from '@ant-design/plots';
 import dayjs from 'dayjs';
@@ -191,43 +190,33 @@ const DashboardPage = () => {
             </div>
 
             <Row gutter={[16, 16]}>
-              <Col xs={24} sm={12} lg={6}>
+              <Col xs={24} sm={12} lg={8}>
                 <Card>
                   <Statistic
                     title="我的车辆"
-                    value={3}
+                    value={0}
                     prefix={<CarOutlined />}
                     suffix="辆"
                   />
                 </Card>
               </Col>
-              <Col xs={24} sm={12} lg={6}>
+              <Col xs={24} sm={12} lg={8}>
                 <Card>
                   <Statistic
                     title="待处理保养"
-                    value={2}
+                    value={0}
                     prefix={<ToolOutlined />}
                     suffix="项"
                   />
                 </Card>
               </Col>
-              <Col xs={24} sm={12} lg={6}>
+              <Col xs={24} sm={12} lg={8}>
                 <Card>
                   <Statistic
                     title="预约服务"
-                    value={1}
+                    value={0}
                     prefix={<ClockCircleOutlined />}
                     suffix="个"
-                  />
-                </Card>
-              </Col>
-              <Col xs={24} sm={12} lg={6}>
-                <Card>
-                  <Statistic
-                    title="未读消息"
-                    value={5}
-                    prefix={<BellOutlined />}
-                    suffix="条"
                   />
                 </Card>
               </Col>
@@ -411,43 +400,33 @@ const DashboardPage = () => {
           </div>
 
           <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12} lg={6}>
+            <Col xs={24} sm={12} lg={8}>
               <Card>
                 <Statistic
                   title="我的车辆"
-                  value={3}
+                  value={stats?.overview.totalVehicles || 0}
                   prefix={<CarOutlined />}
                   suffix="辆"
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} lg={6}>
+            <Col xs={24} sm={12} lg={8}>
               <Card>
                 <Statistic
                   title="待处理保养"
-                  value={2}
+                  value={stats?.overview.pendingMaintenance || 0}
                   prefix={<ToolOutlined />}
                   suffix="项"
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} lg={6}>
+            <Col xs={24} sm={12} lg={8}>
               <Card>
                 <Statistic
                   title="预约服务"
-                  value={1}
+                  value={stats?.overview.todayAppointments || 0}
                   prefix={<ClockCircleOutlined />}
                   suffix="个"
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card>
-                <Statistic
-                  title="未读消息"
-                  value={5}
-                  prefix={<BellOutlined />}
-                  suffix="条"
                 />
               </Card>
             </Col>

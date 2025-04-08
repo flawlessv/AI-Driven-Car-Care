@@ -212,6 +212,7 @@ export default function AppointmentsPage() {
       dataIndex: ['service', 'name'],
       key: 'serviceName',
       ellipsis: true,
+      width: 250,
     },
     {
       title: '预约时间',
@@ -227,8 +228,8 @@ export default function AppointmentsPage() {
         
         // 改进日期格式化
         const formattedDate = typeof date === 'string' 
-          ? dayjs(date).format('YYYY-MM-DD') 
-          : dayjs(date).format('YYYY-MM-DD');
+          ? dayjs(date).format('YYYY年MM月DD日') 
+          : dayjs(date).format('YYYY年MM月DD日');
           
         return (
           <span>
@@ -300,12 +301,11 @@ export default function AppointmentsPage() {
               <Tooltip title={isCustomer ? "客户无法转换工单" : ""}>
                 <Button
                   type="primary"
-                  ghost
                   size="small"
                   icon={<SyncOutlined />}
                   onClick={() => handleConvertToWorkOrder(record)}
                   disabled={isCustomer}
-                  style={{ padding: '0 8px' }}
+                  style={{ padding: '0 8px', borderRadius: '4px' }}
                 >
                   转为工单
                 </Button>

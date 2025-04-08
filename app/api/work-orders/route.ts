@@ -54,14 +54,18 @@ export async function GET(request: NextRequest) {
       console.log('客户查询工单，只显示自己的：', authResult.user._id);
       query.customer = authResult.user._id;
     } else if (authResult.user.role === 'technician') {
-      query.technician = authResult.user._id;
+      // 技师可以看到所有工单，不再限制为只能看到分配给自己的工单
+      // 如果前端传入了特定technician参数，仍然支持过滤
+      if (technician) {
+        query.technician = technician;
+      }
     } else if (customer) {
+      // 管理员如果指定了customer参数，则查询该客户的工单
       query.customer = customer;
     }
 
     if (status) query.status = status;
     if (vehicle) query.vehicle = vehicle;
-    if (technician) query.technician = technician;
 
     // 如果是请求统计数据
     const isStatistics = searchParams.get('statistics') === 'true';

@@ -161,6 +161,23 @@ export default function WorkOrdersPage() {
       ),
     },
     {
+      title: '客户信息',
+      dataIndex: ['customer'],
+      render: (customer: any) => {
+        if (!customer) {
+          return <span>未知客户</span>;
+        }
+        
+        return (
+          <span>
+            {customer?.username || customer?.name || '未知姓名'}
+            <br />
+            {customer?.phone || '无联系方式'}
+          </span>
+        );
+      },
+    },
+    {
       title: '车辆',
       dataIndex: ['vehicle'],
       render: (vehicle: any) => {
@@ -236,7 +253,7 @@ export default function WorkOrdersPage() {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">维修工单管理</h1>
         <div>
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'customer') && (
             <Button 
               type="primary" 
               icon={<PlusOutlined />} 
