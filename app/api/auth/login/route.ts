@@ -121,6 +121,7 @@ export async function POST(request: Request) {
         role: string;
         permissions?: Array<{ menuKey: string; permission: string }>;
         name?: string;
+        phone?: string;
       }
 
       const userForClient: UserWithPermissions = {
@@ -129,7 +130,8 @@ export async function POST(request: Request) {
         email: userWithPermissions.email,
         role: userWithPermissions.role,
         permissions: (userWithPermissions as any).permissions || [],
-        name: (userWithPermissions as any).name || ''
+        name: (userWithPermissions as any).name || '',
+        phone: (userWithPermissions as any).phone || ''
       };
 
       // 重要调试信息

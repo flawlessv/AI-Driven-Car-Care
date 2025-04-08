@@ -7,6 +7,7 @@ interface AuthState {
   user: any | null;
   token: string | null;
   loading: boolean;
+  phone: string | null;
 }
 
 // 从localStorage获取初始状态
@@ -19,6 +20,7 @@ const loadState = (): AuthState => {
         user: null,
         token: null,
         loading: false,
+        phone: null,
       };
     }
     return JSON.parse(serializedState);
@@ -29,6 +31,7 @@ const loadState = (): AuthState => {
       user: null,
       token: null,
       loading: false,
+      phone: null,
     };
   }
 };
@@ -53,9 +56,11 @@ const authSlice = createSlice({
       action: PayloadAction<{ user: any; token: string }>
     ) => {
       const { user, token } = action.payload;
+      console.log('user123', user,action.payload);
       state.user = user;
       state.token = token;
       state.isAuthenticated = true;
+      state.phone = user.phone || null;
       saveState(state);
     },
     logout: (state) => {

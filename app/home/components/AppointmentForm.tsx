@@ -76,6 +76,7 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
   }, []);
 
   // 当用户登录状态变化时，自动填充用户信息
+  console.log('user111', user);
   useEffect(() => {
     if (user) {
       form.setFieldsValue({
@@ -89,11 +90,15 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
     try {
       setLoading(true);
       
+      // 确保使用用户登录信息
+      const name = user?.name || user?.username || values.name;
+      const phone = user?.phone || values.phone;
+      
       // 兼容新的数据结构，同时提供扁平结构和timeSlot结构
       const formattedData = {
         customer: {
-          name: values.name,
-          phone: values.phone,
+          name,
+          phone,
         },
         vehicleBrand: values.vehicleBrand,
         vehicleModel: values.vehicleModel,
@@ -112,7 +117,7 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
           technician: values.technician || null
         },
         // 添加用户ID关联
-        userId: user?._id
+        user: user?._id
       };
 
       console.log('正在提交预约数据:', JSON.stringify(formattedData, null, 2));
@@ -152,7 +157,7 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
         label="姓名"
         rules={[{ required: true, message: '请输入您的姓名' }]}
       >
-        <Input placeholder="请输入姓名" />
+        <Input placeholder="请输入姓名" disabled={!!user} />
       </Form.Item>
 
       <Form.Item
@@ -163,7 +168,7 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
           { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码' }
         ]}
       >
-        <Input placeholder="请输入手机号码" />
+        <Input placeholder="请输入手机号码" disabled={!!user} />
       </Form.Item>
 
       <Form.Item

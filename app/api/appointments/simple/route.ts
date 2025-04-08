@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       serviceDescription, 
       date, 
       startTime,
-      userId // 获取可选的用户ID
+      user // 获取可选的用户ID
     } = data;
 
     console.log('收到简易预约数据:', JSON.stringify(data, null, 2));
@@ -53,13 +53,13 @@ export async function POST(request: NextRequest) {
     vehicle = await Vehicle.findOne(vehicleQuery);
 
     if (!vehicle) {
-      // 创建新车辆，如果有userId则关联到用户
+      // 创建新车辆，关联到用户
       vehicle = new Vehicle({
         brand: vehicleBrand,
         model: vehicleModel,
         licensePlate,
         registrationDate: new Date(),
-        owner: userId || null, // 如果有用户ID，关联车辆和用户
+        owner: user || null, // 如果有用户ID，关联车辆和用户
         ownerName: customer.name, // 添加车主姓名
         ownerContact: customer.phone // 添加车主联系方式
       });
@@ -68,9 +68,9 @@ export async function POST(request: NextRequest) {
       // 如果找到了车辆，更新车主信息（如果缺少）
       let needsUpdate = false;
       
-      // 如果有userId且车辆没有关联用户，更新车辆所有者
-      if (userId && !vehicle.owner) {
-        vehicle.owner = userId;
+      // 如果有用户ID且车辆没有关联用户，更新车辆所有者
+      if (user && !vehicle.owner) {
+        vehicle.owner = user;
         needsUpdate = true;
       }
       
@@ -128,8 +128,8 @@ export async function POST(request: NextRequest) {
         endTime: endTime,
         technician: data.technician || null // 如果没有技师ID，则为null，等待后台分配
       },
-      // 如果提供了用户ID，存储用户ID关联
-      user: userId || null,
+      // 存储用户ID关联
+      user: user || null,
       // 添加创建时间
       createdAt: new Date(),
       updatedAt: new Date()

@@ -36,7 +36,12 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  phone: String,
+  phone: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true
+  },
   role: {
     type: String,
     enum: Object.values(USER_ROLES),

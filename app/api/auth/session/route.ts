@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
       role: string;
       permissions?: Array<{ menuKey: string; permission: string }>;
       name?: string;
+      phone?: string;
     }
 
     // 组装返回数据，包括权限信息
@@ -44,7 +45,8 @@ export async function GET(request: NextRequest) {
       email: user.email,
       role: user.role,
       permissions: (user as any).permissions || [],
-      name: (user as any).name || ''
+      name: (user as any).name || '',
+      phone: (user as any).phone || ''
     };
     
     console.log('会话API - 用户权限数量:', userForClient.permissions?.length || 0);

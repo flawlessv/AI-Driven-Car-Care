@@ -51,6 +51,14 @@ export async function POST(request: NextRequest) {
       return errorResponse('用户名或邮箱已存在', 400);
     }
 
+    // 检查手机号是否已存在
+    if (phone) {
+      const existingPhone = await User.findOne({ phone });
+      if (existingPhone) {
+        return errorResponse('手机号已被使用', 400);
+      }
+    }
+
     // 创建新用户 - 直接使用原始密码，让 mongoose 中间件处理加密
     const userData = {
       username,
@@ -66,8 +74,8 @@ export async function POST(request: NextRequest) {
     // 验证保存后的密码
     const savedUser = await User.findById(user._id).select('+password');
     console.log('保存后的用户数据:', {
-      _id: savedUser._id,
-      passwordLength: savedUser.password?.length
+      _id: savedUser?._id,
+      passwordLength: savedUser?.password?.length
     });
 
     return successResponse({
