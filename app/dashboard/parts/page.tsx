@@ -26,6 +26,9 @@ import {
   WarningOutlined,
 } from '@ant-design/icons';
 import type { Part } from '@/types/part';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/lib/store';
+import PermissionChecker from '@/app/components/PermissionChecker';
 
 const { TextArea } = Input;
 
@@ -47,6 +50,7 @@ export default function PartsPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingPart, setEditingPart] = useState<Part | null>(null);
   const [form] = Form.useForm();
+  const user = useSelector((state: RootState) => state.auth.user);
 
   useEffect(() => {
     fetchParts();
@@ -164,21 +168,32 @@ export default function PartsPage() {
       key: 'action',
       render: (_, record) => (
         <Space size="middle">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
+          <PermissionChecker
+            menuKey="parts"
+            requiredPermission="write"
+            buttonProps={{
+              type: "text",
+              icon: <EditOutlined />,
+              onClick: () => handleEdit(record)
+            }}
+            noPermissionTip="您没有编辑配件的权限"
           >
             编辑
-          </Button>
-          <Button
-            type="text"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record)}
+          </PermissionChecker>
+          
+          <PermissionChecker
+            menuKey="parts"
+            requiredPermission="manage"
+            buttonProps={{
+              type: "text",
+              danger: true,
+              icon: <DeleteOutlined />,
+              onClick: () => handleDelete(record)
+            }}
+            noPermissionTip="您没有删除配件的权限"
           >
             删除
-          </Button>
+          </PermissionChecker>
         </Space>
       ),
     },
@@ -249,127 +264,185 @@ export default function PartsPage() {
       <Card
         title="配件库存"
         extra={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => {
-              setEditingPart(null);
-              form.resetFields();
-              setModalVisible(true);
+          <PermissionChecker
+            menuKey="parts"
+            requiredPermission="write"
+            buttonProps={{
+              type: "primary",
+              icon: <PlusOutlined />,
+              onClick: () => {
+                setEditingPart(null);
+                form.resetFields();
+                setModalVisible(true);
+              }
             }}
+            noPermissionTip="您没有添加配件的权限"
           >
             添加配件
-          </Button>
+          </PermissionChecker>
         }
       >
+        <div className="mb-4">
+          <Space wrap>
+            <Select 
+              style={{ width: 200 }}
+              placeholder="选择配件类别"
+              allowClear
+              options={filters.categories.map(category => ({
+                label: category,
+                value: category
+              }))}
+            />
+            <Select 
+              style={{ width: 200 }}
+              placeholder="选择制造商"
+              allowClear
+              options={filters.manufacturers.map(manufacturer => ({
+                label: manufacturer,
+                value: manufacturer
+              }))}
+            />
+          </Space>
+        </div>
+
         <Table
           columns={columns}
           dataSource={data}
           rowKey="_id"
           loading={loading}
+          pagination={{
+            ...pagination,
+            onChange: (page) => {
+              setPagination(prev => ({ ...prev, current: page }));
+            }
+          }}
         />
       </Card>
-
+      
       <Modal
         title={editingPart ? '编辑配件' : '添加配件'}
         open={modalVisible}
-        onCancel={() => {
-          setModalVisible(false);
-          form.resetFields();
-        }}
+        onCancel={() => setModalVisible(false)}
         footer={null}
       >
         <Form
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
+          initialValues={{
+            status: 'in_stock',
+            minStock: 5
+          }}
         >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="code"
+                label="配件编号"
+                rules={[{ required: true, message: '请输入配件编号' }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="name"
+                label="配件名称"
+                rules={[{ required: true, message: '请输入配件名称' }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="category"
+                label="配件类别"
+                rules={[{ required: true, message: '请选择配件类别' }]}
+              >
+                <Select>
+                  <Select.Option value="engine">发动机</Select.Option>
+                  <Select.Option value="transmission">变速箱</Select.Option>
+                  <Select.Option value="brake">制动系统</Select.Option>
+                  <Select.Option value="electrical">电气系统</Select.Option>
+                  <Select.Option value="body">车身部件</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="manufacturer"
+                label="制造商"
+                rules={[{ required: true, message: '请输入制造商' }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item
+                name="price"
+                label="单价"
+                rules={[{ required: true, message: '请输入单价' }]}
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={0}
+                  precision={2}
+                  addonBefore="¥"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                name="stock"
+                label="库存数量"
+                rules={[{ required: true, message: '请输入库存数量' }]}
+              >
+                <InputNumber style={{ width: '100%' }} min={0} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                name="minStock"
+                label="最低库存"
+                tooltip="当库存低于此数量时会给出警告"
+              >
+                <InputNumber style={{ width: '100%' }} min={0} />
+              </Form.Item>
+            </Col>
+          </Row>
+
           <Form.Item
-            name="code"
-            label="配件编号"
-            rules={[{ required: true, message: '请输入配件编号' }]}
+            name="description"
+            label="配件描述"
           >
-            <Input />
+            <TextArea rows={4} />
           </Form.Item>
-          <Form.Item
-            name="name"
-            label="配件名称"
-            rules={[{ required: true, message: '请输入配件名称' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="category"
-            label="类别"
-            rules={[{ required: true, message: '请选择类别' }]}
-          >
-            <Select>
-              <Select.Option value="engine">发动机</Select.Option>
-              <Select.Option value="transmission">变速箱</Select.Option>
-              <Select.Option value="brake">制动系统</Select.Option>
-              <Select.Option value="electrical">电气系统</Select.Option>
-              <Select.Option value="body">车身部件</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="manufacturer"
-            label="品牌"
-            rules={[{ required: true, message: '请输入品牌' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="stock"
-            label="库存数量"
-            rules={[{ required: true, message: '请输入库存数量' }]}
-          >
-            <InputNumber min={0} className="w-full" />
-          </Form.Item>
-          <Form.Item
-            name="minStock"
-            label="最低库存"
-            rules={[{ required: true, message: '请输入最低库存' }]}
-          >
-            <InputNumber min={0} className="w-full" />
-          </Form.Item>
-          <Form.Item
-            name="price"
-            label="单价"
-            rules={[{ required: true, message: '请输入单价' }]}
-          >
-            <InputNumber
-              min={0}
-              step={0.01}
-              prefix="¥"
-              className="w-full"
-            />
-          </Form.Item>
+
           <Form.Item
             name="status"
             label="状态"
             rules={[{ required: true, message: '请选择状态' }]}
           >
             <Select>
-              <Select.Option value="active">正常</Select.Option>
-              <Select.Option value="discontinued">停产</Select.Option>
-              <Select.Option value="outOfStock">缺货</Select.Option>
+              <Select.Option value="in_stock">有库存</Select.Option>
+              <Select.Option value="low_stock">库存不足</Select.Option>
+              <Select.Option value="out_of_stock">无库存</Select.Option>
+              <Select.Option value="discontinued">已停产</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item
-            name="description"
-            label="描述"
-          >
-            <TextArea rows={4} />
-          </Form.Item>
+
           <Form.Item>
             <Space>
               <Button type="primary" htmlType="submit">
                 提交
               </Button>
-              <Button onClick={() => {
-                setModalVisible(false);
-                form.resetFields();
-              }}>
+              <Button onClick={() => setModalVisible(false)}>
                 取消
               </Button>
             </Space>

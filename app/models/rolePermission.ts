@@ -20,7 +20,7 @@ const rolePermissionSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    enum: ['admin', 'staff', 'customer', 'technician']
+    enum: ['admin', 'customer', 'technician']
   },
   // 权限配置
   permissions: {

@@ -94,7 +94,7 @@ export async function checkWorkOrderPermission(
   }
 
   // 技师只能操作分配给自己的工单
-  if (userRole === 'staff') {
+  if (userRole === 'technician') {
     return workOrder.technician === userId;
   }
 
@@ -118,7 +118,7 @@ export async function updateVehicleStatusByWorkOrder(
 // 获取可分配的技师列表
 export async function getAvailableTechnicians(): Promise<User[]> {
   return await User.find({
-    role: 'staff',
+    role: 'technician',
     status: 'active',
   }).select('_id username');
 }

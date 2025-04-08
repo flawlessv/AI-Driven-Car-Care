@@ -29,38 +29,66 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { role: string } }
 ) {
+  const { role } = params;
+  
+  // 验证角色参数
+  const validRoles = ['admin', 'staff', 'customer', 'technician'];
+  if (!validRoles.includes(role)) {
+    return ApiResponseUtil.error(400, `无效的角色: ${role}`);
+  }
+
   try {
-    const { role } = params;
-    
-    // 验证角色是否有效
-    if (!role || !['customer', 'technician', 'admin', 'staff'].includes(role)) {
-      return ApiResponseUtil.error(400, '无效的角色');
-    }
-    
     await dbConnect();
     
-    // 使用专门的角色权限模型查询
-    let rolePermission = await RolePermission.findOne({ role }).lean();
+    // 查询角色权限配置
+    let rolePermission = await RolePermission.findOne({ role });
     
-    // 如果没有找到权限配置，创建默认配置
+    // 如果没有找到配置，则使用默认配置
     if (!rolePermission) {
-      rolePermission = {
-        role,
-        permissions: getDefaultPermissionsForRole(role),
-        isDefault: true,
-        description: `${role === 'customer' ? '客户' : '技师'}的默认权限配置`
-      };
+      // 对于每个角色，使用默认权限配置
+      const defaultPermissions = getDefaultPermissionsForRole(role);
       
-      // 保存默认配置
-      await RolePermission.create(rolePermission);
-      console.log(`已创建${role}角色的默认权限配置`);
+      if (defaultPermissions.length > 0) {
+        rolePermission = {
+          role,
+          permissions: defaultPermissions,
+          isDefault: true,
+          description: `${role}的默认权限配置`
+        };
+      } else {
+        // 如果是admin角色，给予所有权限
+        if (role === 'admin') {
+          rolePermission = {
+            role: 'admin',
+            permissions: [
+              { menuKey: 'dashboard', permission: 'manage' },
+              { menuKey: 'vehicles', permission: 'manage' },
+              { menuKey: 'vehicle-list', permission: 'manage' },
+              { menuKey: 'vehicle-files', permission: 'manage' },
+              { menuKey: 'vehicle-health', permission: 'manage' },
+              { menuKey: 'maintenance', permission: 'manage' },
+              { menuKey: 'maintenance-records', permission: 'manage' },
+              { menuKey: 'maintenance-rules', permission: 'manage' },
+              { menuKey: 'work-orders', permission: 'manage' },
+              { menuKey: 'appointments', permission: 'manage' },
+              { menuKey: 'technicians', permission: 'manage' },
+              { menuKey: 'users', permission: 'manage' },
+              { menuKey: 'parts', permission: 'manage' },
+              { menuKey: 'reviews', permission: 'manage' },
+              { menuKey: 'permissions', permission: 'manage' }
+            ],
+            isDefault: true,
+            description: '管理员的默认权限配置'
+          };
+        } else {
+          return ApiResponseUtil.error(404, `未找到${role}角色的权限配置`);
+        }
+      }
     }
     
-    console.log(`获取到${role}角色的权限配置:`, rolePermission.permissions?.length || 0, '条权限设置');
-    
-    return ApiResponseUtil.success(rolePermission.permissions || []);
+    return ApiResponseUtil.success(rolePermission);
   } catch (error: any) {
-    console.error('获取角色权限失败:', error);
+    console.error(`获取${role}角色权限失败:`, error);
     return ApiResponseUtil.error(500, `获取角色权限失败: ${error.message}`);
   }
 }
@@ -136,11 +164,11 @@ function getDefaultPermissionsForRole(role: string): any[] {
       { menuKey: 'maintenance', permission: 'read' },
       { menuKey: 'maintenance-records', permission: 'read' },
       { menuKey: 'maintenance-rules', permission: 'none' },
+      { menuKey: 'work-orders', permission: 'read' },
       { menuKey: 'appointments', permission: 'write' },
       { menuKey: 'technicians', permission: 'read' },
       { menuKey: 'users', permission: 'none' },
       { menuKey: 'parts', permission: 'none' },
-      { menuKey: 'reports', permission: 'none' },
       { menuKey: 'reviews', permission: 'write' },
       { menuKey: 'permissions', permission: 'none' }
     ];
@@ -154,11 +182,11 @@ function getDefaultPermissionsForRole(role: string): any[] {
       { menuKey: 'maintenance', permission: 'write' },
       { menuKey: 'maintenance-records', permission: 'write' },
       { menuKey: 'maintenance-rules', permission: 'read' },
+      { menuKey: 'work-orders', permission: 'read' },
       { menuKey: 'appointments', permission: 'read' },
       { menuKey: 'technicians', permission: 'read' },
       { menuKey: 'users', permission: 'none' },
-      { menuKey: 'parts', permission: 'read' },
-      { menuKey: 'reports', permission: 'none' },
+      { menuKey: 'parts', permission: 'write' },
       { menuKey: 'reviews', permission: 'read' },
       { menuKey: 'permissions', permission: 'none' }
     ];

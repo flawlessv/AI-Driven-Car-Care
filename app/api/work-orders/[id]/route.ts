@@ -238,7 +238,6 @@ export async function DELETE(
 function canChangeStatus(userRole: string, currentStatus: string, newStatus: string): boolean {
   const statusFlow = {
     admin: ['pending', 'assigned', 'in_progress', 'pending_check', 'completed', 'cancelled'],
-    staff: ['pending', 'assigned', 'in_progress', 'pending_check', 'completed', 'cancelled'],
     technician: ['assigned', 'in_progress', 'pending_check'],
     customer: ['pending', 'cancelled']
   };

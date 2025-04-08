@@ -14,8 +14,10 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const {user} = await authMiddleware(request);
-    if ('status' in user) return user;
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return errorResponse('未授权访问', 401);
+    }
 
     await connectDB();
 
@@ -47,7 +49,7 @@ export async function PUT(
     }
 
     // 检查用户权限
-    if (authResult.user.role !== 'admin' && authResult.user.role !== 'staff') {
+    if (authResult.user.role !== 'admin' && authResult.user.role !== 'technician') {
       return errorResponse('没有权限更新配件', 403);
     }
 
@@ -91,7 +93,7 @@ export async function PUT(
     });
     if (existingPart) {
       return validationErrorResponse({
-        code: '配件编号已存在',
+        code: ['配件编号已存在'],
       });
     }
 

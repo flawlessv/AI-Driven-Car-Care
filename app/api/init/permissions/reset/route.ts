@@ -9,16 +9,8 @@ import RolePermission from '@/app/models/rolePermission';
  */
 export async function GET(req: NextRequest) {
   try {
-    const isDevMode = process.env.NODE_ENV === 'development';
-    console.log('运行环境:', process.env.NODE_ENV);
-    
-    // 非开发环境需要权限验证
-    if (!isDevMode) {
-      return NextResponse.json(
-        { success: false, message: '此操作仅开发环境可用' },
-        { status: 403 }
-      );
-    }
+    // 不再检查环境变量，允许在任何环境下运行
+    console.log('开始重置用户权限...');
 
     console.log('开始连接数据库...');
     await dbConnect();

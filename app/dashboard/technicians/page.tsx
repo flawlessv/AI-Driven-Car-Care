@@ -32,6 +32,7 @@ import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/lib/store';
 import type { User } from '@/types/user';
+import PermissionChecker from '@/app/components/PermissionChecker';
 
 const { TextArea } = Input;
 
@@ -64,7 +65,7 @@ const TechniciansPage = () => {
     }
 
     // 检查用户权限
-    if (!['admin', 'staff'].includes(user.role)) {
+    if (!['admin', 'technician'].includes(user.role)) {
       console.log('用户无权限访问，重定向到首页', user.role);
       router.push('/dashboard');
       return;
@@ -285,22 +286,33 @@ const TechniciansPage = () => {
       title: '操作',
       key: 'action',
       render: (_: any, record: TechnicianWithStats) => (
-        <Space size="middle">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
+        <Space>
+          <PermissionChecker
+            menuKey="technicians"
+            requiredPermission="write"
+            buttonProps={{
+              size: "small",
+              icon: <EditOutlined />,
+              onClick: () => handleEdit(record)
+            }}
+            noPermissionTip="您没有编辑技师信息的权限"
           >
             编辑
-          </Button>
-          <Button
-            type="text"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record)}
+          </PermissionChecker>
+          
+          <PermissionChecker
+            menuKey="technicians"
+            requiredPermission="manage"
+            buttonProps={{
+              size: "small",
+              danger: true,
+              icon: <DeleteOutlined />,
+              onClick: () => handleDelete(record)
+            }}
+            noPermissionTip="您没有删除技师的权限"
           >
             删除
-          </Button>
+          </PermissionChecker>
         </Space>
       ),
     },
@@ -311,13 +323,17 @@ const TechniciansPage = () => {
       <Card
         title="技师团队"
         extra={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleAdd}
+          <PermissionChecker
+            menuKey="technicians"
+            requiredPermission="write"
+            buttonProps={{
+              type: "primary",
+              icon: <PlusOutlined />
+            }}
+            noPermissionTip="您没有添加技师的权限"
           >
             添加技师
-          </Button>
+          </PermissionChecker>
         }
       >
         <Table

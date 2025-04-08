@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
 
-export type UserRole = 'admin' | 'staff' | 'technician' | 'customer';
+export type UserRole = 'admin' | 'technician' | 'customer';
 
 export interface User {
   _id: string | ObjectId;
@@ -18,18 +18,16 @@ export interface User {
   updatedAt: Date | string;
 }
 
-// 添加角色常量
+// 用户角色定义
 export const USER_ROLES = {
   ADMIN: 'admin',
-  CUSTOMER: 'customer',
   TECHNICIAN: 'technician',
-  STAFF: 'staff',
+  CUSTOMER: 'customer'
 } as const;
 
-// 添加角色显示名称映射
+// 角色显示名称映射
 export const ROLE_NAMES = {
   admin: '管理员',
-  customer: '客户',
   technician: '技师',
-  staff: '职员',
+  customer: '客户'
 } as const; 

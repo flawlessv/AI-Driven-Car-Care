@@ -139,27 +139,6 @@ const adminPermissions = [
   { menuKey: 'permissions', permission: 'manage' },
 ];
 
-const staffPermissions = [
-  { menuKey: 'dashboard', permission: 'read' },
-  { menuKey: 'vehicles', permission: 'write' },
-  { menuKey: 'vehicle-list', permission: 'write' },
-  { menuKey: 'vehicle-files', permission: 'write' },
-  { menuKey: 'vehicle-health', permission: 'read' },
-  { menuKey: 'maintenance', permission: 'write' },
-  { menuKey: 'maintenance-records', permission: 'write' },
-  { menuKey: 'maintenance-rules', permission: 'read' },
-  { menuKey: 'appointments', permission: 'write' },
-  { menuKey: 'technicians', permission: 'read' },
-  { menuKey: 'users', permission: 'none' },
-  { menuKey: 'parts', permission: 'write' },
-  { menuKey: 'reports', permission: 'read' },
-  { menuKey: 'maintenance-stats', permission: 'read' },
-  { menuKey: 'revenue-stats', permission: 'none' },
-  { menuKey: 'customer-analysis', permission: 'none' },
-  { menuKey: 'reviews', permission: 'read' },
-  { menuKey: 'permissions', permission: 'none' },
-];
-
 const customerPermissions = [
   { menuKey: 'dashboard', permission: 'read' },
   { menuKey: 'vehicles', permission: 'read' },
@@ -188,13 +167,6 @@ const defaultPermissionRules = [
     description: '系统管理员的默认权限规则，拥有所有功能的完全访问权限',
     roles: ['admin'],
     permissions: adminPermissions,
-    isDefault: true
-  },
-  {
-    name: '员工权限',
-    description: '普通员工的默认权限规则，可以处理日常业务，但无法访问管理功能',
-    roles: ['staff'],
-    permissions: staffPermissions,
     isDefault: true
   },
   {
@@ -238,8 +210,6 @@ async function initPermissions() {
         
         if (user.role === 'admin') {
           permissions = adminPermissions;
-        } else if (user.role === 'staff') {
-          permissions = staffPermissions;
         } else {
           permissions = customerPermissions;
         }

@@ -26,7 +26,7 @@ const permissionSchema = new mongoose.Schema({
   // 应用于哪些角色
   roles: {
     type: [String],
-    enum: ['admin', 'staff', 'customer'],
+    enum: ['admin', 'customer'],
     default: []
   },
   // 应用于指定用户

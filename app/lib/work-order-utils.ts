@@ -39,4 +39,36 @@ export async function updateTechnicianStats(
     console.error('更新技师统计数据失败:', error);
     throw error;
   }
+}
+
+// 检查用户是否有权限操作工单
+export async function checkWorkOrderPermission(
+  workOrder: WorkOrder,
+  userId: string,
+  userRole: string
+): Promise<boolean> {
+  // 管理员有所有权限
+  if (userRole === 'admin') {
+    return true;
+  }
+
+  // 技师只能操作分配给自己的工单
+  if (userRole === 'technician') {
+    return workOrder.technician === userId;
+  }
+
+  // 客户只能操作自己的工单
+  if (userRole === 'customer') {
+    return workOrder.customer === userId;
+  }
+
+  return false;
+}
+
+// 获取可分配的技师列表
+export async function getAvailableTechnicians(): Promise<User[]> {
+  return await User.find({
+    role: 'technician',
+    status: 'active',
+  }).select('_id username');
 } 

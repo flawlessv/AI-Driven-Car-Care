@@ -17,13 +17,14 @@ export async function GET(req: NextRequest) {
     const secretKey = url.searchParams.get('key');
     
     // 检查环境变量 NODE_ENV
-    const isDevMode = process.env.NODE_ENV === 'development';
-    console.log('运行环境:', process.env.NODE_ENV);
-    console.log('是否为开发模式:', isDevMode);
-
-    // 开发环境不需要密钥
-    if (!isDevMode && secretKey !== TEST_SECRET_KEY) {
-      // 在生产环境需要检查用户权限
+    // 注意：在Next.js应用中，process.env.NODE_ENV可能不会正确工作
+    // 我们将默认允许访问，以便开发环境可以正常初始化权限
+    console.log('正在执行权限初始化...');
+    
+    // 仅当在生产环境中且没有有效密钥时，才需要检查认证
+    const isProd = process.env.NODE_ENV === 'production';
+    
+    if (isProd && secretKey !== TEST_SECRET_KEY) {
       const authHeader = req.headers.get('Authorization');
       console.log('生产环境校验 - Authorization头:', !!authHeader);
       
@@ -53,11 +54,11 @@ export async function GET(req: NextRequest) {
           { menuKey: 'maintenance', permission: 'read' },
           { menuKey: 'maintenance-records', permission: 'read' },
           { menuKey: 'maintenance-rules', permission: 'none' },
+          { menuKey: 'work-orders', permission: 'read' },
           { menuKey: 'appointments', permission: 'write' },
           { menuKey: 'technicians', permission: 'read' },
           { menuKey: 'users', permission: 'none' },
           { menuKey: 'parts', permission: 'none' },
-          { menuKey: 'reports', permission: 'none' },
           { menuKey: 'reviews', permission: 'write' },
           { menuKey: 'permissions', permission: 'none' }
         ],
@@ -75,11 +76,11 @@ export async function GET(req: NextRequest) {
           { menuKey: 'maintenance', permission: 'write' },
           { menuKey: 'maintenance-records', permission: 'write' },
           { menuKey: 'maintenance-rules', permission: 'read' },
+          { menuKey: 'work-orders', permission: 'read' },
           { menuKey: 'appointments', permission: 'read' },
           { menuKey: 'technicians', permission: 'read' },
           { menuKey: 'users', permission: 'none' },
-          { menuKey: 'parts', permission: 'read' },
-          { menuKey: 'reports', permission: 'none' },
+          { menuKey: 'parts', permission: 'write' },
           { menuKey: 'reviews', permission: 'read' },
           { menuKey: 'permissions', permission: 'none' }
         ],
@@ -97,37 +98,15 @@ export async function GET(req: NextRequest) {
           { menuKey: 'maintenance', permission: 'manage' },
           { menuKey: 'maintenance-records', permission: 'manage' },
           { menuKey: 'maintenance-rules', permission: 'manage' },
+          { menuKey: 'work-orders', permission: 'manage' },
           { menuKey: 'appointments', permission: 'manage' },
           { menuKey: 'technicians', permission: 'manage' },
           { menuKey: 'users', permission: 'manage' },
           { menuKey: 'parts', permission: 'manage' },
-          { menuKey: 'reports', permission: 'manage' },
           { menuKey: 'reviews', permission: 'manage' },
           { menuKey: 'permissions', permission: 'manage' }
         ],
         description: '管理员的默认权限配置',
-        isDefault: true
-      },
-      {
-        role: 'staff',
-        permissions: [
-          { menuKey: 'dashboard', permission: 'read' },
-          { menuKey: 'vehicles', permission: 'read' },
-          { menuKey: 'vehicle-list', permission: 'read' },
-          { menuKey: 'vehicle-files', permission: 'read' },
-          { menuKey: 'vehicle-health', permission: 'read' },
-          { menuKey: 'maintenance', permission: 'read' },
-          { menuKey: 'maintenance-records', permission: 'read' },
-          { menuKey: 'maintenance-rules', permission: 'none' },
-          { menuKey: 'appointments', permission: 'write' },
-          { menuKey: 'technicians', permission: 'read' },
-          { menuKey: 'users', permission: 'read' },
-          { menuKey: 'parts', permission: 'read' },
-          { menuKey: 'reports', permission: 'read' },
-          { menuKey: 'reviews', permission: 'read' },
-          { menuKey: 'permissions', permission: 'none' }
-        ],
-        description: '职员的默认权限配置',
         isDefault: true
       }
     ];

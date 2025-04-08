@@ -14,9 +14,13 @@ import {
   Input,
   Select,
   Typography,
+  Tooltip,
 } from 'antd';
 import { StarOutlined, MessageOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/lib/store';
+import PermissionChecker from '@/app/components/PermissionChecker';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -69,6 +73,7 @@ export default function ReviewsPage() {
   const [newReviewForm] = Form.useForm();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const { user } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     fetchReviews();
@@ -282,58 +287,84 @@ export default function ReviewsPage() {
         return <Tag color={statusMap[status].color}>{statusMap[status].text}</Tag>;
       },
     },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => (
-        <Space>
-          {record.status === 'published' ? (
-            <Button
-              type="link"
-              danger
-              onClick={() => handleStatusChange(record, 'hidden')}
-            >
-              隐藏
-            </Button>
-          ) : (
-            <Button
-              type="link"
-              onClick={() => handleStatusChange(record, 'published')}
-            >
-              显示
-            </Button>
-          )}
-        </Space>
-      ),
-    },
   ];
 
   return (
     <div className="p-6">
-      <Card>
-        <div className="flex justify-between items-center mb-4">
-          <Title level={2}>评价管理</Title>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />}
-            onClick={openNewReviewModal}
+      <Card
+        title={
+          <Title level={5} className="m-0">
+            评价管理
+          </Title>
+        }
+        extra={
+          <PermissionChecker
+            menuKey="reviews"
+            requiredPermission="write"
+            buttonProps={{
+              type: "primary",
+              icon: <PlusOutlined />,
+              onClick: openNewReviewModal
+            }}
+            noPermissionTip="您没有添加评价的权限"
           >
             添加评价
-          </Button>
-        </div>
+          </PermissionChecker>
+        }
+      >
         <Table
-          columns={columns}
-          dataSource={reviews}
-          rowKey="_id"
           loading={loading}
+          dataSource={reviews}
+          columns={[
+            ...columns,
+            {
+              title: '操作',
+              key: 'action',
+              render: (_: any, record: Review) => (
+                <Space>
+                  {record.status === 'published' ? (
+                    <PermissionChecker
+                      menuKey="reviews"
+                      requiredPermission="manage"
+                      buttonProps={{
+                        size: "small",
+                        onClick: () => handleStatusChange(record, 'hidden')
+                      }}
+                      noPermissionTip="您没有管理评价的权限"
+                    >
+                      隐藏
+                    </PermissionChecker>
+                  ) : (
+                    <PermissionChecker
+                      menuKey="reviews"
+                      requiredPermission="manage"
+                      buttonProps={{
+                        type: "primary",
+                        size: "small",
+                        onClick: () => handleStatusChange(record, 'published')
+                      }}
+                      noPermissionTip="您没有管理评价的权限"
+                    >
+                      发布
+                    </PermissionChecker>
+                  )}
+                </Space>
+              ),
+            },
+          ]}
           pagination={{
             current: page,
             pageSize: pageSize,
             total: total,
-            onChange: (page, pageSize) => {
-              setPage(page);
-              setPageSize(pageSize);
+            onChange: (p, s) => {
+              setPage(p);
+              if (s !== pageSize) {
+                setPageSize(s);
+              }
             },
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (t) => `共 ${t} 条评价`,
           }}
         />
       </Card>

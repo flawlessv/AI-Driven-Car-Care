@@ -236,14 +236,16 @@ export default function WorkOrdersPage() {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">维修工单管理</h1>
         <div>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            onClick={handleAdd}
-            className="mr-2"
-          >
-            新建工单
-          </Button>
+          {user?.role === 'admin' && (
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />} 
+              onClick={handleAdd}
+              className="mr-2"
+            >
+              新建工单
+            </Button>
+          )}
           <Button 
             onClick={fetchWorkOrders}
             loading={loading}

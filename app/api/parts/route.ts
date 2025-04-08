@@ -85,12 +85,18 @@ export async function POST(request: NextRequest) {
     if (!authResult.success) {
       return errorResponse('未授权访问', 401);
     }
+    
+    // 确保用户信息存在
+    if (!authResult.user) {
+      return errorResponse('无法获取用户信息', 401);
+    }
+    
     const user = authResult.user;
 
     // 检查用户权限
     console.log(user, 'user123');
-    if (user.role !== 'admin') {
-      return errorResponse('没有权限添加配件1'+user.role, 403);
+    if (user.role !== 'admin' && user.role !== 'technician') {
+      return errorResponse('没有权限添加配件', 403);
     }
 
     await connectDB();
@@ -113,19 +119,18 @@ export async function POST(request: NextRequest) {
     const requiredFields = ['name', 'code', 'price', 'stock'];
     const missingFields = requiredFields.filter(field => !data[field]);
     if (missingFields.length > 0) {
-      return validationErrorResponse(
-        missingFields.reduce((acc, field) => ({
-          ...acc,
-          [field]: `${field}是必需的`,
-        }), {})
-      );
+      const errorObj: Record<string, string[]> = {};
+      missingFields.forEach(field => {
+        errorObj[field] = [`${field}是必需的`];
+      });
+      return validationErrorResponse(errorObj);
     }
 
     // 检查编号是否已存在
     const existingPart = await Part.findOne({ code });
     if (existingPart) {
       return validationErrorResponse({
-        code: '配件编号已存在',
+        code: ['配件编号已存在'],
       });
     }
 

@@ -39,23 +39,32 @@ const getDefaultPermissions = (role: string) => {
       { menuKey: 'vehicle-health', permission: 'read' },
       { menuKey: 'maintenance', permission: 'read' },
       { menuKey: 'maintenance-records', permission: 'read' },
+      { menuKey: 'maintenance-rules', permission: 'none' },
+      { menuKey: 'work-orders', permission: 'read' },
       { menuKey: 'appointments', permission: 'write' },
       { menuKey: 'technicians', permission: 'read' },
+      { menuKey: 'users', permission: 'none' },
+      { menuKey: 'parts', permission: 'none' },
       { menuKey: 'reviews', permission: 'write' },
-      { menuKey: 'work-orders', permission: 'read' }
+      { menuKey: 'permissions', permission: 'none' }
     ];
   } else if (role === 'technician') {
     return [
       { menuKey: 'dashboard', permission: 'read' },
       { menuKey: 'vehicles', permission: 'read' },
+      { menuKey: 'vehicle-list', permission: 'read' },
+      { menuKey: 'vehicle-files', permission: 'read' },
+      { menuKey: 'vehicle-health', permission: 'read' },
       { menuKey: 'maintenance', permission: 'write' },
       { menuKey: 'maintenance-records', permission: 'write' },
       { menuKey: 'maintenance-rules', permission: 'read' },
+      { menuKey: 'work-orders', permission: 'read' },
       { menuKey: 'appointments', permission: 'read' },
       { menuKey: 'technicians', permission: 'read' },
-      { menuKey: 'parts', permission: 'read' },
+      { menuKey: 'users', permission: 'none' },
+      { menuKey: 'parts', permission: 'write' },
       { menuKey: 'reviews', permission: 'read' },
-      { menuKey: 'work-orders', permission: 'write' }
+      { menuKey: 'permissions', permission: 'none' }
     ];
   }
   return [];

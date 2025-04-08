@@ -26,7 +26,7 @@ const statusText = {
 export async function GET(request: NextRequest) {
   try {
     // 验证用户权限
-    const authResult = await checkRole(['admin', 'staff', 'customer'])(request);
+    const authResult = await checkRole(['admin', 'customer', 'technician'])(request);
     if (!authResult.success) {
       return errorResponse(authResult.message || '未授权访问', 401);
     }
@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // 验证用户权限
-    const authResult = await checkRole(['admin', 'staff', 'customer'])(request);
+    const authResult = await checkRole(['admin', 'customer'])(request);
     if (!authResult.success) {
       return errorResponse(authResult.message || '未授权访问', 401);
     }
