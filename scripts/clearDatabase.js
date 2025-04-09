@@ -86,7 +86,8 @@ async function clearDatabase() {
         username: 'admin',
         email: 'admin@qq.com',
         password: hashedPassword,
-        role: 'admin'
+        role: 'admin',
+        phone: '19838558988',
       });
       console.log('管理员账号创建成功!');
     } catch (err) {
