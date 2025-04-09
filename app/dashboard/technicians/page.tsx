@@ -30,7 +30,7 @@ import {
 import { USER_ROLES, USER_STATUS } from '../../lib/constants';
 import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
-import type { RootState } from '@/lib/store';
+import type { RootState } from '@/app/lib/store';
 import type { User } from '@/types/user';
 import PermissionChecker from '@/app/components/PermissionChecker';
 

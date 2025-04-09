@@ -14,7 +14,7 @@ import {
   Form,
 } from 'antd';
 import { PlusOutlined, CheckOutlined } from '@ant-design/icons';
-import type { RootState } from '@/lib/store';
+import type { RootState } from '@/app/lib/store';
 import type { Vehicle } from '@/types/vehicle';
 import type { WorkOrder } from '@/types/workOrder';
 import WorkOrderForm from './components/WorkOrderForm';

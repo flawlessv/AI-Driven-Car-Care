@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Form, Input, Button, Card, message, Select } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
 import { useDispatch } from 'react-redux';
-import { setCredentials } from '../../../lib/store';
-import { RegisterData } from '../../../types/user';
+import { login } from '@/app/lib/store';
+import { RegisterData } from '@/types/user';
 
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
@@ -34,7 +34,7 @@ export default function RegisterPage() {
       }
 
       // 存储认证信息
-      dispatch(setCredentials(data.data));
+      dispatch(login(data.data));
       message.success('注册成功');
       router.push('/dashboard');
     } catch (error: any) {

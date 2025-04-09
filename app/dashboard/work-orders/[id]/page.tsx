@@ -20,7 +20,7 @@ import {
   Typography,
   Alert,
 } from 'antd';
-import type { RootState } from '@/lib/store';
+import type { RootState } from '@/app/lib/store';
 import type { WorkOrder, WorkOrderProgress } from '@/types/workOrder';
 import type { User } from '@/types/user';
 import type { Vehicle } from '@/types/vehicle';

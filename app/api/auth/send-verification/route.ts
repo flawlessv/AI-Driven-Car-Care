@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { getUserModel } from '@/lib/db/models';
-import { successResponse, errorResponse } from '@/lib/api-response';
+import { connectDB } from '@/app/lib/mongodb';
+import { getUserModel } from '@/app/lib/db/models';
+import { successResponse, errorResponse } from '@/app/lib/api-response';
 
 // 模拟存储验证码（实际应用中应该使用Redis或数据库存储）
 const verificationCodes: Record<string, { code: string, expiry: number }> = {};

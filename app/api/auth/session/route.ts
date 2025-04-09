@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authMiddleware } from '@/lib/auth';
+import { authMiddleware } from '@/app/lib/auth';
 import User from '@/app/models/user';
-import dbConnect from '@/lib/db-connect';
+import dbConnect from '@/app/lib/db-connect';
 
 // 获取当前用户会话信息
 export async function GET(request: NextRequest) {

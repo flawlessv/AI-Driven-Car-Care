@@ -1,20 +1,20 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { authMiddleware } from '@/lib/auth';
+import { connectDB } from '@/app/lib/mongodb';
+import { authMiddleware } from '@/app/lib/auth';
 import mongoose from 'mongoose';
 
 // 导入模型
-import Maintenance from '@/models/maintenance';
-import Vehicle from '@/models/vehicle';
-import Part from '@/models/part';
-import { getUserModel } from '@/lib/db/models';
+import Maintenance from '@/app/models/maintenance';
+import Vehicle from '@/app/models/vehicle';
+import Part from '@/app/models/part';
+import { getUserModel } from '@/app/lib/db/models';
 
 import {
   successResponse,
   errorResponse,
   validationErrorResponse,
   notFoundResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 
 // 定义用户类型
 interface AuthUser {

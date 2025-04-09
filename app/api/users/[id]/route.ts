@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import dbConnect from '@/lib/db-connect';
+import dbConnect from '@/app/lib/db-connect';
 import User from '@/app/models/user';
-import { authMiddleware } from '@/lib/auth';
-import { getUserModel } from '@/lib/db/models';
+import { authMiddleware } from '@/app/lib/auth';
+import { getUserModel } from '@/app/lib/db/models';
 import { hash } from 'bcryptjs';
 import {
   successResponse,
   errorResponse,
   validationErrorResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 
 // API响应工具类
 class ApiResponseUtil {

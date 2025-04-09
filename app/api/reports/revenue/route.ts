@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '../../../../lib/mongodb';
-import MaintenanceRecord from '../../../../models/maintenance';
+import MaintenanceRecord from '@/app/models/maintenance';
 import dayjs from 'dayjs';
 
 export async function GET(request: Request) {

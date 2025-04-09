@@ -1,14 +1,15 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { authMiddleware } from '@/lib/auth';
-import { getAppointmentModel } from 'models/appointment';
-import Vehicle from '@/models/vehicle';
-import { getServiceModel } from 'models/service';
+import { connectDB } from '@/app/lib/mongodb';
+
+import { authMiddleware } from '@/app/lib/auth';
+import { getAppointmentModel } from '@/app/models/appointment';
+import Vehicle from '@/app/models/vehicle';
+import { getServiceModel } from '@/app/models/service';
 import {
   successResponse,
   errorResponse,
   validationErrorResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 
 // 服务类型映射
 const SERVICE_CATEGORY_MAP = {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/db-connect';
+import dbConnect from '@/app/lib/db-connect';
 import User from '@/app/models/user';
 import RolePermission from '@/app/models/rolePermission';
 

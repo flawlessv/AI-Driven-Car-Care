@@ -52,12 +52,7 @@ export const menuItems = [
         key: 'maintenance-records',
         label: '维修记录',
         path: '/dashboard/maintenance',
-      },
-      {
-        key: 'maintenance-rules',
-        label: '保养规则',
-        path: '/dashboard/maintenance/rules',
-      },
+      }
     ],
   },
   {

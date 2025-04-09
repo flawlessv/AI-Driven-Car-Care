@@ -1,17 +1,17 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { authMiddleware, checkRole } from '@/lib/auth';
-import { getAppointmentModel } from '@/models/appointment';
-import WorkOrder from '@/models/workOrder';
-import Vehicle from '@/models/vehicle';
-import { getServiceModel } from '@/models/service';
-import User from '@/models/user';
+import { connectDB } from '@/app/lib/mongodb';
+import { authMiddleware, checkRole } from '@/app/lib/auth';
+import { getAppointmentModel } from '@/app/models/appointment';
+import WorkOrder from '@/app/models/workOrder';
+import Vehicle from '@/app/models/vehicle';
+import { getServiceModel } from '@/app/models/service';
+import User from '@/app/models/user';
 import {
   successResponse,
   createdResponse,
   errorResponse,
   validationErrorResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 import { format } from 'date-fns';
 import mongoose from 'mongoose';
 

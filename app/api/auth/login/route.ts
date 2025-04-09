@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
+import { connectDB } from '@/app/lib/mongodb';
 import { getUserModel } from '../../../lib/db/models';
 import { successResponse, errorResponse } from '../../../lib/api-response';
 import { generateToken } from '../../../lib/auth';
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
           console.log('用户无自定义权限，尝试获取权限规则...');
           
           // 导入Permission模型
-          const Permission = (await import('../../../models/permission')).default;
+          const Permission = (await import('@/app/models/permission')).default;
           
           // 查找适用于该用户的权限规则
           const permissionRule = await Permission.findOne({

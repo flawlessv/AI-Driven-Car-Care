@@ -5,7 +5,7 @@ import { useSelector } from 'react-redux';
 import { useRouter, usePathname } from 'next/navigation';
 import { Card } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
-import type { RootState } from '@/lib/store';
+import type { RootState } from '@/app/lib/store';
 import { menuItems } from '@/app/config/menu';
 import type { MenuItem } from '@/app/config/menu';
 import type { PermissionType } from '@/types/user';

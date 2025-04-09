@@ -1,6 +1,9 @@
-import { connectDB } from '../../../../lib/mongodb';
-import Appointment from '../../../../models/appointment';
-import { successResponse, errorResponse } from '../../../../lib/api-response';
+import { NextRequest } from 'next/server';
+import { connectDB } from '@/app/lib/mongodb';
+import { getAppointmentModel } from '@/app/models/appointment';
+import Vehicle from '@/app/models/vehicle';
+import { getServiceModel } from '@/app/models/service';
+import { successResponse, errorResponse } from '@/app/lib/api-response';
 
 export async function GET(
   request: Request,
@@ -9,7 +12,7 @@ export async function GET(
   try {
     console.log(`正在获取预约ID: ${params.id}`);
     await connectDB();
-    const appointment = await Appointment.findById(params.id)
+    const appointment = await getAppointmentModel().findById(params.id)
       .populate('vehicle')
       .populate('service')
       .populate('technician')
@@ -50,7 +53,6 @@ export async function PUT(
     // 如果没有服务ID但有服务信息，则创建新的服务
     if (!serviceId && data.service) {
       try {
-        const { getServiceModel } = require('../../../../models/service');
         const Service = getServiceModel();
         
         // 转换服务类型到数据库期望的格式
@@ -183,7 +185,7 @@ export async function PUT(
     }
     
     // 重新获取更新后的数据
-    const updatedAppointment = await Appointment.findById(params.id)
+    const updatedAppointment = await getAppointmentModel().findById(params.id)
       .populate('vehicle', 'brand model licensePlate')
       .populate('service', 'name description category duration basePrice')
       .populate('technician', 'name username');
@@ -214,7 +216,7 @@ export async function DELETE(
 ) {
   try {
     await connectDB();
-    const appointment = await Appointment.findByIdAndDelete(params.id);
+    const appointment = await getAppointmentModel().findByIdAndDelete(params.id);
 
     if (!appointment) {
       return errorResponse('预约不存在', 404);

@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '../../../../lib/mongodb';
-import { authMiddleware } from '../../../../lib/auth';
-import { successResponse, errorResponse } from '../../../../lib/api-response';
-import { getUserModel } from '../../../../lib/db/models';
-import { WorkOrder } from '../../../../models/workOrder';
+import { connectDB } from '@/app/lib/mongodb';
+import { authMiddleware } from '@/app/lib/auth';
+import { successResponse, errorResponse } from '@/app/lib/api-response';
+import { getUserModel } from '@/app/lib/db/models';
+import WorkOrder from '@/app/models/workOrder';
 import { startOfMonth, endOfMonth, subMonths, format } from 'date-fns';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {

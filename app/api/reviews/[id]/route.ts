@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
-import dbConnect from '@/lib/db-connect';
-import Review from '@/models/review';
-import { authMiddleware } from '@/lib/auth';
+import dbConnect from '@/app/lib/db-connect';
+import Review from '@/app/models/review';
+import { authMiddleware } from '@/app/lib/auth';
 
 export async function GET(
   request: Request,
@@ -117,8 +117,8 @@ export async function PUT(
     // 如果评价状态变为隐藏，同时更新对应工单中的评价字段
     if (data.status === 'hidden' && review.workOrder) {
       try {
-        const WorkOrder = require('@/models/workOrder');
-        const WorkOrderEvaluation = require('@/models/workOrderEvaluation');
+        const WorkOrder = require('@/app/models/workOrder');
+        const WorkOrderEvaluation = require('@/app/models/workOrderEvaluation');
         
         // 首先更新专门的评价模型状态
         await WorkOrderEvaluation.findOneAndUpdate(

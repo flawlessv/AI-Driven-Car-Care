@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { authMiddleware } from '@/lib/auth';
-import { getUserModel } from '@/lib/db/models';
+import { connectDB } from '@/app/lib/mongodb';
+import { authMiddleware } from '@/app/lib/auth';
+import { getUserModel } from '@/app/lib/db/models';
 import {
   successResponse,
   errorResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 
 export async function GET(
   request: NextRequest,

@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "车辆维护系统",
-  description: "车辆维护管理系统",
+  title: "佳伟汽车保养系统",
+  description: "佳伟汽车保养系统",
 };
 
 export default function RootLayout({

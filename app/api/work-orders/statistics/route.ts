@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { authMiddleware } from '@/lib/auth';
-import WorkOrder from '@/models/workOrder';
+import { connectDB } from '@/app/lib/mongodb';
+import { authMiddleware } from '@/app/lib/auth';
+import WorkOrder from '@/app/models/workOrder';
 import {
   successResponse,
   errorResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 
 export async function GET(request: NextRequest) {

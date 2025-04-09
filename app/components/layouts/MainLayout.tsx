@@ -13,7 +13,7 @@ import {
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useSelector } from 'react-redux';
-import type { RootState } from '@/lib/store';
+import type { RootState } from '@/app/lib/store';
 
 const { Header, Content } = Layout;
 

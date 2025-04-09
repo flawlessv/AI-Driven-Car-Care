@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '../../../../lib/mongodb';
-import Customer from '../../../../models/customer';
-import MaintenanceRecord from '../../../../models/maintenance';
+import { connectDB } from '@/app/lib/mongodb';
+import Customer from '@/app/models/customer';
+import MaintenanceRecord from '@/app/models/maintenance';
 
 export async function GET(request: Request) {
   try {

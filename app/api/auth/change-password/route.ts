@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { getUserModel } from '@/lib/db/models';
-import { successResponse, errorResponse } from '@/lib/api-response';
+import { connectDB } from '@/app/lib/mongodb';
+import { getUserModel } from '@/app/lib/db/models';
+import { successResponse, errorResponse } from '@/app/lib/api-response';
 import { hash, compare } from 'bcryptjs';
 
 export async function POST(request: NextRequest) {

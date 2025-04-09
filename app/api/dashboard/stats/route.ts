@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { authMiddleware } from '@/lib/auth';
-import { successResponse, errorResponse } from '@/lib/api-response';
-import Vehicle from '@/models/vehicle';
-import { getAppointmentModel } from '@/models/appointment';
-import WorkOrder from '@/models/workOrder';
-import User from '@/models/user';
-import Part from '@/models/part';
+import { connectDB } from '@/app/lib/mongodb';
+import { authMiddleware } from '@/app/lib/auth';
+import { successResponse, errorResponse } from '@/app/lib/api-response';
+import Vehicle from '@/app/models/vehicle';
+import { getAppointmentModel } from '@/app/models/appointment';
+import WorkOrder from '@/app/models/workOrder';
+import User from '@/app/models/user';
+import Part from '@/app/models/part';
 import dayjs from 'dayjs';
 
 export async function GET(request: NextRequest) {

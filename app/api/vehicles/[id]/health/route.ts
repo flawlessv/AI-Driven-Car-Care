@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import Vehicle from '@/models/vehicle';
-import { authMiddleware } from '@/lib/auth';
+import { connectDB } from '@/app/lib/mongodb';
+import Vehicle from '@/app/models/vehicle';
+import { authMiddleware } from '@/app/lib/auth';
 import {
   successResponse,
   errorResponse,
   notFoundResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 import mongoose from 'mongoose';
 
 interface HealthScore {

@@ -1,4 +1,4 @@
-import { getUserModel } from '@/lib/db/models';
+import { getUserModel } from '@/app/lib/db/models';
 
 // 更新技师统计数据
 export async function updateTechnicianStats(

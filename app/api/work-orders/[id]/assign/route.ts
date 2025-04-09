@@ -1,17 +1,17 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { authMiddleware } from '@/lib/auth';
-import WorkOrder from '@/models/workOrder';
-import User from '@/models/user';
+import { connectDB } from '@/app/lib/mongodb';
+import { authMiddleware } from '@/app/lib/auth';
+import WorkOrder from '@/app/models/workOrder';
+import User from '@/app/models/user';
 import {
   successResponse,
   errorResponse,
   validationErrorResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 import {
   isValidStatusTransition,
   recordWorkOrderProgress,
-} from '@/lib/work-order-utils';
+} from '@/app/lib/work-order-utils';
 
 // 分配工单
 export async function POST(

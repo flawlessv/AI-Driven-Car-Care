@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
 import { Tooltip, Button } from 'antd';
 import { useSelector } from 'react-redux';
-import type { RootState } from '@/lib/store';
+import type { RootState } from '@/app/lib/store';
 import type { PermissionLevel } from '@/types/user';
 
 // 定义权限项接口

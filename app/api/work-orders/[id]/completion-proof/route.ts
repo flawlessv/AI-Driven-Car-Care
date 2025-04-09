@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authMiddleware } from '@/lib/auth';
-import WorkOrder from '@/models/workOrder';
-import WorkOrderProgress from '@/models/workOrderProgress';
-import User from '@/models/user';
+import { authMiddleware } from '@/app/lib/auth';
+import WorkOrder from '@/app/models/workOrder';
+import WorkOrderProgress from '@/app/models/workOrderProgress';
+import User from '@/app/models/user';
 import { ObjectId } from 'mongodb';
-import { connectDB } from '@/lib/mongodb';
-import { checkRole } from '@/lib/auth';
+import { connectDB } from '@/app/lib/mongodb';
+import { checkRole } from '@/app/lib/auth';
 import {
   successResponse,
   errorResponse,
   notFoundResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 import { writeFile, mkdir } from 'fs/promises';
 import { join, dirname } from 'path';
 import { existsSync } from 'fs';

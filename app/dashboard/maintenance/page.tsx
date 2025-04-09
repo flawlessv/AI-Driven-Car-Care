@@ -21,7 +21,7 @@ import {
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, FileTextOutlined, EyeOutlined } from '@ant-design/icons';
 import type { MaintenanceRecord, MaintenanceFormData, MaintenanceReport } from './types';
-import type { RootState } from '@/lib/store';
+import type { RootState } from '@/app/lib/store';
 import type { Vehicle } from '@/types/vehicle';
 import type { Part } from '../parts/types';
 import type { User } from '@/types/user';

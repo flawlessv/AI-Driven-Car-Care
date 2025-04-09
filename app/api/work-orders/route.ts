@@ -1,15 +1,15 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { authMiddleware, checkRole } from '@/lib/auth';
-import WorkOrder from '@/models/workOrder';
-import Vehicle from '@/models/vehicle';
+import { connectDB } from '@/app/lib/mongodb';
+import { authMiddleware, checkRole } from '@/app/lib/auth';
+import WorkOrder from '@/app/models/workOrder';
+import Vehicle from '@/app/models/vehicle';
 import {
   successResponse,
   createdResponse,
   errorResponse,
   validationErrorResponse,
-} from '@/lib/api-response';
-import { validateWorkOrder, recordWorkOrderProgress } from '@/lib/work-order-utils';
+} from '@/app/lib/api-response';
+import { validateWorkOrder, recordWorkOrderProgress } from '@/app/lib/work-order-utils';
 import { startOfMonth, endOfMonth, subMonths, format } from 'date-fns';
 
 // 状态显示文本

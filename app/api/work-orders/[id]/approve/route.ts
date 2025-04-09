@@ -1,15 +1,15 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { authMiddleware } from '@/lib/auth';
-import WorkOrder from '@/models/workOrder';
-import WorkOrderProgress from '@/models/workOrderProgress';
+import { connectDB } from '@/app/lib/mongodb';
+import { authMiddleware } from '@/app/lib/auth';
+import WorkOrder from '@/app/models/workOrder';
+import WorkOrderProgress from '@/app/models/workOrderProgress';
 import {
   successResponse,
   errorResponse,
   notFoundResponse,
-} from '@/lib/api-response';
-import { checkRole } from '@/lib/auth';
-import { updateVehicleStatusByWorkOrder } from '@/lib/work-order-utils';
+} from '@/app/lib/api-response';
+import { checkRole } from '@/app/lib/auth';
+import { updateVehicleStatusByWorkOrder } from '@/app/lib/work-order-utils';
 
 // 定义工单状态常量
 const WORK_ORDER_STATUS = {

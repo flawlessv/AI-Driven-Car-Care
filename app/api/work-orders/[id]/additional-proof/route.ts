@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authMiddleware } from '@/lib/auth';
-import getWorkOrderModel from '@/models/workOrder';
+import { authMiddleware } from '@/app/lib/auth';
+import getWorkOrderModel from '@/app/models/workOrder';
 import { ObjectId } from 'mongodb';
-import { connectDB } from '@/lib/mongodb';
+import { connectDB } from '@/app/lib/mongodb';
 
 // POST 方法：追加工作完成证明（在待审核状态）
 export async function POST(

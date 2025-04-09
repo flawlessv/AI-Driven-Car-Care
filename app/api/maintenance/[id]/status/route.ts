@@ -1,13 +1,13 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { authMiddleware } from '@/lib/auth';
-import Maintenance from '@/models/maintenance';
-import Vehicle from '@/models/vehicle';
+import { connectDB } from '@/app/lib/mongodb';
+import { authMiddleware } from '@/app/lib/auth';
+import Maintenance from '@/app/models/maintenance';
+import Vehicle from '@/app/models/vehicle';
 import {
   successResponse,
   errorResponse,
   validationErrorResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 import mongoose from 'mongoose';
 
 // 维修状态变更记录

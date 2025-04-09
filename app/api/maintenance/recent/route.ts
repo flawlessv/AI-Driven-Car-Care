@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import Maintenance from '@/models/maintenance';  // 直接导入模型
+import { connectDB } from '@/app/lib/mongodb';
+import Maintenance from '@/app/models/maintenance';  // 直接导入模型
 
 export async function GET() {
   try {

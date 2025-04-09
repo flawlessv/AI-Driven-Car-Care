@@ -22,7 +22,7 @@ import { EditOutlined, DeleteOutlined, PlusOutlined, SyncOutlined } from '@ant-d
 import dayjs from 'dayjs';
 import type { Appointment } from '@/types/appointment';
 import { useSelector } from 'react-redux';
-import type { RootState } from '@/lib/store';
+import type { RootState } from '@/app/lib/store';
 
 const { TextArea } = Input;
 

@@ -1,14 +1,14 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { getAppointmentModel } from '@/models/appointment';
-import Vehicle from '@/models/vehicle';
-import { getServiceModel } from '@/models/service';
+import { connectDB } from '@/app/lib/mongodb';
+import { getAppointmentModel } from '@/app/models/appointment';
+import Vehicle from '@/app/models/vehicle';
+import { getServiceModel } from '@/app/models/service';
 import mongoose from 'mongoose';
 import {
   successResponse,
   errorResponse,
   validationErrorResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 
 export async function POST(request: NextRequest) {
   try {

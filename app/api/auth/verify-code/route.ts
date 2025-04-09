@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { successResponse, errorResponse } from '@/lib/api-response';
+import { successResponse, errorResponse } from '@/app/lib/api-response';
 import { verificationCodes } from '../send-verification/route';
 
 export async function POST(request: NextRequest) {

@@ -5,7 +5,7 @@ import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
-import { logout } from '@/lib/store/slices/authSlice';
+import { logout } from '@/app/lib/store/slices/authSlice';
 import { message } from 'antd';
 import Cookies from 'js-cookie';
 

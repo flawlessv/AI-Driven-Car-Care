@@ -1,10 +1,10 @@
-import { NextResponse, NextRequest } from 'next/server';
-import { connectDB } from '../../../lib/mongodb';
-import Review from '../../../models/review';
-import WorkOrder from '../../../models/workOrder';
-import User from '../../../models/user';
-import { authMiddleware } from '@/lib/auth';
-import { errorResponse } from '@/lib/api-response';
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/lib/mongodb';
+import Review from '@/app/models/review';
+import WorkOrder from '@/app/models/workOrder';
+import User from '@/app/models/user';
+import { authMiddleware } from '@/app/lib/auth';
+import { errorResponse } from '@/app/lib/api-response';
 
 export async function GET(request: NextRequest) {
   try {

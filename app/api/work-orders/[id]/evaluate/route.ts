@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authMiddleware } from '@/lib/auth';
+import { authMiddleware } from '@/app/lib/auth';
 
 export async function POST(
   request: NextRequest,

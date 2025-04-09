@@ -1,13 +1,13 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { authMiddleware } from '@/lib/auth';
-import Part from '@/models/part';
+import { connectDB } from '@/app/lib/mongodb';
+import { authMiddleware } from '@/app/lib/auth';
+import Part from '@/app/models/part';
 import {
   successResponse,
   errorResponse,
   validationErrorResponse,
   notFoundResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 
 export async function GET(
   request: NextRequest,

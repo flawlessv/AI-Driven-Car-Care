@@ -2,8 +2,8 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { login } from '@/lib/store/slices/authSlice';
-import { RootState } from '@/lib/store';
+import { login } from '@/app/lib/store/slices/authSlice';
+import { RootState } from '@/app/lib/store';
 
 interface AuthProviderProps {
   children: ReactNode;

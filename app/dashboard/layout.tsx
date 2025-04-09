@@ -11,8 +11,8 @@ import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useSelector, useDispatch } from 'react-redux';
-import type { RootState } from '@/lib/store';
-import { logout } from '@/lib/store/slices/authSlice';
+import type { RootState } from '@/app/lib/store';
+import { logout } from '@/app/lib/store/slices/authSlice';
 import { menuItems } from '@/app/config/menu';
 
 const { Header, Sider, Content } = Layout;

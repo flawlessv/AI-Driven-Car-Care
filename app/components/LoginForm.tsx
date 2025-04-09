@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Form, Input, Button, message, Divider, Modal } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
-import { login } from '@/lib/store/slices/authSlice';
+import { login } from '@/app/lib/store/slices/authSlice';
 import type { User } from '@/types/user';
 import { UserOutlined, LockOutlined, KeyOutlined } from '@ant-design/icons';
 import Link from 'next/link';

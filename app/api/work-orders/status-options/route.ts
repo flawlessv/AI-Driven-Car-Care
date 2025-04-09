@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
-import { authMiddleware } from '@/lib/auth';
-import { successResponse, errorResponse } from '@/lib/api-response';
+import { authMiddleware } from '@/app/lib/auth';
+import { successResponse, errorResponse } from '@/app/lib/api-response';
 
 // 状态显示文本
 export const statusText = {

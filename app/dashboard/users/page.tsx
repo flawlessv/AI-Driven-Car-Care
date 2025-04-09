@@ -6,7 +6,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
-import type { RootState } from '@/lib/store';
+import type { RootState } from '@/app/lib/store';
 import type { User } from '@/types/user';
 import { ROLE_NAMES } from '@/types/user';
 import UserForm from '../../components/UserForm';

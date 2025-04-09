@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import User from '@/app/models/user';
-import dbConnect from '@/lib/db-connect';
+import dbConnect from '@/app/lib/db-connect';
 
 // API响应工具类
 class ApiResponseUtil {

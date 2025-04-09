@@ -12,7 +12,7 @@ import {
 import { UserOutlined } from '@ant-design/icons';
 import type { WorkOrderEvaluation } from '@/types/workOrder';
 import { useSelector } from 'react-redux';
-import type { RootState } from '@/lib/store';
+import type { RootState } from '@/app/lib/store';
 
 const { TextArea } = Input;
 

@@ -6,7 +6,7 @@ import { UploadOutlined, PlusOutlined } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { RcFile } from 'antd/es/upload';
 import { useSelector } from 'react-redux';
-import { RootState } from '@/lib/store';
+import { RootState } from '@/app/lib/store';
 
 interface WorkOrderCompletionProps {
   workOrderId: string;

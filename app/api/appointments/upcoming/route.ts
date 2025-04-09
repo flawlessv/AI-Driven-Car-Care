@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import Appointment from '@/models/appointment';  // 直接导入模型
+import { connectDB } from '@/app/lib/mongodb';
+import Appointment from '@/app/models/appointment';  // 直接导入模型
 
 // 使这个API不需要token验证
 export const dynamic = 'force-dynamic';

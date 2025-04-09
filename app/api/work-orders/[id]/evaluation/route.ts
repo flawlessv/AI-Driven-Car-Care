@@ -1,16 +1,16 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { authMiddleware } from '@/lib/auth';
-import WorkOrder from '@/models/workOrder';
-import WorkOrderEvaluation from '@/models/workOrderEvaluation';
-import Review from '@/models/review';
-import User from '@/models/user';
+import { connectDB } from '@/app/lib/mongodb';
+import { authMiddleware } from '@/app/lib/auth';
+import WorkOrder from '@/app/models/workOrder';
+import WorkOrderEvaluation from '@/app/models/workOrderEvaluation';
+import Review from '@/app/models/review';
+import User from '@/app/models/user';
 import {
   successResponse,
   createdResponse,
   errorResponse,
   validationErrorResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 
 // 获取工单评价
 export async function GET(

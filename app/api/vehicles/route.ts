@@ -1,14 +1,14 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import Vehicle from '@/models/vehicle';
-import { authMiddleware } from '@/lib/auth';
+import { connectDB } from '@/app/lib/mongodb';
+import Vehicle from '@/app/models/vehicle';
+import { authMiddleware } from '@/app/lib/auth';
 import {
   successResponse,
   createdResponse,
   errorResponse,
   validationErrorResponse,
   unauthorizedResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 import { VehicleFormData } from '../../../types/vehicle';
 import mongoose from 'mongoose';
 
@@ -37,18 +37,6 @@ export async function GET(request: NextRequest) {
       const ownerId = user._id.toString();
       console.log('客户用户查询车辆，只显示自己的车辆ID：', ownerId);
       query = { ...query, owner: ownerId };
-    }
-
-    if (withoutRule) {
-      // 获取已有保养规则的车辆ID
-      const rulesWithVehicles = await mongoose.model('MaintenanceRule').find().select('vehicle');
-      const vehicleIdsWithRules = rulesWithVehicles.map(rule => rule.vehicle);
-      
-      // 添加条件：排除已有规则的车辆
-      query = {
-        ...query,
-        _id: { $nin: vehicleIdsWithRules }
-      };
     }
 
     console.log('最终查询条件:', JSON.stringify(query));

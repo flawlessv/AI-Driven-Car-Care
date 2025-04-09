@@ -1,17 +1,3 @@
-export interface MaintenanceRule {
-  _id: string;
-  vehicle: string;
-  type: 'mileage' | 'time' | 'both';
-  mileageInterval?: number;  // 里程提醒间隔(公里)
-  timeInterval?: number;     // 时间提醒间隔(天)
-  lastMileage?: number;      // 上次维修里程数
-  lastMaintenanceDate?: string; // 上次维修日期
-  enabled: boolean;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface MaintenanceReminder {
   _id: string;
   vehicle: string;
@@ -26,14 +12,6 @@ export interface MaintenanceReminder {
   notificationDate?: Date;
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface MaintenanceRuleFormData {
-  vehicle: string;
-  type: 'mileage' | 'time' | 'both';
-  mileageInterval?: number;
-  timeInterval?: number;
-  enabled: boolean;
 }
 
 export interface ReminderSettings {

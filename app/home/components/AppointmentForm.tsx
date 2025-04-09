@@ -14,7 +14,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useSelector } from 'react-redux';
-import { RootState } from '@/lib/store';
+import { RootState } from '@/app/lib/store';
 
 const { TextArea } = Input;
 const { Option } = Select;

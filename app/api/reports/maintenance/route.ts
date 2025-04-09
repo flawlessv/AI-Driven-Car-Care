@@ -1,7 +1,7 @@
-import { NextRequest } from 'next/server';
-import { connectDB } from '../../../../lib/mongodb';
-import { authMiddleware } from '../../../../lib/auth';
-import Maintenance from '../../../../models/maintenance';
+import type { NextRequest } from 'next/server';
+import { connectDB } from '@/app/lib/mongodb';
+import { authMiddleware } from '@/app/lib/auth';
+import Maintenance from '@/app/models/maintenance';
 import {
   successResponse,
   errorResponse,

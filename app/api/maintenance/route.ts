@@ -1,18 +1,18 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import { authMiddleware } from '@/lib/auth';
-import Maintenance from '@/models/maintenance';
-import Vehicle from '@/models/vehicle';
+import { connectDB } from '@/app/lib/mongodb';
+import { authMiddleware } from '@/app/lib/auth';
+import Maintenance from '@/app/models/maintenance';
+import Vehicle from '@/app/models/vehicle';
 import {
   successResponse,
   createdResponse,
   errorResponse,
   validationErrorResponse,
   notFoundResponse,
-} from '@/lib/api-response';
+} from '@/app/lib/api-response';
 import mongoose from 'mongoose';
-import Part from '@/models/part';
-import { getUserModel } from '@/lib/db/models';
+import Part from '@/app/models/part';
+import { getUserModel } from '@/app/lib/db/models';
 
 export async function GET(req: NextRequest) {
   try {

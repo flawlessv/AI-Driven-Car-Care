@@ -27,7 +27,7 @@ import {
 } from '@ant-design/icons';
 import type { Part } from '@/types/part';
 import { useSelector } from 'react-redux';
-import type { RootState } from '@/lib/store';
+import type { RootState } from '@/app/lib/store';
 import PermissionChecker from '@/app/components/PermissionChecker';
 
 const { TextArea } = Input;

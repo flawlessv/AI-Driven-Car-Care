@@ -2,7 +2,7 @@
 
 import { Button, message } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
-import { exportMaintenanceRecords, exportMaintenanceReport } from '@/lib/export-utils';
+import { exportMaintenanceRecords, exportMaintenanceReport } from '@/app/lib/export-utils';
 import type { MaintenanceRecord } from '@/types/maintenance';
 
 interface ExportButtonProps {

@@ -19,7 +19,7 @@ import {
 import { StarOutlined, MessageOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useSelector } from 'react-redux';
-import type { RootState } from '@/lib/store';
+import type { RootState } from '@/app/lib/store';
 import PermissionChecker from '@/app/components/PermissionChecker';
 
 const { Title } = Typography;
