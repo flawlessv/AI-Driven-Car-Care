@@ -23,6 +23,7 @@
     "jose": "^5.2.0",
     "js-cookie": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.15.0",
     "mongoose": "^8.1.1",
     "next": "14.1.0",
     "next-auth": "^4.24.11",
