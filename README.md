@@ -1,4 +1,4 @@
-# 汽车维修保养管理系统
+# 佳伟汽车维修保养管理系统
 
 这是一个基于 [Next.js](https://nextjs.org) 开发的专业汽车维修保养管理系统。
 
@@ -570,4 +570,4 @@ npm run init-permissions
 
 ## 许可证
 
-[MIT](LICENSE) © 2024 伟佳汽修
+[MIT](LICENSE) © 2024 佳伟汽修

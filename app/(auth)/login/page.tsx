@@ -48,7 +48,7 @@ export default function LoginPage() {
                 <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg flex items-center justify-center transform group-hover:scale-105 transition-transform duration-300">
                   <Image
                     src="/images/logo.svg"
-                    alt="伟佳汽修"
+                    alt="佳伟汽修"
                     width={72}
                     height={72}
                     className="transform -rotate-12 group-hover:rotate-0 transition-all duration-300"
@@ -66,7 +66,7 @@ export default function LoginPage() {
               className="text-center mb-8"
             >
               <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-800">
-                伟佳汽修
+                佳伟汽修
               </h1>
               <p className="text-gray-600 mt-2">专业维修保养服务商</p>
               <p className="text-gray-500 text-sm mt-1">让每一辆车都得到最好的照顾</p>
@@ -89,7 +89,7 @@ export default function LoginPage() {
             transition={{ delay: 0.4 }}
             className="text-center text-sm text-gray-600 mt-8"
           >
-            © 2024 伟佳汽修. All rights reserved.
+            © 2024 佳伟汽修. All rights reserved.
           </motion.p>
         </div>
       </div>

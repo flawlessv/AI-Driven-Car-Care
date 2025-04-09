@@ -346,7 +346,7 @@ export default function DashboardPage() {
     return (
       <div className="p-6">
         <div className="mb-6">
-          <Title level={2}>欢迎使用汽车维修管理系统</Title>
+          <Title level={2}>欢迎使用佳伟汽车维修管理系统</Title>
           <Text type="secondary">仪表盘数据加载失败，可能是因为网络问题或您尚未有相关数据</Text>
         </div>
         <Divider />

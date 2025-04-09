@@ -124,7 +124,7 @@ export default function MainLayout({
         <div className="flex justify-between items-center px-4">
           <div className="flex items-center">
             <Link href="/dashboard" className="text-xl font-bold mr-8">
-              汽车保养系统
+              佳伟汽车保养系统
             </Link>
             <Menu
               mode="horizontal"

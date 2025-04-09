@@ -144,7 +144,7 @@ export default function DashboardLayout({
         <div className="p-4">
           <Link href="/">
             <h1 className={`text-xl font-bold transition-opacity duration-200 ${collapsed ? 'opacity-0' : 'opacity-100'}`}>
-              汽车保养系统
+            佳伟汽车保养系统
             </h1>
           </Link>
         </div>

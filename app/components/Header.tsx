@@ -62,7 +62,7 @@ export default function AppHeader() {
     <Header className="bg-white px-6 flex justify-between items-center border-b">
       <div className="flex items-center">
         <div className="text-xl font-bold text-gray-800 flex items-center">
-          <span className="text-primary mr-2">伟佳汽修</span>
+          <span className="text-primary mr-2">佳伟汽修</span>
           <span className="text-sm text-gray-500 font-normal">专业维修保养服务商</span>
         </div>
       </div>
