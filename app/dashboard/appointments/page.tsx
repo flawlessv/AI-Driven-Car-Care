@@ -16,9 +16,11 @@ import {
   Card,
   InputNumber,
   Tooltip,
+  Row,
+  Col,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { EditOutlined, DeleteOutlined, PlusOutlined, SyncOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, PlusOutlined, SyncOutlined, CalendarOutlined, ClockCircleOutlined, CarOutlined, UserOutlined, ToolOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Appointment } from '@/types/appointment';
 import { useSelector } from 'react-redux';
@@ -182,12 +184,23 @@ export default function AppointmentsPage() {
     }
   };
 
+  // 预约状态标签渲染函数
+  const renderStatusTag = (status: string) => {
+    const statusClass = `status-badge status-badge-${status === 'processed' ? 'in-progress' : status === 'completed' ? 'completed' : status === 'cancelled' ? 'cancelled' : 'pending'}`;
+    
+    return (
+      <span className={statusClass}>
+        {statusText[status as keyof typeof statusText] || status}
+      </span>
+    );
+  };
+
   const columns: ColumnsType<Appointment> = [
     {
       title: '预约编号',
       dataIndex: '_id',
       key: '_id',
-      render: (id: string) => id.slice(-8),
+      render: (id: string) => <span className="font-medium">{id.slice(-8)}</span>,
     },
     {
       title: '客户信息',
@@ -195,7 +208,7 @@ export default function AppointmentsPage() {
       key: 'customer',
       render: (customer: any) => (
         <div>
-          <div>{customer?.name}</div>
+          <div className="font-medium flex items-center"><UserOutlined className="mr-1 text-blue-500" /> {customer?.name}</div>
           <div className="text-gray-500 text-sm">{customer?.phone}</div>
         </div>
       ),
@@ -205,7 +218,12 @@ export default function AppointmentsPage() {
       dataIndex: 'vehicle',
       key: 'vehicle',
       render: (vehicle: any) => 
-        vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.licensePlate})` : '-',
+        vehicle ? (
+          <div className="flex items-center">
+            <CarOutlined className="mr-1 text-green-500" />
+            <span>{vehicle.brand} {vehicle.model} <span className="text-gray-600">({vehicle.licensePlate})</span></span>
+          </div>
+        ) : '-',
     },
     {
       title: '服务项目',
@@ -213,6 +231,14 @@ export default function AppointmentsPage() {
       key: 'serviceName',
       ellipsis: true,
       width: 250,
+      render: (name: string, record: any) => (
+        <div className="flex items-center">
+          <ToolOutlined className="mr-1 text-purple-500" />
+          <Tooltip title={name}>
+            <span>{name}</span>
+          </Tooltip>
+        </div>
+      ),
     },
     {
       title: '预约时间',
@@ -238,8 +264,8 @@ export default function AppointmentsPage() {
           
         return (
           <span>
-            <div>{formattedDate}</div>
-            <div className="text-gray-500">{startTime} - {endTime || '未指定'}</div>
+            <div className="flex items-center"><CalendarOutlined className="mr-1 text-blue-500" /> {formattedDate}</div>
+            <div className="text-gray-500 flex items-center"><ClockCircleOutlined className="mr-1" /> {startTime} - {endTime || '未指定'}</div>
           </span>
         );
       },
@@ -248,112 +274,55 @@ export default function AppointmentsPage() {
       title: '技师',
       key: 'technicianName',
       render: (_, record: any) => {
-        // 调试技师数据
-        console.log('技师数据:', record.technician);
-        
-        // 先尝试从已填充的对象中获取技师名称
-        if (record.technician?.name) {
-          return record.technician.name;
-        }
-        
-        if (record.technician?.username) {
-          return record.technician.username;
-        }
-        
-        // 再尝试从timeSlot嵌套结构获取
-        if (record.timeSlot?.technician?.name) {
-          return record.timeSlot.technician.name;
-        }
-        
-        if (record.timeSlot?.technician?.username) {
-          return record.timeSlot.technician.username;
-        }
-        
-        // 如果technician是字符串ID，显示ID的最后6位
-        if (typeof record.technician === 'string' && record.technician.length > 0) {
-          return `技师ID: ${record.technician.slice(-6)}`;
-        }
-        
-        return '-';
-      },
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (createdAt: string) => {
-        if (!createdAt) return '-';
-        
-        try {
-          return dayjs(createdAt).format('YYYY-MM-DD HH:mm');
-        } catch (error) {
-          console.error('创建时间格式化错误:', error);
-          return '-';
-        }
+        const technician = record.technician || {};
+        return technician?.name ? (
+          <div className="flex items-center">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-500 mr-1">
+              {technician.name.charAt(0)}
+            </span>
+            {technician.name}
+          </div>
+        ) : '未分配';
       },
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: keyof typeof statusColors) => (
-        <Tag color={statusColors[status]}>
-          {statusText[status]}
-        </Tag>
-      ),
+      render: renderStatusTag,
     },
     {
       title: '操作',
       key: 'action',
-      render: (_, record) => {
-        // 获取预约关联的用户ID
-        const appointmentUserId = record.user as string | undefined;
-        
-        // 判断是否为客户本人的预约，或是否为客户角色
-        const isOwnAppointment = isCustomer && appointmentUserId === user?._id;
-        
-        return (
-          <Space size="small" direction="vertical">
-            <Tooltip title={isCustomer ? "客户无法编辑预约" : ""}>
-              <Button
-                type="text"
-                size="small"
-                icon={<EditOutlined />}
-                onClick={() => handleEdit(record)}
-                disabled={isCustomer}
-              >
-                编辑
-              </Button>
-            </Tooltip>
-            {record.status === 'processed' && (
-              <Tooltip title={isCustomer ? "客户无法转换工单" : "将预约转换为工单"}>
-                <Button
-                  type="primary"
-                  size="small"
-                  icon={<SyncOutlined />}
-                  onClick={() => handleConvertToWorkOrder(record)}
-                  disabled={isCustomer} 
-                  style={{ padding: '0 8px', borderRadius: '4px' }}
-                >
-                  转为工单
-                </Button>
-              </Tooltip>
-            )}
-            <Tooltip title={isCustomer ? "客户无法删除预约" : ""}>
-              <Button
-                type="text"
-                danger
-                size="small"
-                icon={<DeleteOutlined />}
-                onClick={() => handleDelete(record)}
-                disabled={isCustomer}
-              >
-                删除
-              </Button>
-            </Tooltip>
-          </Space>
-        );
-      },
+      render: (_, record) => (
+        <Space size="middle">
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+            className="text-blue-500 hover:text-blue-600"
+          >
+            编辑
+          </Button>
+          {record.status !== 'completed' && record.status !== 'cancelled' && (
+            <Button
+              type="text"
+              className="text-green-500 hover:text-green-600"
+              onClick={() => handleConvertToWorkOrder(record)}
+            >
+              转工单
+            </Button>
+          )}
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record)}
+          >
+            删除
+          </Button>
+        </Space>
+      ),
     },
   ];
 
@@ -651,245 +620,222 @@ export default function AppointmentsPage() {
   };
 
   return (
-    <div className="p-6">
-      <Card
-        title="预约管理"
-        extra={
-          <Tooltip title={isCustomer ? "客户无法新增预约" : ""}>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleAdd}
-              disabled={isCustomer}
-            >
-              新增预约
-            </Button>
-          </Tooltip>
-        }
-      >
-        <Table
-          columns={columns}
+    <div className="page-transition">
+      <div className="page-title">
+        <h1>预约管理</h1>
+        <div className="description">管理客户预约安排和服务日程</div>
+      </div>
+      
+      <div className="mb-4 flex justify-between items-center">
+        <Space>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
+            onClick={handleAdd}
+            className="admin-btn admin-btn-primary"
+          >
+            新增预约
+          </Button>
+          <Button 
+            icon={<SyncOutlined />} 
+            onClick={fetchAppointments}
+            className="admin-btn"
+          >
+            刷新数据
+          </Button>
+        </Space>
+      </div>
+      
+      <Card className="dashboard-card fade-in">
+        <Table 
+          columns={columns} 
           dataSource={data}
           rowKey="_id"
           loading={loading}
+          pagination={{ 
+            pageSize: 10,
+            showQuickJumper: true,
+            showSizeChanger: true,
+          }}
+          className="dashboard-table"
         />
       </Card>
-
+      
       <Modal
         title={editingAppointment ? '编辑预约' : '新增预约'}
         open={modalVisible}
         onCancel={() => {
           setModalVisible(false);
           form.resetFields();
-          setEditingAppointment(null);
         }}
         footer={null}
-        width={720}
+        className="enhanced-modal appointment-modal"
+        destroyOnClose
       >
         <Form
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
+          className="admin-form appointment-form mt-4"
+          initialValues={{
+            status: 'pending',
+            serviceType: 'maintenance',
+          }}
         >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="vehicleId"
+                label="选择车辆"
+                rules={[{ required: true, message: '请选择车辆' }]}
+              >
+                <Select
+                  placeholder="选择车辆"
+                  showSearch
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    (option?.label as string).toLowerCase().includes(input.toLowerCase())
+                  }
+                  options={vehicles.map(v => ({
+                    value: v._id,
+                    label: `${v.licensePlate} (${v.brand} ${v.model})`,
+                  }))}
+                />
+              </Form.Item>
+            </Col>
+            
+            <Col span={12}>
+              <Form.Item
+                name="technicianId"
+                label="指定技师"
+                rules={[{ required: true, message: '请选择技师' }]}
+              >
+                <Select
+                  placeholder="选择技师"
+                  showSearch
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    (option?.label as string).toLowerCase().includes(input.toLowerCase())
+                  }
+                  options={technicians.map(t => ({
+                    value: t._id,
+                    label: t.name,
+                  }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="serviceType"
+                label="服务类型"
+                rules={[{ required: true, message: '请选择服务类型' }]}
+              >
+                <Select
+                  placeholder="选择服务类型"
+                  options={[
+                    { value: 'maintenance', label: '保养' },
+                    { value: 'repair', label: '维修' },
+                    { value: 'inspection', label: '检查' },
+                  ]}
+                  onChange={value => {
+                    // 当服务类型改变时，重置服务项目
+                    form.setFieldsValue({ serviceId: undefined });
+                  }}
+                />
+              </Form.Item>
+            </Col>
+            
+            <Col span={12}>
+              <Form.Item
+                name="serviceId"
+                label="服务项目"
+                rules={[{ required: true, message: '请选择服务项目' }]}
+              >
+                <Select
+                  placeholder="选择服务项目"
+                  onChange={handleServiceSelect}
+                  options={
+                    serviceOptions
+                      .find(opt => opt.category === form.getFieldValue('serviceType'))
+                      ?.items.map(item => ({
+                        value: item.name,
+                        label: `${item.name} (¥${item.basePrice})`,
+                      })) || []
+                  }
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="date"
+                label="预约日期"
+                rules={[{ required: true, message: '请选择预约日期' }]}
+              >
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            
+            <Col span={12}>
+              <Form.Item
+                name="time"
+                label="预约时间"
+                rules={[{ required: true, message: '请选择预约时间' }]}
+              >
+                <TimePicker.RangePicker
+                  format="HH:mm"
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          
           <Form.Item
-            name="customer.name"
-            label="客户姓名"
-            rules={[{ required: true, message: '请输入客户姓名' }]}
+            name="description"
+            label="问题描述"
+            rules={[{ required: true, message: '请输入问题描述' }]}
           >
-            <Input />
+            <TextArea rows={4} placeholder="请描述您的车辆问题或服务需求" />
           </Form.Item>
-
+          
           <Form.Item
-            name="customer.phone"
-            label="联系电话"
-            rules={[{ required: true, message: '请输入联系电话' }]}
+            name="status"
+            label="预约状态"
+            rules={[{ required: true, message: '请选择预约状态' }]}
           >
-            <Input />
+            <Select
+              placeholder="选择状态"
+              options={[
+                { value: 'pending', label: '待处理' },
+                { value: 'processed', label: '已处理' },
+                { value: 'completed', label: '已完成' },
+                { value: 'cancelled', label: '已取消' },
+              ]}
+            />
           </Form.Item>
-
-          <Form.Item
-            name="customer.email"
-            label="电子邮箱"
-            rules={[{ type: 'email', message: '请输入有效的邮箱地址' }]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="vehicle.brand"
-            label="车辆品牌"
-            rules={[{ required: true, message: '请输入车辆品牌' }]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="vehicle.model"
-            label="车型"
-            rules={[{ required: true, message: '请输入车型' }]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="vehicle.licensePlate"
-            label="车牌号"
-            rules={[{ required: true, message: '请输入车牌号' }]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="service.type"
-            label="服务类型"
-            rules={[{ required: true, message: '请选择服务类型' }]}
-          >
-            <Select placeholder="请选择服务类型">
-              <Select.Option value="maintenance">常规保养</Select.Option>
-              <Select.Option value="repair">维修</Select.Option>
-              <Select.Option value="inspection">检查</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) => 
-              prevValues?.['service.type'] !== currentValues?.['service.type']
-            }
-          >
-            {({ getFieldValue }) => {
-              const type = getFieldValue('service.type');
-              console.log('服务类型:', type);
-              const services = serviceOptions.find(opt => opt.category === type)?.items || [];
-              console.log('找到的服务项目:', services);
-              return type && services.length > 0 ? (
-                <Form.Item
-                  name="service.name"
-                  label="服务项目"
-                  rules={[{ required: true, message: '请选择服务项目' }]}
-                >
-                  <Select
-                    placeholder="请选择服务项目"
-                    onChange={(value, option: any) => {
-                      console.log('选择的值:', value);
-                      console.log('选择的选项:', option);
-                      handleServiceSelect(option.data);
-                    }}
-                  >
-                    {services.map(service => (
-                      <Select.Option
-                        key={service.name}
-                        value={service.name}
-                        data={service}
-                      >
-                        {service.name} (¥{service.basePrice} / {service.duration}分钟)
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              ) : null;
-            }}
-          </Form.Item>
-
-          <Form.Item
-            name="service.description"
-            label="服务描述"
-          >
-            <TextArea rows={2} />
-          </Form.Item>
-
-          <Form.Item
-            name="service.duration"
-            label="预计时长(分钟)"
-            rules={[{ required: true, message: '请输入预计时长' }]}
-          >
-            <InputNumber style={{ width: '100%' }} min={1} />
-          </Form.Item>
-
-          <Form.Item
-            name="service.basePrice"
-            label="基础价格"
-            rules={[{ required: true, message: '请输入基础价格' }]}
-          >
-            <InputNumber style={{ width: '100%' }} min={0} prefix="¥" />
-          </Form.Item>
-
-          <Form.Item
-            name="date"
-            label="预约日期"
-            rules={[{ required: true, message: '请选择预约日期' }]}
-          >
-            <DatePicker style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item
-            name="startTime"
-            label="开始时间"
-            rules={[{ required: true, message: '请选择开始时间' }]}
-          >
-            <TimePicker format="HH:mm" style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item
-            name="endTime"
-            label="结束时间"
-          >
-            <TimePicker format="HH:mm" style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item
-            name="timeSlot.technician"
-            label="选择技师"
-            rules={[{ required: true, message: '请选择技师' }]}
-          >
-            <Select placeholder="请选择技师">
-              {technicians.map((technician: any) => (
-                <Select.Option 
-                  key={technician._id} 
-                  value={technician._id}
-                >
-                  {technician.name || technician.username}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          {editingAppointment && (
-            <Form.Item
-              name="status"
-              label="状态"
-              rules={[{ required: true, message: '请选择状态' }]}
-            >
-              <Select>
-                <Select.Option value="pending">待处理</Select.Option>
-                <Select.Option value="processed">已处理</Select.Option>
-                <Select.Option value="completed">已完成</Select.Option>
-                <Select.Option value="cancelled">已取消</Select.Option>
-              </Select>
-            </Form.Item>
-          )}
-
-          <Form.Item
-            name="notes"
-            label="备注"
-          >
-            <TextArea rows={3} />
-          </Form.Item>
-
-          <Form.Item className="mb-0">
-            <Space className="w-full justify-end">
-              <Button onClick={() => {
+          
+          <div className="flex justify-end gap-2 mt-6">
+            <Button 
+              onClick={() => {
                 setModalVisible(false);
                 form.resetFields();
-                setEditingAppointment(null);
-              }}>
-                取消
-              </Button>
-              <Button type="primary" htmlType="submit">
-                保存
-              </Button>
-            </Space>
-          </Form.Item>
+              }}
+            >
+              取消
+            </Button>
+            <Button 
+              type="primary" 
+              htmlType="submit"
+              className="admin-btn admin-btn-primary"
+            >
+              提交
+            </Button>
+          </div>
         </Form>
       </Modal>
     </div>

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Table, Button, Space, Tag, Modal, message } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Tag, Modal, message, Card, Row, Col, Statistic } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, CarOutlined, ToolOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import VehicleForm from './components/VehicleForm';
 import type { Vehicle, VehicleFormData, VehiclesResponse } from './types';
@@ -17,6 +17,11 @@ export default function VehiclesPage() {
   const [modalTitle, setModalTitle] = useState('');
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [stats, setStats] = useState({
+    totalVehicles: 0,
+    activeVehicles: 0,
+    inMaintenance: 0
+  });
 
   const fetchVehicles = async (page = 1, limit = 10) => {
     try {
@@ -32,8 +37,16 @@ export default function VehiclesPage() {
 
       // 处理嵌套的数据结构
       const { data: responseData } = result;
-      setData(Array.isArray(responseData.data) ? responseData.data : []);
+      const vehiclesData = Array.isArray(responseData.data) ? responseData.data : [];
+      setData(vehiclesData);
       setTotal(responseData.total || 0);
+      
+      // 计算统计数据
+      setStats({
+        totalVehicles: vehiclesData.length,
+        activeVehicles: vehiclesData.filter(v => v.status === 'active').length,
+        inMaintenance: vehiclesData.filter(v => v.status === 'maintenance').length
+      });
     } catch (error: any) {
       message.error(error.message || '获取车辆列表失败');
       // 发生错误时设置空数组
@@ -53,6 +66,12 @@ export default function VehiclesPage() {
       title: '品牌',
       dataIndex: 'brand',
       key: 'brand',
+      render: (brand: string, record) => (
+        <div className="flex items-center">
+          <CarOutlined className="mr-2 text-blue-500" />
+          <span className="font-medium">{brand}</span>
+        </div>
+      ),
     },
     {
       title: '型号',
@@ -68,6 +87,7 @@ export default function VehiclesPage() {
       title: '车牌号',
       dataIndex: 'licensePlate',
       key: 'licensePlate',
+      render: (plate: string) => <span className="font-medium">{plate}</span>,
     },
     {
       title: '车架号',
@@ -96,14 +116,14 @@ export default function VehiclesPage() {
       key: 'status',
       render: (status: string) => {
         const statusMap = {
-          active: { color: 'green', text: '正常' },
-          maintenance: { color: 'orange', text: '保养中' },
-          inactive: { color: 'red', text: '停用' },
-          default: { color: 'default', text: '未知状态' }
+          active: { className: 'status-badge status-badge-completed', text: '正常' },
+          maintenance: { className: 'status-badge status-badge-in-progress', text: '保养中' },
+          inactive: { className: 'status-badge status-badge-cancelled', text: '停用' },
+          default: { className: 'status-badge', text: '未知状态' }
         };
         
         const statusConfig = statusMap[status as keyof typeof statusMap] || statusMap.default;
-        return <Tag color={statusConfig.color}>{statusConfig.text}</Tag>;
+        return <span className={statusConfig.className}>{statusConfig.text}</span>;
       },
     },
     {
@@ -115,6 +135,7 @@ export default function VehiclesPage() {
             type="text"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            className="text-blue-500 hover:text-blue-600"
           >
             编辑
           </Button>
@@ -209,37 +230,86 @@ export default function VehiclesPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between mb-4">
-        <h1 className="text-2xl font-bold">车辆管理</h1>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleAdd}
-        >
-          添加车辆
-        </Button>
+    <div className="page-transition">
+      <div className="page-title">
+        <h1>车辆管理</h1>
+        <div className="description">查看和管理所有车辆信息</div>
       </div>
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey="_id"
-        loading={loading}
-        pagination={{
-          current: currentPage,
-          pageSize,
-          total,
-          showSizeChanger: true,
-          showQuickJumper: true,
-        }}
-        onChange={handleTableChange}
-      />
+      
+      <Row gutter={[16, 16]} className="mb-6">
+        <Col xs={24} sm={12} md={8}>
+          <div className="stat-card-wrapper">
+            <Card className="dashboard-card" bordered={false}>
+              <Statistic
+                title={<div className="font-medium text-gray-600">车辆总数</div>}
+                value={stats.totalVehicles}
+                prefix={<CarOutlined className="text-blue-500 mr-1" />}
+                valueStyle={{ color: '#1890ff', fontWeight: 500 }}
+              />
+            </Card>
+          </div>
+        </Col>
+        <Col xs={24} sm={12} md={8}>
+          <div className="stat-card-wrapper">
+            <Card className="dashboard-card" bordered={false}>
+              <Statistic
+                title={<div className="font-medium text-gray-600">正常使用</div>}
+                value={stats.activeVehicles}
+                prefix={<CarOutlined className="text-green-500 mr-1" />}
+                valueStyle={{ color: '#52c41a', fontWeight: 500 }}
+              />
+            </Card>
+          </div>
+        </Col>
+        <Col xs={24} sm={12} md={8}>
+          <div className="stat-card-wrapper">
+            <Card className="dashboard-card" bordered={false}>
+              <Statistic
+                title={<div className="font-medium text-gray-600">保养中</div>}
+                value={stats.inMaintenance}
+                prefix={<ToolOutlined className="text-amber-500 mr-1" />}
+                valueStyle={{ color: '#faad14', fontWeight: 500 }}
+              />
+            </Card>
+          </div>
+        </Col>
+      </Row>
+      
+      <Card className="dashboard-card fade-in mb-6">
+        <div className="mb-4 flex justify-end">
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleAdd}
+            className="admin-btn admin-btn-primary"
+          >
+            添加车辆
+          </Button>
+        </div>
+        <Table
+          columns={columns}
+          dataSource={data}
+          rowKey="_id"
+          loading={loading}
+          pagination={{
+            current: currentPage,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            showQuickJumper: true,
+          }}
+          onChange={handleTableChange}
+          className="dashboard-table"
+        />
+      </Card>
+      
       <Modal
         title={modalTitle}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
         destroyOnClose
+        className="enhanced-modal"
       >
         <VehicleForm
           initialValues={editingVehicle || undefined}

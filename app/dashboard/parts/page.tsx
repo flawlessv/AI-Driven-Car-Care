@@ -17,6 +17,7 @@ import {
   Col,
   Tooltip,
   Badge,
+  Statistic,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -24,6 +25,13 @@ import {
   DeleteOutlined,
   PlusOutlined,
   WarningOutlined,
+  SyncOutlined,
+  SearchOutlined,
+  AppstoreOutlined,
+  InboxOutlined,
+  ExclamationCircleOutlined,
+  ToolOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import type { Part } from '@/types/part';
 import { useSelector } from 'react-redux';
@@ -51,6 +59,12 @@ export default function PartsPage() {
   const [editingPart, setEditingPart] = useState<Part | null>(null);
   const [form] = Form.useForm();
   const user = useSelector((state: RootState) => state.auth.user);
+  const [stats, setStats] = useState({
+    total: 0,
+    lowStock: 0,
+    outOfStock: 0,
+    categories: 0
+  });
 
   useEffect(() => {
     fetchParts();
@@ -80,6 +94,14 @@ export default function PartsPage() {
       if (result.data.filters) {
         setFilters(result.data.filters);
       }
+      
+      // 设置统计数据
+      setStats({
+        total: partsData.length,
+        lowStock: partsData.filter((part: Part) => part.stock <= part.minStock && part.stock > 0).length,
+        outOfStock: partsData.filter((part: Part) => part.stock === 0).length,
+        categories: new Set(partsData.map((part: Part) => part.category)).size
+      });
     } catch (error: any) {
       console.error('获取配件列表失败:', error);
       message.error(error.message || '获取配件列表失败');
@@ -88,25 +110,43 @@ export default function PartsPage() {
     }
   };
 
+  // 优化状态标签渲染
+  const renderStatusTag = (status: string) => {
+    const statusMap = {
+      in_stock: { className: 'status-badge status-badge-completed', text: '有库存' },
+      low_stock: { className: 'status-badge status-badge-pending', text: '库存不足' },
+      out_of_stock: { className: 'status-badge status-badge-cancelled', text: '无库存' },
+      discontinued: { className: 'status-badge status-badge-cancelled', text: '已停产' }
+    };
+    const currentStatus = statusMap[status as keyof typeof statusMap] || { className: 'status-badge', text: '未知' };
+    
+    return <span className={currentStatus.className}>{currentStatus.text}</span>;
+  };
+
   const columns: ColumnsType<Part> = [
     {
       title: '配件编号',
       dataIndex: 'code',
       key: 'code',
+      render: (code: string) => <span className="font-medium">{code}</span>,
     },
     {
       title: '配件名称',
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record) => (
-        <Space>
-          {name}
-          {record.stock <= record.minStock && (
-            <Tooltip title="库存不足">
-              <WarningOutlined style={{ color: '#faad14' }} />
-            </Tooltip>
-          )}
-        </Space>
+        <div className="flex items-center">
+          <AppstoreOutlined className="mr-2 text-blue-500" />
+          <div>
+            <div className="font-medium">{name}</div>
+            {record.stock <= record.minStock && (
+              <div className="flex items-center text-xs text-amber-500">
+                <WarningOutlined className="mr-1" />
+                <span>库存不足</span>
+              </div>
+            )}
+          </div>
+        </div>
       ),
     },
     {
@@ -122,7 +162,14 @@ export default function PartsPage() {
           body: { color: 'orange', text: '车身部件' },
         };
         const currentCategory = categoryMap[category] || { color: 'default', text: category };
-        return <Tag color={currentCategory.color}>{currentCategory.text}</Tag>;
+        return (
+          <Tag color={currentCategory.color} className="px-2 py-1">
+            <span className="flex items-center">
+              <ToolOutlined className="mr-1" />
+              {currentCategory.text}
+            </span>
+          </Tag>
+        );
       },
     },
     {
@@ -139,6 +186,8 @@ export default function PartsPage() {
           count={stock}
           showZero
           color={stock <= record.minStock ? '#faad14' : '#52c41a'}
+          style={{ backgroundColor: stock <= record.minStock ? '#faad14' : '#52c41a' }}
+          className="px-2 py-1"
         />
       ),
     },
@@ -146,22 +195,13 @@ export default function PartsPage() {
       title: '单价',
       dataIndex: 'price',
       key: 'price',
-      render: (price: number) => `¥${price.toLocaleString()}`,
+      render: (price: number) => <span className="font-medium">¥{price.toLocaleString()}</span>,
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => {
-        const statusMap = {
-          in_stock: { color: 'green', text: '有库存' },
-          low_stock: { color: 'orange', text: '库存不足' },
-          out_of_stock: { color: 'red', text: '无库存' },
-          discontinued: { color: 'default', text: '已停产' }
-        };
-        const currentStatus = statusMap[status as keyof typeof statusMap] || { color: 'default', text: '未知' };
-        return <Tag color={currentStatus.color}>{currentStatus.text}</Tag>;
-      },
+      render: renderStatusTag,
     },
     {
       title: '操作',
@@ -174,7 +214,8 @@ export default function PartsPage() {
             buttonProps={{
               type: "text",
               icon: <EditOutlined />,
-              onClick: () => handleEdit(record)
+              onClick: () => handleEdit(record),
+              className: "text-blue-500 hover:text-blue-600"
             }}
             noPermissionTip="您没有编辑配件的权限"
           >
@@ -209,6 +250,9 @@ export default function PartsPage() {
     Modal.confirm({
       title: '确认删除',
       content: '确定要删除这个配件吗？',
+      okText: '确定',
+      okType: 'danger',
+      cancelText: '取消',
       onOk: async () => {
         try {
           const response = await fetch(`/api/parts/${record._id}`, {
@@ -260,30 +304,66 @@ export default function PartsPage() {
   };
 
   return (
-    <div className="p-6">
-      <Card
-        title="配件库存"
-        extra={
-          <PermissionChecker
-            menuKey="parts"
-            requiredPermission="write"
-            buttonProps={{
-              type: "primary",
-              icon: <PlusOutlined />,
-              onClick: () => {
-                setEditingPart(null);
-                form.resetFields();
-                setModalVisible(true);
-              }
-            }}
-            noPermissionTip="您没有添加配件的权限"
-          >
-            添加配件
-          </PermissionChecker>
-        }
-      >
-        <div className="mb-4">
-          <Space wrap>
+    <div className="page-transition">
+      <div className="page-title">
+        <h1>配件库存</h1>
+        <div className="description">管理汽车零部件的库存和信息</div>
+      </div>
+      
+      <Row gutter={[16, 16]} className="mb-6 fade-in" style={{animationDelay: '0.1s'}}>
+        <Col xs={24} sm={12} md={6}>
+          <div className="stat-card-wrapper">
+            <Card className="dashboard-card" bordered={false}>
+              <Statistic
+                title={<div className="font-medium text-gray-600">配件总数</div>}
+                value={stats.total}
+                prefix={<AppstoreOutlined className="text-blue-500 mr-1" />}
+                valueStyle={{ color: '#1890ff', fontWeight: 500 }}
+              />
+            </Card>
+          </div>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <div className="stat-card-wrapper">
+            <Card className="dashboard-card" bordered={false}>
+              <Statistic
+                title={<div className="font-medium text-gray-600">库存不足</div>}
+                value={stats.lowStock}
+                prefix={<WarningOutlined className="text-amber-500 mr-1" />}
+                valueStyle={{ color: '#faad14', fontWeight: 500 }}
+              />
+            </Card>
+          </div>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <div className="stat-card-wrapper">
+            <Card className="dashboard-card" bordered={false}>
+              <Statistic
+                title={<div className="font-medium text-gray-600">无库存</div>}
+                value={stats.outOfStock}
+                prefix={<ExclamationCircleOutlined className="text-red-500 mr-1" />}
+                valueStyle={{ color: '#ff4d4f', fontWeight: 500 }}
+              />
+            </Card>
+          </div>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <div className="stat-card-wrapper">
+            <Card className="dashboard-card" bordered={false}>
+              <Statistic
+                title={<div className="font-medium text-gray-600">配件分类</div>}
+                value={stats.categories}
+                prefix={<BarChartOutlined className="text-green-500 mr-1" />}
+                valueStyle={{ color: '#52c41a', fontWeight: 500 }}
+              />
+            </Card>
+          </div>
+        </Col>
+      </Row>
+      
+      <Card className="dashboard-card fade-in mb-6" style={{animationDelay: '0.2s'}}>
+        <div className="mb-4 flex justify-between items-center">
+          <div className="flex space-x-2">
             <Select 
               style={{ width: 200 }}
               placeholder="选择配件类别"
@@ -292,6 +372,7 @@ export default function PartsPage() {
                 label: category,
                 value: category
               }))}
+              className="hover-glow"
             />
             <Select 
               style={{ width: 200 }}
@@ -301,7 +382,35 @@ export default function PartsPage() {
                 label: manufacturer,
                 value: manufacturer
               }))}
+              className="hover-glow"
             />
+          </div>
+          
+          <Space>
+            <Button 
+              icon={<SyncOutlined />} 
+              onClick={fetchParts}
+              className="admin-btn hover-glow"
+            >
+              刷新数据
+            </Button>
+            <PermissionChecker
+              menuKey="parts"
+              requiredPermission="write"
+              buttonProps={{
+                type: "primary",
+                icon: <PlusOutlined />,
+                onClick: () => {
+                  setEditingPart(null);
+                  form.resetFields();
+                  setModalVisible(true);
+                },
+                className: "admin-btn admin-btn-primary hover-glow"
+              }}
+              noPermissionTip="您没有添加配件的权限"
+            >
+              添加配件
+            </PermissionChecker>
           </Space>
         </div>
 
@@ -312,10 +421,14 @@ export default function PartsPage() {
           loading={loading}
           pagination={{
             ...pagination,
+            showQuickJumper: true,
+            showSizeChanger: true,
             onChange: (page) => {
               setPagination(prev => ({ ...prev, current: page }));
             }
           }}
+          className="dashboard-table"
+          rowClassName={(record, index) => (index % 2 === 0 ? 'bg-gray-50' : '')}
         />
       </Card>
       
@@ -324,6 +437,8 @@ export default function PartsPage() {
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
+        className="enhanced-modal"
+        destroyOnClose
       >
         <Form
           form={form}
@@ -333,6 +448,7 @@ export default function PartsPage() {
             status: 'in_stock',
             minStock: 5
           }}
+          className="admin-form mt-4"
         >
           <Row gutter={16}>
             <Col span={12}>
@@ -341,7 +457,7 @@ export default function PartsPage() {
                 label="配件编号"
                 rules={[{ required: true, message: '请输入配件编号' }]}
               >
-                <Input />
+                <Input placeholder="输入配件编号" className="hover-glow" />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -350,7 +466,7 @@ export default function PartsPage() {
                 label="配件名称"
                 rules={[{ required: true, message: '请输入配件名称' }]}
               >
-                <Input />
+                <Input placeholder="输入配件名称" className="hover-glow" />
               </Form.Item>
             </Col>
           </Row>
@@ -362,7 +478,7 @@ export default function PartsPage() {
                 label="配件类别"
                 rules={[{ required: true, message: '请选择配件类别' }]}
               >
-                <Select>
+                <Select placeholder="选择配件类别" className="hover-glow">
                   <Select.Option value="engine">发动机</Select.Option>
                   <Select.Option value="transmission">变速箱</Select.Option>
                   <Select.Option value="brake">制动系统</Select.Option>
@@ -377,7 +493,7 @@ export default function PartsPage() {
                 label="制造商"
                 rules={[{ required: true, message: '请输入制造商' }]}
               >
-                <Input />
+                <Input placeholder="输入制造商" className="hover-glow" />
               </Form.Item>
             </Col>
           </Row>
@@ -394,6 +510,7 @@ export default function PartsPage() {
                   min={0}
                   precision={2}
                   addonBefore="¥"
+                  placeholder="0.00"
                 />
               </Form.Item>
             </Col>
@@ -403,7 +520,7 @@ export default function PartsPage() {
                 label="库存数量"
                 rules={[{ required: true, message: '请输入库存数量' }]}
               >
-                <InputNumber style={{ width: '100%' }} min={0} />
+                <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -412,7 +529,7 @@ export default function PartsPage() {
                 label="最低库存"
                 tooltip="当库存低于此数量时会给出警告"
               >
-                <InputNumber style={{ width: '100%' }} min={0} />
+                <InputNumber style={{ width: '100%' }} min={0} placeholder="5" />
               </Form.Item>
             </Col>
           </Row>
@@ -421,7 +538,7 @@ export default function PartsPage() {
             name="description"
             label="配件描述"
           >
-            <TextArea rows={4} />
+            <TextArea rows={4} placeholder="输入配件的详细描述" />
           </Form.Item>
 
           <Form.Item
@@ -429,7 +546,7 @@ export default function PartsPage() {
             label="状态"
             rules={[{ required: true, message: '请选择状态' }]}
           >
-            <Select>
+            <Select placeholder="选择配件状态">
               <Select.Option value="in_stock">有库存</Select.Option>
               <Select.Option value="low_stock">库存不足</Select.Option>
               <Select.Option value="out_of_stock">无库存</Select.Option>
@@ -437,16 +554,18 @@ export default function PartsPage() {
             </Select>
           </Form.Item>
 
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit">
-                提交
-              </Button>
-              <Button onClick={() => setModalVisible(false)}>
-                取消
-              </Button>
-            </Space>
-          </Form.Item>
+          <div className="flex justify-end gap-2 mt-6">
+            <Button onClick={() => setModalVisible(false)}>
+              取消
+            </Button>
+            <Button 
+              type="primary" 
+              htmlType="submit" 
+              className="admin-btn admin-btn-primary"
+            >
+              {editingPart ? '更新' : '保存'}
+            </Button>
+          </div>
         </Form>
       </Modal>
     </div>

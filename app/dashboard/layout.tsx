@@ -1,11 +1,15 @@
 'use client';
 
-import { Layout, Menu, Avatar, Dropdown, Button, theme, message } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Button, theme, message, Badge, Space } from 'antd';
+import type { MenuProps, DropdownProps } from 'antd';
 import {
   HomeOutlined,
   MenuFoldOutlined, 
   MenuUnfoldOutlined,
   UserOutlined,
+  SettingOutlined,
+  LogoutOutlined,
+  BellOutlined,
 } from '@ant-design/icons';
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -17,15 +21,42 @@ import { menuItems } from '@/app/config/menu';
 
 const { Header, Sider, Content } = Layout;
 
-const userMenu = [
+// 定义用户菜单项类型
+type UserMenuItemNormal = {
+  key: string;
+  icon?: React.ReactNode;
+  label: string;
+  danger?: boolean;
+};
+
+type UserMenuItemDivider = {
+  type: 'divider';
+  key: string;
+};
+
+type UserMenuItem = UserMenuItemNormal | UserMenuItemDivider;
+
+// 修改用户菜单定义
+const userMenu: UserMenuItem[] = [
+  {
+    key: 'profile',
+    icon: <UserOutlined />,
+    label: '个人资料',
+  },
   {
     key: 'home',
     icon: <HomeOutlined />,
-    label: '回到首页',
+    label: '返回首页',
+  },
+  {
+    type: 'divider',
+    key: 'divider-1',
   },
   {
     key: 'logout',
+    icon: <LogoutOutlined />,
     label: '退出登录',
+    danger: true,
   },
 ];
 
@@ -81,7 +112,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { user } = useSelector((state: RootState) => state.auth);
   const {
-    token: { colorBgContainer, borderRadiusLG },
+    token: { colorBgContainer, borderRadiusLG, colorPrimary },
   } = theme.useToken();
 
   console.log('Current user:', user);
@@ -94,6 +125,9 @@ export default function DashboardLayout({
 
   const handleUserMenuClick = async ({ key }: { key: string }) => {
     switch (key) {
+      case 'profile':
+        router.push('/dashboard/profile');
+        break;
       case 'home':
         window.location.href = '/home';
         break;
@@ -113,7 +147,7 @@ export default function DashboardLayout({
           dispatch(logout());
 
           // 3. 显示成功消息
-          message.success('退出登录成功');
+          message.success('已安全退出系统');
 
           // 4. 跳转到登录页
           window.location.href = '/login';
@@ -139,27 +173,33 @@ export default function DashboardLayout({
           left: 0,
           top: 0,
           bottom: 0,
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+          zIndex: 999,
         }}
+        width={220}
       >
-        <div className="p-4">
-          <Link href="/">
-            <h1 className={`text-xl font-bold transition-opacity duration-200 ${collapsed ? 'opacity-0' : 'opacity-100'}`}>
-            佳伟汽车保养系统
-            </h1>
+        <div className="flex items-center justify-center py-6 px-4">
+          <Link href="/dashboard">
+            <div className={`flex items-center transition-all duration-300 ${collapsed ? 'justify-center' : 'justify-start'}`}>
+              <div className="w-8 h-8 flex items-center justify-center rounded-md bg-blue-600 text-white font-bold text-lg mr-2">
+                佳
+              </div>
+              <h1 className={`text-lg font-bold transition-opacity duration-200 text-blue-600 ${collapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
+                佳伟汽车管理系统
+              </h1>
+            </div>
           </Link>
         </div>
         <Menu
           theme="light"
           mode="inline"
           selectedKeys={[pathname.split('/')[2] || 'dashboard']}
-          defaultOpenKeys={['vehicles', 'maintenance', 'reports']}
-          onClick={({ key, keyPath }) => {
-            const item = menuItems.find((item: any) => item.key === key) || 
-                        menuItems.find((item: any) => item.children?.some((child: any) => child.key === key))?.children?.find((child: any) => child.key === key);
-            if (item?.path) {
-              handleMenuClick(item.path);
-            }
+          defaultOpenKeys={[]}
+          style={{ 
+            borderRight: 'none',
+            padding: '8px 0'
           }}
+          className="dashboard-menu"
           items={menuItems
             // 过滤菜单项：管理员可见全部，非管理员根据权限控制
             .filter(item => {
@@ -179,7 +219,7 @@ export default function DashboardLayout({
               }
               
               // 如果是管理员专属菜单，则不显示
-              if (item.adminOnly) {
+              if ('adminOnly' in item && item.adminOnly) {
                 console.log(`菜单项 ${item.key} - 管理员专属，非管理员不可见`);
                 return false;
               }
@@ -224,6 +264,17 @@ export default function DashboardLayout({
               key: item.key,
               icon: item.icon,
               label: item.label,
+              onClick: () => {
+                console.log(`点击菜单项: ${item.key}`);
+                // 只有没有子菜单的项目才需要导航
+                if (!item.children) {
+                  const menuItem = menuItems.find(mi => mi.key === item.key);
+                  if (menuItem && 'path' in menuItem) {
+                    console.log(`导航到路径: ${menuItem.path}`);
+                    handleMenuClick(menuItem.path as string);
+                  }
+                }
+              },
               children: item.children?.map(child => {
                 // 对子菜单项进行权限过滤
                 console.log(`处理子菜单 ${child.key}`);
@@ -245,64 +296,107 @@ export default function DashboardLayout({
                       }
                       
                       console.log(`子菜单项 ${child.key} - 用户有自定义权限(${permission.permission})，显示`);
+                      // 返回子菜单项并添加onClick事件
                       return {
                         key: child.key,
                         label: child.label,
+                        onClick: () => {
+                          console.log(`点击子菜单项: ${child.key}`);
+                          const parentItem = menuItems.find(mi => mi.key === item.key);
+                          const childItem = parentItem?.children?.find(c => c.key === child.key);
+                          if (childItem && 'path' in childItem) {
+                            console.log(`导航到路径: ${childItem.path}`);
+                            handleMenuClick(childItem.path as string);
+                          }
+                        }
                       };
                     }
-                  } 
+                  }
                   
-                  // 如果没有找到用户自定义权限，再使用默认权限
+                  // 如果没有找到自定义权限，使用默认权限
                   const defaultPermissions = getDefaultPermissions(user?.role || '');
                   permission = defaultPermissions.find(p => p.menuKey === child.key);
                   console.log(`子菜单项 ${child.key} - 默认权限:`, permission);
                   
-                  // 如果找不到权限设置或权限为none，不显示
+                  // 如果权限是none或未找到权限，不显示
                   if (!permission || permission.permission === 'none') {
-                    console.log(`子菜单项 ${child.key} - 无权限或权限为none，不显示`);
+                    console.log(`子菜单项 ${child.key} - 默认权限为none或未找到权限，不显示`);
                     return null;
                   }
                 }
                 
-                console.log(`子菜单项 ${child.key} - 显示`);
+                // 返回子菜单项并添加onClick事件
                 return {
                   key: child.key,
                   label: child.label,
+                  onClick: () => {
+                    console.log(`点击子菜单项: ${child.key}`);
+                    const parentItem = menuItems.find(mi => mi.key === item.key);
+                    const childItem = parentItem?.children?.find(c => c.key === child.key);
+                    if (childItem && 'path' in childItem) {
+                      console.log(`导航到路径: ${childItem.path}`);
+                      handleMenuClick(childItem.path as string);
+                    }
+                  }
                 };
               }).filter(Boolean), // 过滤掉null的子菜单
             }))}
         />
       </Sider>
-      <Layout style={{ marginLeft: collapsed ? 80 : 200, transition: 'all 0.2s' }}>
-        <Header style={{ padding: 0, background: colorBgContainer }}>
-          <div className="flex justify-between items-center px-4">
+      <Layout style={{ marginLeft: collapsed ? 80 : 220, transition: 'all 0.2s' }}>
+        <Header style={{ 
+          padding: 0, 
+          background: colorBgContainer,
+          boxShadow: '0 1px 4px rgba(0, 0, 0, 0.1)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 998,
+          height: 64
+        }}
+        className="dashboard-header"
+        >
+          <div className="flex justify-between items-center h-full px-6">
             <Button
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setCollapsed(!collapsed)}
               style={{
                 fontSize: '16px',
-                width: 64,
-                height: 64,
               }}
             />
-            <div className="flex items-center">
+            <div className="flex items-center space-x-4">
               <Dropdown
                 menu={{
-                  items: userMenu.map(item => ({
-                    key: item.key,
-                    icon: item.icon,
-                    label: item.label,
-                    onClick: () => handleUserMenuClick({ key: item.key }),
-                  })),
+                  items: userMenu.map(item => {
+                    if ('type' in item && item.type === 'divider') {
+                      return { type: 'divider', key: item.key };
+                    }
+                    
+                    const normalItem = item as UserMenuItemNormal;
+                    return {
+                      key: normalItem.key,
+                      icon: normalItem.icon,
+                      label: normalItem.label,
+                      danger: normalItem.danger,
+                      onClick: () => handleUserMenuClick({ key: normalItem.key }),
+                    };
+                  }) as MenuProps['items'],
                 }}
                 placement="bottomRight"
+                arrow
+                overlayClassName="user-dropdown-menu"
               >
-                <div className="flex items-center cursor-pointer">
-                  <Avatar icon={<UserOutlined />} />
-                  <span className="ml-2">
-                    {user?.name || user?.username || '用户名'}
+                <div className="flex items-center cursor-pointer hover:bg-gray-50 py-2 px-3 rounded-full transition-colors dashboard-header-avatar">
+                  <Avatar 
+                    icon={<UserOutlined />} 
+                    style={{ backgroundColor: colorPrimary }}
+                    size="small"
+                    className="mr-2"
+                  />
+                  <span className="mr-1 font-medium max-w-[100px] truncate">
+                    {user?.name || user?.username || '用户'}
                   </span>
+                  <SettingOutlined style={{ fontSize: '12px', opacity: 0.7 }} />
                 </div>
               </Dropdown>
             </div>
@@ -310,14 +404,18 @@ export default function DashboardLayout({
         </Header>
         <Content
           style={{
-            margin: '24px 16px',
-            padding: 24,
+            margin: '24px',
+            padding: 0,
             minHeight: 280,
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
+            overflow: 'hidden',
           }}
+          className="page-transition"
         >
-          {children}
+          <div className="p-6">
+            {children}
+          </div>
         </Content>
       </Layout>
     </Layout>

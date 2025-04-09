@@ -12,13 +12,22 @@ import {
   Tag,
   Select,
   Form,
+  Card,
+  Statistic,
+  Badge,
+  Row,
+  Col,
+  Tooltip,
+  Avatar,
 } from 'antd';
-import { PlusOutlined, CheckOutlined } from '@ant-design/icons';
+import { PlusOutlined, CheckOutlined, EditOutlined, DeleteOutlined, MoreOutlined, SyncOutlined, FileDoneOutlined, ClockCircleOutlined, ToolOutlined, UserOutlined, CarOutlined, CloseCircleOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import type { RootState } from '@/app/lib/store';
 import type { Vehicle } from '@/types/vehicle';
 import type { WorkOrder } from '@/types/workOrder';
 import WorkOrderForm from './components/WorkOrderForm';
 import { statusText, statusColor } from './components/StatusTag';
+import Link from 'next/link';
+import dayjs from 'dayjs';
 
 const priorityText = {
   low: '低',
@@ -43,7 +52,7 @@ const typeOptions = {
 };
 
 export default function WorkOrdersPage() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [data, setData] = useState<WorkOrder[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -51,6 +60,14 @@ export default function WorkOrdersPage() {
   const [selectedVehicle, setSelectedVehicle] = useState<string>();
   const [selectedPriority, setSelectedPriority] = useState<string>();
   const [form] = Form.useForm();
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    in_progress: 0,
+    on_hold: 0,
+    completed: 0,
+    cancelled: 0,
+  });
 
   const router = useRouter();
   const user = useSelector((state: RootState) => state.auth.user);
@@ -102,6 +119,23 @@ export default function WorkOrdersPage() {
         throw new Error('工单数据格式错误');
       }
 
+      // 获取工单统计数据
+      const totalOrders = workOrders.length;
+      const pendingOrders = workOrders.filter(order => order.status === 'pending').length;
+      const inProgressOrders = workOrders.filter(order => order.status === 'in_progress').length;
+      const onHoldOrders = workOrders.filter(order => order.status === 'on_hold').length;
+      const completedOrders = workOrders.filter(order => order.status === 'completed').length;
+      const cancelledOrders = workOrders.filter(order => order.status === 'cancelled').length;
+
+      setStats({
+        total: totalOrders,
+        pending: pendingOrders,
+        in_progress: inProgressOrders,
+        on_hold: onHoldOrders,
+        completed: completedOrders,
+        cancelled: cancelledOrders,
+      });
+
       setData(workOrders);
     } catch (error: any) {
       console.error('获取工单列表失败:', error);
@@ -147,206 +181,383 @@ export default function WorkOrdersPage() {
     }
   };
 
+  const handleStatusChange = async (record: WorkOrder, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/work-orders/${record._id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || '更新工单状态失败');
+      }
+
+      message.success('工单状态已更新');
+      fetchWorkOrders();
+    } catch (error: any) {
+      console.error('更新工单状态失败:', error);
+      message.error(error.message || '更新工单状态失败');
+    }
+  };
+
+  const handleDelete = async (record: WorkOrder) => {
+    Modal.confirm({
+      title: '确认删除',
+      content: `确定要删除工单 #${record._id.slice(-8)} 吗？`,
+      okText: '确定',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          const response = await fetch(`/api/work-orders/${record._id}`, {
+            method: 'DELETE',
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.message || '删除工单失败');
+          }
+
+          message.success('工单已删除');
+          fetchWorkOrders();
+        } catch (error: any) {
+          console.error('删除工单失败:', error);
+          message.error(error.message || '删除工单失败');
+        }
+      },
+    });
+  };
+
   const columns = [
     {
       title: '工单编号',
-      dataIndex: 'orderNumber',
-      render: (text: string, record: WorkOrder) => (
-        <Button
-          type="link"
-          onClick={() => handleView(record)}
-        >
-          {text}
-        </Button>
+      dataIndex: '_id',
+      key: '_id',
+      render: (id: string) => (
+        <Link href={`/dashboard/work-orders/${id}`} className="font-medium text-blue-600 hover:text-blue-800">
+          #{id.slice(-8)}
+        </Link>
       ),
     },
     {
       title: '客户信息',
-      dataIndex: ['customer'],
-      render: (customer: any) => {
-        if (!customer) {
-          return <span>未知客户</span>;
-        }
-        
-        return (
-          <span>
-            <div>{customer?.name || customer?.username || '未知姓名'}</div>
-            <div className="text-gray-500">{customer?.phone || ''}</div>
-            <div className="text-gray-500">{customer?.email || ''}</div>
-          </span>
-        );
-      },
-    },
-    {
-      title: '车辆',
-      dataIndex: ['vehicle'],
-      render: (vehicle: any) => {
-        if (!vehicle) {
-          return <span>未知车辆</span>;
-        }
-        
-        return (
-          <span>
-            {vehicle?.brand || '未知品牌'} {vehicle?.model || '未知型号'}
-            <br />
-            {vehicle?.licensePlate || '无车牌'}
-          </span>
-        );
-      },
-    },
-    {
-      title: '维修类型',
-      dataIndex: 'type',
-      render: (type: keyof typeof typeOptions) => (
-        <span>{typeOptions[type] || type}</span>
+      dataIndex: 'customer',
+      key: 'customer',
+      render: (customer: any) => (
+        <div>
+          <div className="font-medium flex items-center">
+            <UserOutlined className="mr-1 text-blue-500" /> 
+            {customer?.name}
+          </div>
+          <div className="text-gray-500 text-sm">{customer?.phone}</div>
+        </div>
       ),
     },
     {
-      title: '问题描述',
-      dataIndex: 'description',
-      ellipsis: true,
+      title: '车辆信息',
+      dataIndex: 'vehicle',
+      key: 'vehicle',
+      render: (vehicle: any) => (
+        <div className="flex items-center">
+          <CarOutlined className="mr-1 text-green-500" /> 
+          <span>{vehicle?.brand} {vehicle?.model} <span className="text-gray-600">({vehicle?.licensePlate})</span></span>
+        </div>
+      ),
     },
     {
-      title: '优先级',
-      dataIndex: 'priority',
-      render: (priority: keyof typeof priorityText) => (
-        <Tag color={priorityColor[priority]}>
-          {priorityText[priority]}
-        </Tag>
+      title: '工单类型',
+      dataIndex: 'type',
+      key: 'type',
+      render: (type: keyof typeof typeOptions) => (
+        <div className="flex items-center">
+          <ToolOutlined className="mr-1 text-purple-500" />
+          <span className="capitalize">{typeOptions[type] || type}</span>
+        </div>
+      ),
+    },
+    {
+      title: '技师',
+      dataIndex: 'technician',
+      key: 'technician',
+      render: (technician: any) => (
+        technician?.name ? (
+          <div className="flex items-center">
+            <Avatar 
+              size="small" 
+              style={{ backgroundColor: '#1890ff' }} 
+              className="mr-2"
+            >
+              {technician.name.charAt(0)}
+            </Avatar>
+            {technician.name}
+          </div>
+        ) : '未分配'
+      ),
+    },
+    {
+      title: '开始日期',
+      dataIndex: 'startDate',
+      key: 'startDate',
+      render: (date: string) => (
+        <div className="flex items-center">
+          <ClockCircleOutlined className="mr-1 text-blue-500" />
+          {date ? dayjs(date).format('YYYY-MM-DD') : '-'}
+        </div>
       ),
     },
     {
       title: '状态',
       dataIndex: 'status',
-      render: (status: keyof typeof statusText, record: WorkOrder) => (
+      key: 'status',
+      render: (status: keyof typeof statusText) => (
         <Tag color={statusColor[status]}>
           {statusText[status]}
         </Tag>
       ),
     },
     {
-      title: '技师',
-      dataIndex: ['technician', 'username'],
-      render: (text: string) => text || '-',
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'createdAt',
-      render: (date: string) => new Date(date).toLocaleString(),
-    },
-    {
       title: '操作',
       key: 'action',
-      render: (_: any, record: WorkOrder) => (
-        <Button
-          type="link"
-          onClick={() => handleView(record)}
-        >
-          查看详情
-        </Button>
+      render: (_, record) => (
+        <Space size="middle">
+          <Link href={`/dashboard/work-orders/${record._id}`}>
+            <Button type="text" className="text-blue-500 hover:text-blue-600">
+              查看
+            </Button>
+          </Link>
+          <Dropdown
+            menu={{
+              items: [
+                {
+                  key: 'pending',
+                  label: '标记为待处理',
+                  icon: <ExclamationCircleOutlined style={{ color: statusColor.pending }} />,
+                  disabled: record.status === 'pending',
+                  onClick: () => handleStatusChange(record, 'pending'),
+                },
+                {
+                  key: 'in_progress',
+                  label: '标记为进行中',
+                  icon: <SyncOutlined style={{ color: statusColor.in_progress }} />,
+                  disabled: record.status === 'in_progress',
+                  onClick: () => handleStatusChange(record, 'in_progress'),
+                },
+                {
+                  key: 'on_hold',
+                  label: '标记为暂停',
+                  icon: <ClockCircleOutlined style={{ color: statusColor.on_hold }} />,
+                  disabled: record.status === 'on_hold',
+                  onClick: () => handleStatusChange(record, 'on_hold'),
+                },
+                {
+                  key: 'completed',
+                  label: '标记为已完成',
+                  icon: <CheckCircleOutlined style={{ color: statusColor.completed }} />,
+                  disabled: record.status === 'completed',
+                  onClick: () => handleStatusChange(record, 'completed'),
+                },
+                {
+                  key: 'cancelled',
+                  label: '标记为已取消',
+                  icon: <CloseCircleOutlined style={{ color: statusColor.cancelled }} />,
+                  disabled: record.status === 'cancelled',
+                  onClick: () => handleStatusChange(record, 'cancelled'),
+                },
+                {
+                  key: 'delete',
+                  label: '删除工单',
+                  icon: <DeleteOutlined style={{ color: '#ff4d4f' }} />,
+                  danger: true,
+                  onClick: () => handleDelete(record),
+                },
+              ],
+            }}
+          >
+            <Button type="text">
+              <MoreOutlined />
+            </Button>
+          </Dropdown>
+        </Space>
       ),
     },
   ];
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">维修工单管理</h1>
-        <div>
-          {(user?.role === 'admin' || user?.role === 'customer') && (
-            <Button 
-              type="primary" 
-              icon={<PlusOutlined />} 
-              onClick={handleAdd}
-              className="mr-2"
+    <div className="page-transition">
+      <div className="page-title">
+        <h1>工单管理</h1>
+        <div className="description">查看和管理所有维修保养工单</div>
+      </div>
+      
+      <Row gutter={[16, 16]} className="mb-6 fade-in" style={{animationDelay: '0.1s'}}>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <div className="stat-card-wrapper">
+            <Card className="dashboard-card" bordered={false}>
+              <Statistic
+                title={<div className="font-medium text-gray-600">全部工单</div>}
+                value={stats.total}
+                prefix={<FileDoneOutlined className="text-blue-500 mr-1" />}
+                valueStyle={{ color: '#1890ff', fontWeight: 500 }}
+              />
+            </Card>
+          </div>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <div className="stat-card-wrapper">
+            <Card className="dashboard-card" bordered={false}>
+              <Statistic
+                title={<div className="font-medium text-gray-600">待处理</div>}
+                value={stats.pending}
+                prefix={<ClockCircleOutlined className="text-amber-500 mr-1" />}
+                valueStyle={{ color: '#faad14', fontWeight: 500 }}
+              />
+            </Card>
+          </div>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <div className="stat-card-wrapper">
+            <Card className="dashboard-card" bordered={false}>
+              <Statistic
+                title={<div className="font-medium text-gray-600">进行中</div>}
+                value={stats.in_progress}
+                prefix={<ToolOutlined className="text-blue-500 mr-1" />}
+                valueStyle={{ color: '#1890ff', fontWeight: 500 }}
+              />
+            </Card>
+          </div>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <div className="stat-card-wrapper">
+            <Card className="dashboard-card" bordered={false}>
+              <Statistic
+                title={<div className="font-medium text-gray-600">已暂停</div>}
+                value={stats.on_hold}
+                prefix={<ExclamationCircleOutlined className="text-yellow-500 mr-1" />}
+                valueStyle={{ color: '#fadb14', fontWeight: 500 }}
+              />
+            </Card>
+          </div>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <div className="stat-card-wrapper">
+            <Card className="dashboard-card" bordered={false}>
+              <Statistic
+                title={<div className="font-medium text-gray-600">已完成</div>}
+                value={stats.completed}
+                prefix={<CheckCircleOutlined className="text-green-500 mr-1" />}
+                valueStyle={{ color: '#52c41a', fontWeight: 500 }}
+              />
+            </Card>
+          </div>
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <div className="stat-card-wrapper">
+            <Card className="dashboard-card" bordered={false}>
+              <Statistic
+                title={<div className="font-medium text-gray-600">已取消</div>}
+                value={stats.cancelled}
+                prefix={<CloseCircleOutlined className="text-red-500 mr-1" />}
+                valueStyle={{ color: '#ff4d4f', fontWeight: 500 }}
+              />
+            </Card>
+          </div>
+        </Col>
+      </Row>
+      
+      <Card className="dashboard-card fade-in mb-6" style={{animationDelay: '0.2s'}}>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div className="flex flex-wrap gap-2">
+            <Select
+              placeholder="工单状态筛选"
+              style={{ width: 150 }}
+              allowClear
+              className="hover-glow"
+              onChange={(value) => setSelectedStatus(value)}
+              options={[
+                { value: 'pending', label: '待处理' },
+                { value: 'in_progress', label: '处理中' },
+                { value: 'on_hold', label: '已暂停' },
+                { value: 'completed', label: '已完成' },
+                { value: 'cancelled', label: '已取消' },
+              ]}
+            />
+            <Select
+              placeholder="车辆筛选"
+              style={{ width: 200 }}
+              allowClear
+              className="hover-glow"
+              onChange={(value) => setSelectedVehicle(value)}
+              options={vehicles.map((vehicle) => ({
+                value: vehicle._id,
+                label: `${vehicle.licensePlate} (${vehicle.brand} ${vehicle.model})`,
+              }))}
+            />
+            <Select
+              placeholder="优先级筛选"
+              style={{ width: 150 }}
+              allowClear
+              className="hover-glow"
+              onChange={(value) => setSelectedPriority(value)}
+              options={[
+                { value: 'low', label: '低' },
+                { value: 'medium', label: '中' },
+                { value: 'high', label: '高' },
+                { value: 'urgent', label: '紧急' },
+              ]}
+            />
+            <Button
+              icon={<SyncOutlined />}
+              onClick={fetchWorkOrders}
+              className="admin-btn hover-glow"
             >
-              新建工单
+              刷新数据
             </Button>
-          )}
-          <Button 
-            onClick={fetchWorkOrders}
-            loading={loading}
+          </div>
+          
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleAdd}
+            className="admin-btn admin-btn-primary hover-glow"
           >
-            刷新列表
+            创建工单
           </Button>
         </div>
-      </div>
 
-      <div className="mb-4 flex justify-between items-center">
-        <div className="flex gap-4">
-          <Select
-            allowClear
-            style={{ width: 200 }}
-            placeholder="选择车辆"
-            value={selectedVehicle}
-            onChange={setSelectedVehicle}
-          >
-            {vehicles.map(vehicle => (
-              <Select.Option key={vehicle._id} value={vehicle._id}>
-                {vehicle.brand} {vehicle.model} - {vehicle.licensePlate}
-              </Select.Option>
-            ))}
-          </Select>
-
-          <Select
-            allowClear
-            style={{ width: 120 }}
-            placeholder="状态"
-            value={selectedStatus}
-            onChange={setSelectedStatus}
-          >
-            {Object.entries(statusText).map(([key, text]) => (
-              <Select.Option key={key} value={key}>
-                {text}
-              </Select.Option>
-            ))}
-          </Select>
-
-          <Select
-            allowClear
-            style={{ width: 120 }}
-            placeholder="优先级"
-            value={selectedPriority}
-            onChange={setSelectedPriority}
-          >
-            {Object.entries(priorityText).map(([key, text]) => (
-              <Select.Option key={key} value={key}>
-                {text}
-              </Select.Option>
-            ))}
-          </Select>
-
-          {user?.role === 'admin' && (
-            <Button 
-              type="primary"
-              danger
-              onClick={() => setSelectedStatus('pending_check')}
-              icon={<CheckOutlined />}
-            >
-              查看待审批工单
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey="_id"
-        loading={loading}
-      />
+        <Table
+          loading={loading}
+          dataSource={data}
+          rowKey="_id"
+          pagination={{
+            defaultPageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+          }}
+          className="dashboard-table"
+          rowClassName={(record, index) => (index % 2 === 0 ? 'bg-gray-50' : '')}
+          columns={columns}
+        />
+      </Card>
 
       <Modal
         title="创建工单"
         open={modalVisible}
-        onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
-        width={800}
+        footer={null}
+        width={700}
+        destroyOnClose
+        className="enhanced-modal"
       >
         <WorkOrderForm
+          onFinish={handleSubmit}
+          vehicles={vehicles}
           form={form}
-          vehicles={vehicles || []}
-          mode="create"
         />
       </Modal>
     </div>

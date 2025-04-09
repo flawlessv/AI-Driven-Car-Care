@@ -360,178 +360,164 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-6">
-      {/* 欢迎信息 */}
-      <div className="mb-6">
-        <Title level={2}>欢迎，{dashboardData?.username || '用户'}！</Title>
-        <Text type="secondary">这里是您的汽车维修管理系统仪表盘</Text>
+    <div>
+      <div className="page-title">
+        <h1>仪表盘</h1>
+        <div className="description">
+          欢迎回来，{dashboardData?.username || '用户'}！以下是系统概览数据。
+        </div>
       </div>
       
-      <Divider />
-      
-      {/* 统计卡片 */}
-      <div className="mb-8">
-        <Title level={4}>系统概览</Title>
-        <Row gutter={[16, 16]}>
-          {/* 车辆统计 */}
-          <Col xs={24} sm={12} md={8} lg={8} xl={8}>
-            <Card bordered={false}>
-              <Statistic
-                title="车辆总数"
-                value={dashboardData?.overview?.vehicles?.total || 0}
-                prefix={<CarOutlined />}
-                valueStyle={{ color: '#1890ff' }}
-              />
-              <div className="mt-2 flex justify-between">
-                <Text type="secondary">
-                  激活: {dashboardData?.overview?.vehicles?.active || 0}
-                </Text>
-                <Text type="secondary">
-                  维修中: {dashboardData?.overview?.vehicles?.inMaintenance || 0}
-                </Text>
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <Spin size="large" tip="加载中..." />
+        </div>
+      ) : (
+        <>
+          {/* 统计卡片 */}
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} lg={6}>
+              <div className="stat-card-wrapper">
+                <Card className="dashboard-card" bordered={false}>
+                  <Statistic
+                    title={<div className="font-medium text-gray-600">车辆总数</div>}
+                    value={dashboardData?.overview.vehicles.total || 0}
+                    prefix={<CarOutlined className="text-blue-500 mr-1" />}
+                    valueStyle={{ color: '#1890ff', fontWeight: 500 }}
+                  />
+                  <div className="mt-2 text-xs text-gray-500">
+                    其中 <span className="text-green-500 font-medium">{dashboardData?.overview.vehicles.active || 0}</span> 辆正常,
+                    <span className="text-orange-500 font-medium"> {dashboardData?.overview.vehicles.inMaintenance || 0}</span> 辆维修中
+                  </div>
+                </Card>
               </div>
-            </Card>
-          </Col>
-          
-          {/* 工单统计 */}
-          <Col xs={24} sm={12} md={8} lg={8} xl={8}>
-            <Card bordered={false}>
-              <Statistic
-                title="工单总数"
-                value={dashboardData?.overview?.workOrders?.total || 0}
-                prefix={<ToolOutlined />}
-                valueStyle={{ color: '#722ed1' }}
-              />
-              <div className="mt-2 flex justify-between text-xs">
-                <Text type="secondary">
-                  待处理: {dashboardData?.overview?.workOrders?.pending || 0}
-                </Text>
-                <Text type="secondary">
-                  进行中: {dashboardData?.overview?.workOrders?.inProgress || 0}
-                </Text>
-                <Text type="secondary">
-                  已完成: {dashboardData?.overview?.workOrders?.completed || 0}
-                </Text>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <div className="stat-card-wrapper">
+                <Card className="dashboard-card" bordered={false}>
+                  <Statistic
+                    title={<div className="font-medium text-gray-600">当前预约</div>}
+                    value={dashboardData?.overview.appointments.pending || 0}
+                    prefix={<ClockCircleOutlined className="text-orange-500 mr-1" />}
+                    valueStyle={{ color: '#faad14', fontWeight: 500 }}
+                  />
+                  <div className="mt-2 text-xs text-gray-500">
+                    今天有 <span className="text-orange-500 font-medium">{dashboardData?.overview.appointments.today || 0}</span> 个预约,
+                    累计 <span className="text-gray-700 font-medium">{dashboardData?.overview.appointments.total || 0}</span> 个
+                  </div>
+                </Card>
               </div>
-            </Card>
-          </Col>
-          
-          {/* 预约统计 */}
-          <Col xs={24} sm={12} md={8} lg={8} xl={8}>
-            <Card bordered={false}>
-              <Statistic
-                title="预约总数"
-                value={dashboardData?.overview?.appointments?.total || 0}
-                prefix={<ClockCircleOutlined />}
-                valueStyle={{ color: '#fa8c16' }}
-              />
-              <div className="mt-2 flex justify-between">
-                <Text type="secondary">
-                  待处理: {dashboardData?.overview?.appointments?.pending || 0}
-                </Text>
-                <Text type="secondary">
-                  今日预约: {dashboardData?.overview?.appointments?.today || 0}
-                </Text>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <div className="stat-card-wrapper">
+                <Card className="dashboard-card" bordered={false}>
+                  <Statistic
+                    title={<div className="font-medium text-gray-600">工单处理</div>}
+                    value={dashboardData?.overview.workOrders.inProgress || 0}
+                    prefix={<ToolOutlined className="text-purple-500 mr-1" />}
+                    valueStyle={{ color: '#722ed1', fontWeight: 500 }}
+                  />
+                  <div className="mt-2 text-xs text-gray-500">
+                    待处理 <span className="text-orange-500 font-medium">{dashboardData?.overview.workOrders.pending || 0}</span> 个,
+                    已完成 <span className="text-green-500 font-medium">{dashboardData?.overview.workOrders.completed || 0}</span> 个
+                  </div>
+                </Card>
               </div>
-            </Card>
-          </Col>
-          
-          {/* 技师统计 */}
-          <Col xs={24} sm={12} md={8} lg={8} xl={8}>
-            <Card bordered={false}>
-              <Statistic
-                title="技师总数"
-                value={dashboardData?.overview?.technicians?.total || 0}
-                prefix={<UserOutlined />}
-                valueStyle={{ color: '#13c2c2' }}
-              />
-              <div className="mt-2 flex justify-between">
-                <Text type="secondary">
-                  在岗技师: {dashboardData?.overview?.technicians?.active || 0}
-                </Text>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <div className="stat-card-wrapper">
+                <Card className="dashboard-card" bordered={false}>
+                  <Statistic
+                    title={<div className="font-medium text-gray-600">配件库存</div>}
+                    value={dashboardData?.overview.parts.total || 0}
+                    prefix={<AppstoreOutlined className="text-cyan-500 mr-1" />}
+                    valueStyle={{ color: '#13c2c2', fontWeight: 500 }}
+                  />
+                  <div className="mt-2 text-xs text-gray-500">
+                    {dashboardData?.overview.parts.lowStock ? (
+                      <>
+                        <ExclamationCircleOutlined className="text-red-500 mr-1" />
+                        <span className="text-red-500 font-medium">{dashboardData?.overview.parts.lowStock || 0}</span> 个配件库存不足
+                      </>
+                    ) : (
+                      <span className="text-green-500">库存充足</span>
+                    )}
+                  </div>
+                </Card>
               </div>
-            </Card>
-          </Col>
-          
-          {/* 配件统计 */}
-          <Col xs={24} sm={12} md={8} lg={8} xl={8}>
-            <Card bordered={false}>
-              <Statistic
-                title="配件总数"
-                value={dashboardData?.overview?.parts?.total || 0}
-                prefix={<AppstoreOutlined />}
-                valueStyle={{ color: '#eb2f96' }}
-              />
-              <div className="mt-2 flex justify-between">
-                <Text type="secondary">
-                  低库存: {dashboardData?.overview?.parts?.lowStock || 0}
-                </Text>
-                <Text type="secondary">
-                  缺货: {dashboardData?.overview?.parts?.outOfStock || 0}
-                </Text>
-              </div>
-            </Card>
-          </Col>
-          
-          {/* 本月工单 */}
-          <Col xs={24} sm={12} md={8} lg={8} xl={8}>
-            <Card bordered={false}>
-              <Statistic
-                title="本月工单"
-                value={dashboardData?.overview?.workOrders?.thisMonth || 0}
-                prefix={<CheckCircleOutlined />}
-                valueStyle={{ color: '#52c41a' }}
-              />
-              <div className="mt-2 flex justify-center">
-                <Text type="secondary">
-                  当月处理的工单总数
-                </Text>
-              </div>
-            </Card>
-          </Col>
-        </Row>
-      </div>
-      
-      <Divider />
-      
-      {/* 图表区域 - 暂时注释掉
-      <div>
-        <Title level={4}>数据分析与统计</Title>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} sm={24} md={12}>
-            <Card title="工单状态分布" bordered={false}>
-              <div style={{ height: 300 }}>
-                <Pie {...workOrderStatusConfig} />
-              </div>
-            </Card>
-          </Col>
-          
-          <Col xs={24} sm={24} md={12}>
-            <Card title="工单类型分布" bordered={false}>
-              <div style={{ height: 300 }}>
-                <Pie {...workOrderTypeConfig} />
-              </div>
-            </Card>
-          </Col>
-          
-          <Col xs={24} sm={24} md={12}>
-            <Card title="配件类别分布" bordered={false}>
-              <div style={{ height: 300 }}>
-                <Pie {...partCategoryConfig} />
-              </div>
-            </Card>
-          </Col>
-          
-          <Col xs={24} sm={24} md={12}>
-            <Card title="半年工单趋势" bordered={false}>
-              <div style={{ height: 300 }}>
-                <Column {...monthlyWorkOrdersConfig} />
-              </div>
-            </Card>
-          </Col>
-        </Row>
-      </div>
-      */}
+            </Col>
+          </Row>
+
+          {/* 图表卡片 */}
+          <Row gutter={[16, 16]} className="mt-6">
+            <Col xs={24} lg={12}>
+              <Card 
+                title="工单状态分布" 
+                className="chart-card" 
+                bordered={false}
+              >
+                <div className="h-64">
+                  <Pie {...workOrderStatusConfig} />
+                </div>
+              </Card>
+            </Col>
+            <Col xs={24} lg={12}>
+              <Card 
+                title="工单类型分布" 
+                className="chart-card" 
+                bordered={false}
+              >
+                <div className="h-64">
+                  <Pie {...workOrderTypeConfig} />
+                </div>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row gutter={[16, 16]} className="mt-4">
+            <Col span={24}>
+              <Card 
+                title="月度工单趋势" 
+                className="chart-card" 
+                bordered={false}
+              >
+                <div className="h-80">
+                  <Column 
+                    data={dashboardData?.charts?.monthlyWorkOrders?.length
+                      ? dashboardData.charts.monthlyWorkOrders
+                      : emptyColumnData
+                    }
+                    xField="month"
+                    yField="count"
+                    color="#1890ff"
+                    label={{
+                      position: 'middle',
+                      style: {
+                        fill: '#FFFFFF',
+                        opacity: 0.6,
+                      },
+                    }}
+                    xAxis={{
+                      label: {
+                        autoHide: true,
+                        autoRotate: false,
+                      },
+                    }}
+                    meta={{
+                      month: {
+                        alias: '月份',
+                      },
+                      count: {
+                        alias: '工单数量',
+                      },
+                    }}
+                  />
+                </div>
+              </Card>
+            </Col>
+          </Row>
+        </>
+      )}
     </div>
   );
 } 
