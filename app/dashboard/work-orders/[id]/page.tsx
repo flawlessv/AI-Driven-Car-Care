@@ -491,17 +491,6 @@ const WorkOrderDetailPage = () => {
         throw new Error(errorData.message || '上传完成证明失败');
       }
 
-      const updateResponse = await fetch(`/api/work-orders/${params.id}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'pending_check' }),
-      });
-
-      if (!updateResponse.ok) {
-        const errorData = await updateResponse.json();
-        throw new Error(errorData.message || '更新工单状态失败');
-      }
-
       message.success('完成证明提交成功，工单已变更为待审核状态');
       fetchWorkOrder();
       setCompletionModalVisible(false);
