@@ -64,4 +64,17 @@ export function unauthorizedResponse(message: string = '未授权访问') {
   };
 
   return NextResponse.json(response, { status: 401 });
+}
+
+export function createdResponse<T>(data: T, message?: string) {
+  const response: ApiResponse<T> = {
+    success: true,
+    data,
+  };
+  
+  if (message) {
+    response.message = message;
+  }
+
+  return NextResponse.json(response, { status: 201 });
 } 

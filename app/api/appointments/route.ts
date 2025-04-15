@@ -43,7 +43,10 @@ export async function GET(request: NextRequest) {
     const appointments = await Appointment.find(query)
       .populate('vehicle')
       .populate('service')
-      .populate('technician')
+      .populate({ 
+        path: 'technician',
+        strictPopulate: false 
+      })
       .sort({ createdAt: -1 });
     
     return successResponse(appointments);
@@ -177,7 +180,7 @@ export async function POST(request: NextRequest) {
     await appointment.populate([
       { path: 'vehicle', select: 'brand model licensePlate' },
       { path: 'service', select: 'name description category duration basePrice' },
-      { path: 'technician', select: 'name username' }
+      { path: 'technician', select: 'name username', strictPopulate: false }
     ]);
 
     return successResponse({

@@ -61,7 +61,10 @@ export async function POST(request: NextRequest) {
     const appointment = await Appointment.findById(appointmentId)
       .populate('vehicle')
       .populate('service')
-      .populate('technician')
+      .populate({ 
+        path: 'technician',
+        strictPopulate: false 
+      })
       .populate({ path: 'user', strictPopulate: false })
       .populate({ 
         path: 'timeSlot.technician', 
@@ -243,12 +246,16 @@ export async function POST(request: NextRequest) {
       vehicle: appointment.vehicle._id,
       customer: customerId, // 使用查找或创建的客户ID
       technician: technicianId, // 使用处理后的技师ID
-      type: mapServiceTypeToWorkOrderType(appointment.service.category),
+      type: mapServiceTypeToWorkOrderType(
+        typeof appointment.service === 'object' ? appointment.service.category : 'maintenance'
+      ),
       status: WORK_ORDER_STATUS.PENDING,
       priority: WORK_ORDER_PRIORITY.MEDIUM,
-      description: appointment.service.description || '从预约自动创建的工单',
+      description: typeof appointment.service === 'object' 
+        ? appointment.service.description || '从预约自动创建的工单' 
+        : '从预约自动创建的工单',
       estimatedHours: Math.ceil(appointment.estimatedDuration / 60), // 将分钟转换为小时
-      startDate: appointment.date || appointment.timeSlot?.date, // 支持扁平结构和嵌套结构
+      startDate: appointment.timeSlot?.date || new Date(), // 支持扁平结构和嵌套结构
       createdBy: createdBy,
       createdAt: new Date(),
       updatedAt: new Date()

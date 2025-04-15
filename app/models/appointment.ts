@@ -28,6 +28,8 @@ export interface IAppointment {
   updatedAt: Date;
   sourceWorkOrder?: mongoose.Types.ObjectId;
   user?: mongoose.Types.ObjectId; // 关联用户ID
+  technician?: mongoose.Types.ObjectId; // 添加直接的技师引用
+  technicianName?: string; // 添加技师姓名
 }
 
 // 定义客户信息 Schema
@@ -112,6 +114,15 @@ const appointmentSchema = new Schema<IAppointment>(
     user: {
       type: Schema.Types.ObjectId,
       ref: 'User',
+      required: false,
+    },
+    technician: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: false,
+    },
+    technicianName: {
+      type: String,
       required: false,
     },
   },

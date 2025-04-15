@@ -200,12 +200,14 @@ export default function AppointmentsPage() {
       title: '预约编号',
       dataIndex: '_id',
       key: '_id',
+      width: 100,
       render: (id: string) => <span className="font-medium">{id.slice(-8)}</span>,
     },
     {
       title: '客户信息',
       dataIndex: 'customer',
       key: 'customer',
+      width: 180,
       render: (customer: any) => (
         <div>
           <div className="font-medium flex items-center"><UserOutlined className="mr-1 text-blue-500" /> {customer?.name}</div>
@@ -217,6 +219,7 @@ export default function AppointmentsPage() {
       title: '车辆信息',
       dataIndex: 'vehicle',
       key: 'vehicle',
+      width: 200,
       render: (vehicle: any) => 
         vehicle ? (
           <div className="flex items-center">
@@ -230,7 +233,7 @@ export default function AppointmentsPage() {
       dataIndex: ['service', 'name'],
       key: 'serviceName',
       ellipsis: true,
-      width: 250,
+      width: 150,
       render: (name: string, record: any) => (
         <div className="flex items-center">
           <ToolOutlined className="mr-1 text-purple-500" />
@@ -244,6 +247,7 @@ export default function AppointmentsPage() {
       title: '预约时间',
       dataIndex: 'timeSlot',
       key: 'appointmentTime',
+      width: 180,
       render: (timeSlot: any, record: any) => {
         // 支持扁平结构和嵌套结构
         const date = record.date || (timeSlot?.date ? timeSlot.date : null);
@@ -273,6 +277,7 @@ export default function AppointmentsPage() {
     {
       title: '技师',
       key: 'technicianName',
+      width: 120,
       render: (_, record: any) => {
         const technician = record.technician || {};
         return technician?.name ? (
@@ -289,18 +294,22 @@ export default function AppointmentsPage() {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
+      width: 100,
       render: renderStatusTag,
     },
     {
       title: '操作',
       key: 'action',
+      width: 200,
+      fixed: 'right',
       render: (_, record) => (
-        <Space size="middle">
+        <Space size="small" direction="vertical" style={{ width: '100%' }}>
           <Button
             type="text"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
             className="text-blue-500 hover:text-blue-600"
+            style={{ padding: '0 4px', width: '100%', textAlign: 'left' }}
           >
             编辑
           </Button>
@@ -309,6 +318,7 @@ export default function AppointmentsPage() {
               type="text"
               className="text-green-500 hover:text-green-600"
               onClick={() => handleConvertToWorkOrder(record)}
+              style={{ padding: '0 4px', width: '100%', textAlign: 'left' }}
             >
               转工单
             </Button>
@@ -318,6 +328,7 @@ export default function AppointmentsPage() {
             danger
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(record)}
+            style={{ padding: '0 4px', width: '100%', textAlign: 'left' }}
           >
             删除
           </Button>
@@ -327,6 +338,8 @@ export default function AppointmentsPage() {
   ];
 
   const handleEdit = (record: any) => {
+    console.log(record,'record');
+    
     // 打印接收到的数据，方便调试
     console.log('编辑预约数据:', JSON.stringify(record, null, 2));
     
@@ -358,34 +371,19 @@ export default function AppointmentsPage() {
     const startTimeValue = record.startTime || record.timeSlot?.startTime;
     const endTimeValue = record.endTime || record.timeSlot?.endTime;
     
-    // 确保timeSlot和其中的属性存在，支持两种数据结构
+    // 设置表单值，字段名称必须与表单中的字段名称完全一致
     const formValues = {
-      // 客户信息
-      'customer.name': record.customer?.name || '',
-      'customer.phone': record.customer?.phone || '',
-      'customer.email': record.customer?.email || '',
-      
-      // 车辆信息 - 添加空值检查
-      'vehicle.brand': record.vehicle?.brand || '',
-      'vehicle.model': record.vehicle?.model || '',
-      'vehicle.licensePlate': record.vehicle?.licensePlate || '',
-      
-      // 服务信息 - 添加空值检查和类型转换
-      'service.type': serviceType,
-      'service.name': record.service?.name || '',
-      'service.description': record.service?.description || '',
-      'service.duration': record.service?.duration || 60,
-      'service.basePrice': record.service?.basePrice || 0,
-      
-      // 时间信息 - 支持扁平结构和嵌套结构
-      'timeSlot.technician': technicianId || '',
+      vehicleId: record.vehicle?._id || '',
+      technicianId: technicianId || '',
+      serviceType: serviceType,
+      serviceId: record.service?.name || '',
       date: dateValue ? dayjs(dateValue) : null,
-      startTime: startTimeValue ? dayjs(startTimeValue, 'HH:mm') : null,
-      endTime: endTimeValue ? dayjs(endTimeValue, 'HH:mm') : null,
-      
-      // 其他信息
-      status: record.status || 'pending',
-      notes: record.notes || ''
+      time: [
+        startTimeValue ? dayjs(startTimeValue, 'HH:mm') : null,
+        endTimeValue ? dayjs(endTimeValue, 'HH:mm') : null
+      ],
+      description: record.notes || '',
+      status: record.status || 'pending'
     };
 
     console.log('设置表单值:', formValues);
@@ -424,14 +422,13 @@ export default function AppointmentsPage() {
       setLoading(true);
       
       // 确保所有必填字段都已填写
-      if (!values['service.type'] || !values['service.name'] || 
-          !values['service.duration'] || !values['service.basePrice']) {
+      if (!values.serviceType || !values.serviceId) {
         message.error('请完善服务信息');
         setLoading(false);
         return;
       }
       
-      if (!values['timeSlot.technician']) {
+      if (!values.technicianId) {
         message.error('请选择技师');
         setLoading(false);
         return;
@@ -444,7 +441,7 @@ export default function AppointmentsPage() {
         return;
       }
       
-      if (!values.startTime) {
+      if (!values.time || !values.time[0]) {
         message.error('请选择开始时间');
         setLoading(false);
         return;
@@ -452,18 +449,22 @@ export default function AppointmentsPage() {
       
       // 打印关键字段的值
       console.log('日期:', values.date);
-      console.log('开始时间:', values.startTime);
-      console.log('结束时间:', values.endTime);
-      console.log('技师ID:', values['timeSlot.technician']);
+      console.log('时间范围:', values.time);
+      console.log('技师ID:', values.technicianId);
       
-      // 步骤1: 先获取或创建车辆ID
-      let vehicleId;
+      // 步骤1: 获取车辆信息
+      let vehicleId = values.vehicleId;
+      const selectedVehicle = vehicles.find(v => v._id === values.vehicleId);
+      console.log({values,vehicles,selectedVehicle},'selectedVehicle');
       
-      // 检查是否有匹配的车辆
-      const vehicleData = {
-        brand: values['vehicle.brand'],
-        model: values['vehicle.model'],
-        licensePlate: values['vehicle.licensePlate']
+      const vehicleData = selectedVehicle ? {
+        brand: selectedVehicle.brand,
+        model: selectedVehicle.model,
+        licensePlate: selectedVehicle.licensePlate
+      } : {
+        brand: '',
+        model: '',
+        licensePlate: ''
       };
       
       // 尝试根据车牌号查找现有车辆
@@ -500,39 +501,47 @@ export default function AppointmentsPage() {
       // 步骤2: 使用获取到的车辆ID创建预约
       // 完全模仿API的数据格式
       // 准备serviceData
+      const selectedService = serviceOptions
+        .flatMap(opt => opt.items)
+        .find(item => item.name === values.serviceId);
+      
       const serviceData = {
-        name: values['service.name'],
-        category: values['service.type'],
-        duration: Number(values['service.duration']),
-        basePrice: Number(values['service.basePrice']),
-        description: values['service.description'] || ''
+        name: values.serviceId,
+        category: values.serviceType,
+        duration: selectedService?.duration || 60,
+        basePrice: selectedService?.basePrice || 0,
+        description: values.description || ''
       };
       
       // 创建API期望的精确格式
       const formattedData = {
-        customer: {
-          name: values['customer.name'],
-          phone: values['customer.phone'],
+        customer: editingAppointment ? {
+          name: editingAppointment.customer?.name || '',
+          phone: editingAppointment.customer?.phone || '',
+          email: editingAppointment.customer?.email || ''
+        } : {
+          name: values['customer.name'] || '',
+          phone: values['customer.phone'] || '',
           email: values['customer.email'] || ''
         },
-        vehicle: vehicleId,
+        vehicle: selectedVehicle?._id,
         service: serviceData,
         // 同时提供扁平结构和嵌套结构，确保两种格式的接口都能正常工作
         date: values.date.format('YYYY-MM-DD'),
-        startTime: values.startTime.format('HH:mm'),
-        endTime: values.endTime ? values.endTime.format('HH:mm') : null,
-        technician: values['timeSlot.technician'],
+        startTime: values.time[0].format('HH:mm'),
+        endTime: values.time[1] ? values.time[1].format('HH:mm') : null,
+        technician: values.technicianId,
         // 保留嵌套结构，确保兼容性
         timeSlot: {
           date: values.date.format('YYYY-MM-DD'),
-          startTime: values.startTime.format('HH:mm'),
-          endTime: values.endTime ? values.endTime.format('HH:mm') : null,
-          technician: values['timeSlot.technician']
+          startTime: values.time[0].format('HH:mm'),
+          endTime: values.time[1] ? values.time[1].format('HH:mm') : null,
+          technician: values.technicianId
         },
         status: values.status || 'pending',
-        estimatedDuration: Number(values['service.duration']),
-        estimatedCost: Number(values['service.basePrice']),
-        notes: values.notes || ''
+        estimatedDuration: serviceData.duration,
+        estimatedCost: serviceData.basePrice,
+        notes: values.description || ''
       };
       
       console.log('正在提交特殊格式数据:', JSON.stringify(formattedData, null, 2));
@@ -572,14 +581,17 @@ export default function AppointmentsPage() {
   };
 
   // 添加服务选择后的处理函数
-  const handleServiceSelect = (serviceData: any) => {
-    console.log('选择的服务数据:', serviceData);
-    if (serviceData) {
+  const handleServiceSelect = (serviceName: string) => {
+    const selectedService = serviceOptions
+      .flatMap(opt => opt.items)
+      .find(item => item.name === serviceName);
+    
+    if (selectedService) {
+      console.log('选择的服务数据:', selectedService);
       form.setFieldsValue({
-        'service.duration': serviceData.duration,
-        'service.basePrice': serviceData.basePrice,
+        duration: selectedService.duration,
+        basePrice: selectedService.basePrice,
       });
-      
     }
   };
 
@@ -657,6 +669,7 @@ export default function AppointmentsPage() {
             showQuickJumper: true,
             showSizeChanger: true,
           }}
+          scroll={{ x: 1300 }} 
           className="dashboard-table"
         />
       </Card>
@@ -840,4 +853,4 @@ export default function AppointmentsPage() {
       </Modal>
     </div>
   );
-} 
+}
