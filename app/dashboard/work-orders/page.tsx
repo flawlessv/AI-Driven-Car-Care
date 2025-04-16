@@ -44,10 +44,12 @@ const priorityColor = {
   urgent: 'red',
 };
 
-// Add type options mapping for repair types
+// 工单类型显示文本映射
 const typeOptions = {
+  maintenance: '常规保养',
+  repair: '维修',
+  inspection: '检查',
   regular: '常规保养',
-  repair: '故障维修',
   accident: '事故维修',
   other: '其他',
 };
