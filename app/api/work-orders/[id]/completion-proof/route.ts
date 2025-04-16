@@ -140,7 +140,7 @@ export async function POST(
       workOrderId: workOrder._id,
       proofImages: imageUrls,
       notes: notes || '',
-      submittedBy: 'system',
+      submittedBy: null,
       submittedAt: new Date(),
       approved: false
     };

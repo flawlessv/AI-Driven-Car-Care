@@ -46,5 +46,10 @@ const workOrderEvaluationSchema = new Schema({
 workOrderEvaluationSchema.index({ workOrder: 1 }, { unique: true });
 workOrderEvaluationSchema.index({ technician: 1, createdAt: -1 });
 
+// 命名导出
 export const WorkOrderEvaluation = mongoose.models.WorkOrderEvaluation || 
+  mongoose.model<IWorkOrderEvaluation>('WorkOrderEvaluation', workOrderEvaluationSchema);
+
+// 默认导出
+export default mongoose.models.WorkOrderEvaluation || 
   mongoose.model<IWorkOrderEvaluation>('WorkOrderEvaluation', workOrderEvaluationSchema); 

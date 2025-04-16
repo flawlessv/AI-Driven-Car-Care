@@ -35,6 +35,7 @@ export interface WorkOrder {
   rating?: number;              // 客户评分(1-5)
   feedback?: string;            // 客户反馈
   createdBy: string;            // 创建人ID
+  updatedBy?: string;           // 最后更新人ID
   createdAt: string;           // 创建时间
   updatedAt: string;           // 更新时间
 }

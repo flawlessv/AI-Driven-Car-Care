@@ -31,7 +31,7 @@ export async function GET(
       .populate('vehicle')
       .populate('customer')
       .populate('technician')
-      .populate('createdBy')
+      .populate({ path: 'createdBy', strictPopulate: false })
       .exec();
 
     if (!workOrder) {
@@ -167,7 +167,7 @@ export async function PUT(
       .populate('vehicle', 'brand model licensePlate')
       .populate('customer', 'username email phone')
       .populate('technician', 'username email phone')
-      .populate('createdBy', 'username');
+      .populate({ path: 'createdBy', select: 'username', strictPopulate: false });
 
     // 获取更新后的进度记录
     const progress = await WorkOrderProgress.find({ workOrder: params.id })

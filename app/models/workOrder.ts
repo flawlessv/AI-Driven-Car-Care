@@ -65,6 +65,8 @@ export interface IWorkOrder extends Document {
   }>; // 工单进度记录
   rating?: number;         // 评分 (1-5)
   feedback?: string;       // 反馈
+  createdBy?: Schema.Types.ObjectId; // 创建人ID
+  updatedBy?: Schema.Types.ObjectId; // 最后更新人ID
   createdAt: Date;        // 创建时间
   updatedAt: Date;        // 更新时间
 }
@@ -128,6 +130,8 @@ const workOrderSchema = new Schema<IWorkOrder>({
   }],
   rating: { type: Number, min: 1, max: 5 },
   feedback: String,
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
 }, {
   timestamps: true // 自动管理 createdAt 和 updatedAt
 });
@@ -139,6 +143,8 @@ workOrderSchema.index({ customer: 1 });
 workOrderSchema.index({ technician: 1 });
 workOrderSchema.index({ status: 1 });
 workOrderSchema.index({ createdAt: 1 });
+workOrderSchema.index({ createdBy: 1 });
+workOrderSchema.index({ updatedBy: 1 });
 
 // 获取工单模型
 export function getWorkOrderModel() {
