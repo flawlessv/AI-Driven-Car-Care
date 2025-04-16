@@ -1306,11 +1306,23 @@ async function main() {
     
     // 执行数据生成
     console.log('开始生成测试数据...');
+    
+    // 生成用户数据（管理员、技师和客户）
     await generateUsers();
+    
+    // 生成车辆数据，每个客户1-3辆车
     await generateVehicles();
+    
+    // 生成配件数据，包括各种汽车零部件
     await generateParts();
+    
+    // 生成服务项目数据，如保养、维修等服务
     await generateServices();
+    
+    // 生成预约数据，包括历史预约和未来预约
     await generateAppointments();
+    
+    // 生成工单数据，包括维修记录、评价和评论
     await generateWorkOrders();
     
     console.log('测试数据生成完成！');

@@ -1,6 +1,12 @@
 # 佳伟汽车维修保养管理系统
 
 这是一个基于 [Next.js](https://nextjs.org) 开发的专业汽车维修保养管理系统。
+## 刘佳看这里！！
+ - git pull
+ - pnpm i
+ - pnpm run clear
+ - pnpm run mock
+ - pnpm run dev
 
 ## 功能特点
 
