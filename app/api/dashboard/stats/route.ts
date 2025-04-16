@@ -201,10 +201,10 @@ export async function GET(request: NextRequest) {
           }
         },
         charts: {
-          workOrderStatus: workOrderStatusDistribution.length > 0 ? workOrderStatusDistribution : getDefaultWorkOrderStatusData(),
-          workOrderTypes: workOrderTypeDistribution.length > 0 ? workOrderTypeDistribution : getDefaultWorkOrderTypeData(),
-          partCategories: partCategoryDistribution.length > 0 ? partCategoryDistribution : getDefaultPartCategoryData(),
-          monthlyWorkOrders: monthlyWorkOrders.length > 0 ? monthlyWorkOrders : getDefaultMonthlyData()
+          workOrderStatus: workOrderStatusDistribution?.length > 0 ? workOrderStatusDistribution : getDefaultWorkOrderStatusData(),
+          workOrderTypes: workOrderTypeDistribution?.length > 0 ? workOrderTypeDistribution : getDefaultWorkOrderTypeData(),
+          partCategories: partCategoryDistribution?.length > 0 ? partCategoryDistribution : getDefaultPartCategoryData(),
+          monthlyWorkOrders: monthlyWorkOrders?.length > 0 ? monthlyWorkOrders : getDefaultMonthlyData()
         }
       };
       

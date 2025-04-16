@@ -140,8 +140,8 @@ export default function VehicleFilesPage() {
     },
     {
       title: '联系方式',
-      dataIndex: 'ownerContact',
-      key: 'ownerContact',
+      dataIndex: 'ownerPhone',
+      key: 'ownerPhone',
     },
     {
       title: '上次保养',

@@ -107,8 +107,8 @@ export default function VehiclesPage() {
     },
     {
       title: '联系方式',
-      dataIndex: 'ownerContact',
-      key: 'ownerContact',
+      dataIndex: 'ownerPhone',
+      key: 'ownerPhone',
     },
     {
       title: '状态',

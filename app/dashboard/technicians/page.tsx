@@ -104,8 +104,26 @@ const TechniciansPage = () => {
         throw new Error(result.message || '获取技师列表失败');
       }
       
+      // 添加计算技师认证的逻辑
+      const checkForCertifications = (techniciansList: TechnicianWithStats[]) => {
+        // 检查每个技师是否有认证字段，如果没有，设置为空数组
+        return techniciansList.map(tech => {
+          if (!tech.certifications) {
+            return {
+              ...tech,
+              certifications: []
+            };
+          }
+          return tech;
+        });
+      };
+
       if (Array.isArray(result.data)) {
-        setTechnicians(result.data);
+        // 确保技师数据有正确的认证字段
+        const validatedTechnicians = checkForCertifications(result.data);
+        setTechnicians(validatedTechnicians);
+        // 获取技师统计数据
+        fetchTechnicianStats(validatedTechnicians);
       } else {
         console.error('技师列表数据格式错误:', result);
         setTechnicians([]);
@@ -114,6 +132,77 @@ const TechniciansPage = () => {
       console.error('获取技师列表失败:', error);
       message.error(error.message || '获取技师列表失败');
       setTechnicians([]);
+    }
+  };
+
+  // 获取技师统计数据
+  const fetchTechnicianStats = async (techniciansList: TechnicianWithStats[]) => {
+    try {
+      setLoading(true);
+      // 创建一个Promise数组来并行获取所有技师的统计数据
+      const statsPromises = techniciansList.map(async (technician) => {
+        try {
+          const response = await fetch(`/api/technicians/${technician._id}/statistics`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (!response.ok) {
+            console.warn(`获取技师${technician._id}的统计数据失败:`, response.status);
+            return { technicianId: technician._id, stats: null };
+          }
+          
+          const statsData = await response.json();
+          console.log(`技师${technician._id}的统计数据:`, statsData);
+          return { 
+            technicianId: technician._id, 
+            stats: statsData.data || null 
+          };
+        } catch (error) {
+          console.warn(`获取技师${technician._id}的统计数据失败:`, error);
+          return { technicianId: technician._id, stats: null };
+        }
+      });
+      
+      // 等待所有请求完成
+      const results = await Promise.all(statsPromises);
+      
+      // 更新技师统计数据状态
+      const newStatsMap: Record<string, TechnicianStats> = {};
+      results.forEach(result => {
+        if (result.stats) {
+          newStatsMap[result.technicianId] = result.stats;
+        }
+      });
+      
+      setTechnicianStats(newStatsMap);
+      
+      // 更新技师列表，将统计数据关联到每个技师对象
+      setTechnicians(prevTechnicians => {
+        return prevTechnicians.map(tech => {
+          if (newStatsMap[tech._id]) {
+            console.log(`更新技师${tech._id}的统计数据:`, newStatsMap[tech._id]);
+            return { ...tech, stats: newStatsMap[tech._id] };
+          }
+          // 如果没有获取到统计数据，设置默认值
+          return { 
+            ...tech, 
+            stats: {
+              totalOrders: 0,
+              completedOrders: 0,
+              completionRate: 0,
+              averageRating: 0
+            } 
+          };
+        });
+      });
+    } catch (error: any) {
+      console.error('获取技师统计数据失败:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -290,7 +379,7 @@ const TechniciansPage = () => {
         return (
           <Tooltip title={`完成${record.stats?.completedOrders || 0}个订单，共${record.stats?.totalOrders || 0}个订单`}>
             <Progress
-              percent={Number(record.stats.completionRate) || 0}
+              percent={Number(record.stats.completionRate * 100) || 0}
               size="small"
               format={percent => percent ? `${percent.toFixed(1)}%` : '0%'}
             />

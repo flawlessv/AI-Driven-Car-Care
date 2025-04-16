@@ -40,6 +40,8 @@ export interface User {
   specialties?: string[];        // 专长领域
   certifications?: string[];     // 持有证书
   workExperience?: number;       // 工作年限
+  hireDate?: string | Date;      // 入职日期
+  description?: string;          // 技师介绍
 }
 
 // 登录表单接口

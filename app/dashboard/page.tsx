@@ -188,6 +188,12 @@ export default function DashboardPage() {
     radius: 0.8,
     legend: {
       position: 'bottom',
+      layout: 'horizontal',
+      itemName: {
+        style: {
+          fontSize: 12
+        }
+      }
     },
     label: {
       type: 'inner',
@@ -211,6 +217,18 @@ export default function DashboardPage() {
       );
       return status ? STATUS_COLORS[status as keyof typeof STATUS_COLORS] : '#d9d9d9';
     },
+    statistic: {
+      title: false,
+      content: {
+        style: {
+          whiteSpace: 'pre-wrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          fontSize: '14px'
+        },
+        formatter: () => '工单状态',
+      },
+    },
   };
 
   // 工单类型饼图配置
@@ -226,6 +244,12 @@ export default function DashboardPage() {
     radius: 0.8,
     legend: {
       position: 'bottom',
+      layout: 'horizontal',
+      itemName: {
+        style: {
+          fontSize: 12
+        }
+      }
     },
     label: {
       type: 'inner',
@@ -248,6 +272,18 @@ export default function DashboardPage() {
         key => typeMap[key] === datum.type
       );
       return type ? TYPE_COLORS[type as keyof typeof TYPE_COLORS] : '#d9d9d9';
+    },
+    statistic: {
+      title: false,
+      content: {
+        style: {
+          whiteSpace: 'pre-wrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          fontSize: '14px'
+        },
+        formatter: () => '工单类型',
+      },
     },
   };
 
@@ -292,7 +328,10 @@ export default function DashboardPage() {
   // 月度工单柱状图配置
   const monthlyWorkOrdersConfig = {
     data: dashboardData?.charts?.monthlyWorkOrders?.length 
-      ? dashboardData.charts.monthlyWorkOrders 
+      ? dashboardData.charts.monthlyWorkOrders.map(item => ({
+          month: item.month.includes('-') ? item.month.split('-')[1] + '月' : item.month,
+          count: item.count
+        }))
       : emptyColumnData,
     xField: 'month',
     yField: 'count',
@@ -313,16 +352,16 @@ export default function DashboardPage() {
     },
     xAxis: {
       label: {
-        formatter: (val: string) => {
-          // 转换YYYY-MM为MM月
-          return val.includes('-') ? val.split('-')[1] + '月' : val;
-        },
+        formatter: (val: string) => val,
+        autoHide: true,
+        autoRotate: false
       },
     },
     yAxis: {
       title: {
         text: '工单数量',
       },
+      min: 0,
     },
     tooltip: {
       formatter: (datum: any) => {
@@ -330,6 +369,7 @@ export default function DashboardPage() {
       },
     },
     color: '#1890ff',
+    interactions: [{ type: 'element-active' }],
   };
 
   // 加载中状态
@@ -483,34 +523,7 @@ export default function DashboardPage() {
               >
                 <div className="h-80">
                   <Column 
-                    data={dashboardData?.charts?.monthlyWorkOrders?.length
-                      ? dashboardData.charts.monthlyWorkOrders
-                      : emptyColumnData
-                    }
-                    xField="month"
-                    yField="count"
-                    color="#1890ff"
-                    label={{
-                      position: 'middle',
-                      style: {
-                        fill: '#FFFFFF',
-                        opacity: 0.6,
-                      },
-                    }}
-                    xAxis={{
-                      label: {
-                        autoHide: true,
-                        autoRotate: false,
-                      },
-                    }}
-                    meta={{
-                      month: {
-                        alias: '月份',
-                      },
-                      count: {
-                        alias: '工单数量',
-                      },
-                    }}
+                    {...monthlyWorkOrdersConfig}
                   />
                 </div>
               </Card>
