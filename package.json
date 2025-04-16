@@ -9,7 +9,7 @@
     "lint": "next lint",
     "init-permissions": "npx ts-node scripts/init-permissions.ts",
     "clear": "node scripts/clearDatabase.js",
-    "mock-data": "node scripts/mockData.js"
+    "mock": "node scripts/mockData.js"
   },
   "dependencies": {
     "@ant-design/icons": "^5.3.0",

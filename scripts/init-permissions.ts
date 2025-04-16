@@ -66,8 +66,8 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
+    // 用作登录名和显示名称
   },
-  name: String,
   email: {
     type: String,
     required: true,

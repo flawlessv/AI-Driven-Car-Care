@@ -26,9 +26,8 @@ export interface MenuPermission {
 // 用户信息类型
 export interface User {
   _id: string;
-  username: string;
+  username: string; // 既作为登录账号也作为显示名称
   email: string;
-  name?: string;
   role: UserRole;
   permissions?: MenuPermission[];
   status?: string;

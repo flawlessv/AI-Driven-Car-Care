@@ -48,16 +48,10 @@ export default function ProfilePage() {
         }
       >
         <Descriptions column={1} className="slide-up">
-          <Descriptions.Item label="用户名">
+          <Descriptions.Item label="用户名/姓名">
             <div className="flex items-center">
               <UserOutlined className="mr-2 text-gray-400" />
               {user.username}
-            </div>
-          </Descriptions.Item>
-          <Descriptions.Item label="姓名">
-            <div className="flex items-center">
-              <UserOutlined className="mr-2 text-gray-400" />
-              {user.name || '未设置'}
             </div>
           </Descriptions.Item>
           <Descriptions.Item label="邮箱">

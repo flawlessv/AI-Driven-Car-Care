@@ -39,8 +39,8 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
+    // 用作登录名和显示名称
   },
-  name: String,
   email: {
     type: String,
     required: true,
@@ -801,7 +801,7 @@ async function connectToDatabase() {
 // 生成用户数据
 async function generateUsers() {
   // 检查是否已存在管理员用户
-  const existingAdmin = await User.findOne({ username: 'admin' });
+  const existingAdmin = await User.findOne({ username: '系统管理员' });
   
   if (existingAdmin) {
     console.log('使用已存在的管理员用户');
@@ -809,11 +809,10 @@ async function generateUsers() {
   } else {
     // 生成管理员用户
     adminUser = await User.create({
-      username: 'admin',
-      name: '系统管理员',
+      username: '系统管理员',
       email: 'admin@carbay.com',
       password: await bcrypt.hash('password123', 10),
-      phone: '13800000000',
+      phone: '13800138000',
       role: USER_ROLES.ADMIN,
       status: 'active',
     });
@@ -830,11 +829,10 @@ async function generateUsers() {
     const fullName = `${firstName}${lastName}`;
     
     const technician = await User.create({
-      username: faker.internet.username({ firstName, lastName }),
-      name: fullName,
+      username: fullName,
       email: faker.internet.email({ firstName, lastName }),
       password: await bcrypt.hash('password123', 10),
-      phone: faker.phone.number(),
+      phone: `1${faker.string.numeric(10)}`, // 确保11位手机号
       role: USER_ROLES.TECHNICIAN,
       status: 'active',
       specialties: generateSpecialties(),
@@ -860,11 +858,10 @@ async function generateUsers() {
     const fullName = `${firstName}${lastName}`;
     
     const customer = await User.create({
-      username: faker.internet.username({ firstName, lastName }),
-      name: fullName,
+      username: fullName,
       email: faker.internet.email({ firstName, lastName }),
       password: await bcrypt.hash('password123', 10),
-      phone: faker.phone.number(),
+      phone: `1${faker.string.numeric(10)}`, // 确保11位手机号
       role: USER_ROLES.CUSTOMER,
       status: 'active',
     });
@@ -895,7 +892,7 @@ async function generateVehicles() {
         licensePlate: generateLicensePlate(),
         vin: generateVIN(),
         owner: customer._id,
-        ownerName: customer.name,
+        ownerName: customer.username,
         ownerPhone: customer.phone,
         mileage: getRandomInt(1000, 150000),
         lastMaintenanceDate: getRandomPastDate(12),
@@ -1019,7 +1016,7 @@ async function generateAppointments() {
     
     const newAppointment = await Appointment.create({
       customer: {
-        name: customer.name,
+        name: customer.username,
         phone: customer.phone,
         email: customer.email
       },
@@ -1036,7 +1033,7 @@ async function generateAppointments() {
       estimatedCost: service.basePrice,
       user: customer._id,
       technician: technician._id,
-      technicianName: technician.name,
+      technicianName: technician.username,
     });
     
     appointments.push(newAppointment);
@@ -1139,10 +1136,10 @@ async function generateWorkOrders() {
       vehicleModel: vehicle.model,
       vehicleLicensePlate: vehicle.licensePlate,
       customer: customer._id,
-      customerName: customer.name,
+      customerName: customer.username,
       customerPhone: customer.phone,
       technician: technician._id,
-      technicianName: technician.name,
+      technicianName: technician.username,
       type: service.category === '保养' ? WORK_ORDER_TYPE.MAINTENANCE : 
              service.category === '检查' ? WORK_ORDER_TYPE.INSPECTION : 
              WORK_ORDER_TYPE.REPAIR,
@@ -1186,9 +1183,9 @@ async function generateWorkOrders() {
       const evaluation = await WorkOrderEvaluation.create({
         workOrder: workOrder._id,
         customer: customer._id,
-        customerName: customer.name,
+        customerName: customer.username,
         technician: technician._id,
-        technicianName: technician.name,
+        technicianName: technician.username,
         rating,
         feedback: feedback || '',
       });
@@ -1220,7 +1217,7 @@ async function generateWorkOrders() {
         
         const review = await Review.create({
           author: customer._id,
-          authorName: customer.name,
+          authorName: customer.username,
           targetType: Math.random() > 0.3 ? 'technician' : 'service',
           targetId: Math.random() > 0.3 ? technician._id : service._id,
           content: getRandomElement(reviewContents),
@@ -1260,7 +1257,7 @@ async function generateWorkOrders() {
       vehicleModel: vehicle.model,
       vehicleLicensePlate: vehicle.licensePlate,
       technician: technician._id,
-      technicianName: technician.name,
+      technicianName: technician.username,
       type: workOrder.type === WORK_ORDER_TYPE.MAINTENANCE ? 'regular' : 
             workOrder.type === WORK_ORDER_TYPE.INSPECTION ? 'inspection' : 'repair',
       status: workOrderStatus === WORK_ORDER_STATUS.COMPLETED ? 'completed' : 'in_progress',
@@ -1276,7 +1273,7 @@ async function generateWorkOrders() {
         totalPrice: p.price * p.quantity
       })),
       customer: {
-        name: customer.name,
+        name: customer.username,
         contact: customer.phone
       },
       notes: workOrder.technicianNotes,

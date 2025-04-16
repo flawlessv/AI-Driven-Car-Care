@@ -215,7 +215,7 @@ const TechniciansPage = () => {
   const handleDelete = (record: TechnicianWithStats) => {
     Modal.confirm({
       title: '确认删除',
-      content: `确定要删除技师 ${record.name} 吗？`,
+      content: `确定要删除技师 ${record.username} 吗？`,
       onOk: async () => {
         try {
           const response = await fetch(`/api/users/${record._id}`, {
@@ -238,11 +238,7 @@ const TechniciansPage = () => {
 
   const handleSubmit = async (values: any) => {
     try {
-      // 确保技师信息完整
-      if (!values.name) {
-        values.name = values.username;
-      }
-      
+      // 确保技师等级有默认值
       if (!values.level) {
         values.level = '初级技师';
       }
@@ -317,7 +313,7 @@ const TechniciansPage = () => {
         <Space>
           <Avatar icon={<UserOutlined />} />
           <div>
-            <div>{record.name || record.username || '未命名'}</div>
+            <div>{record.username || '未命名'}</div>
             <div className="text-gray-500 text-sm">{getLevelColor(record.level || '初级技师').text}</div>
           </div>
         </Space>
@@ -632,7 +628,7 @@ const TechniciansPage = () => {
                 className="mr-6"
               />
               <div>
-                <div className="text-2xl font-bold mb-2">{selectedTechnician.name}</div>
+                <div className="text-2xl font-bold mb-2">{selectedTechnician.username}</div>
                 <div className="flex space-x-2 mb-2">
                   <Tag color={getLevelColor(selectedTechnician.level || '初级技师').color}>
                     {getLevelColor(selectedTechnician.level || '初级技师').text}
@@ -812,11 +808,11 @@ const TechniciansPage = () => {
         >
           <Form.Item
             name="username"
-            label="登录账号"
-            rules={[{ required: true, message: '请输入登录账号' }]}
-            tooltip="用于技师登录系统的账号名"
+            label="用户名/姓名"
+            rules={[{ required: true, message: '请输入用户名/姓名' }]}
+            tooltip="用于技师登录系统的账号名和显示名称"
           >
-            <Input placeholder="请输入英文字母或数字的组合" />
+            <Input placeholder="请输入技师姓名" />
           </Form.Item>
 
           <Form.Item
@@ -826,14 +822,6 @@ const TechniciansPage = () => {
             tooltip={editingTechnician ? "修改密码，留空则保持不变" : "设置技师初始登录密码"}
           >
             <Input.Password placeholder="请输入至少6位的密码" />
-          </Form.Item>
-
-          <Form.Item
-            name="name"
-            label="姓名"
-            rules={[{ required: true, message: '请输入姓名' }]}
-          >
-            <Input placeholder="请输入技师姓名" />
           </Form.Item>
 
           <Form.Item

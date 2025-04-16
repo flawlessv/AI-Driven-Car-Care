@@ -158,15 +158,9 @@ export default function UsersPage() {
 
   const columns: ColumnsType<User> = [
     {
-      title: '用户名',
+      title: '用户名/姓名',
       dataIndex: 'username',
       key: 'username',
-    },
-    {
-      title: '姓名',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name) => name || '-',
     },
     {
       title: '邮箱',

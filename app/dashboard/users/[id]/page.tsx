@@ -151,8 +151,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
       >
         <Descriptions bordered column={2}>
           <Descriptions.Item label="用户ID">{user._id}</Descriptions.Item>
-          <Descriptions.Item label="用户名">{user.username}</Descriptions.Item>
-          <Descriptions.Item label="姓名">{user.name || '-'}</Descriptions.Item>
+          <Descriptions.Item label="用户名/姓名">{user.username}</Descriptions.Item>
           <Descriptions.Item label="邮箱">{user.email || '-'}</Descriptions.Item>
           <Descriptions.Item label="电话">{user.phone || '-'}</Descriptions.Item>
           <Descriptions.Item label="角色">{getRoleTag(user.role)}</Descriptions.Item>

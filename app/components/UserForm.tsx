@@ -78,10 +78,10 @@ const UserForm: React.FC<UserFormProps> = ({
     >
       <Form.Item
         name="username"
-        label="用户名"
-        rules={[{ required: true, message: '请输入用户名' }]}
+        label="用户名/姓名"
+        rules={[{ required: true, message: '请输入用户名/姓名' }]}
       >
-        <Input placeholder="请输入用户名" />
+        <Input placeholder="请输入用户名/姓名" />
       </Form.Item>
 
       <Form.Item
@@ -112,13 +112,6 @@ const UserForm: React.FC<UserFormProps> = ({
         <Input.Password 
           placeholder={isEdit ? "留空表示不修改密码" : "请输入密码"} 
         />
-      </Form.Item>
-
-      <Form.Item
-        name="name"
-        label="姓名"
-      >
-        <Input placeholder="请输入姓名" />
       </Form.Item>
 
       <Form.Item

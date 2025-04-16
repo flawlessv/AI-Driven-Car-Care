@@ -17,10 +17,11 @@ if (!MONGODB_URI) {
 // 定义用户模型
 const defineUserModel = () => {
   const userSchema = new mongoose.Schema({
-    username: { type: String, required: true, unique: true },
+    username: { type: String, required: true, unique: true }, // 用作登录名和显示名称
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String, enum: ['admin', 'customer'], default: 'customer' }
+    role: { type: String, enum: ['admin', 'customer'], default: 'customer' },
+    phone: { type: String } // 增加手机号字段
   }, { timestamps: true });
 
   return mongoose.models.User || mongoose.model('User', userSchema);
@@ -83,11 +84,11 @@ async function clearDatabase() {
     try {
       const hashedPassword = await hash('111111', 10);
       await User.create({
-        username: 'admin',
+        username: '系统管理员',
         email: 'admin@qq.com',
         password: hashedPassword,
         role: 'admin',
-        phone: '19838558988',
+        phone: '13800138000',
       });
       console.log('管理员账号创建成功!');
     } catch (err) {
