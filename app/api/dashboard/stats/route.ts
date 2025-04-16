@@ -146,6 +146,15 @@ export async function GET(request: NextRequest) {
               month: { $month: '$createdAt' },
             },
             count: { $sum: 1 },
+            completed: { 
+              $sum: { 
+                $cond: [
+                  { $eq: ['$status', 'completed'] }, 
+                  1, 
+                  0
+                ] 
+              } 
+            }
           },
         },
         {
@@ -165,6 +174,7 @@ export async function GET(request: NextRequest) {
               ],
             },
             count: 1,
+            completed: 1
           },
         },
         { $sort: { month: 1 } },
@@ -244,7 +254,9 @@ export async function GET(request: NextRequest) {
 function getDefaultWorkOrderStatusData() {
   return [
     { status: 'pending', count: 5 },
+    { status: 'assigned', count: 3 },
     { status: 'in_progress', count: 8 },
+    { status: 'pending_check', count: 2 },
     { status: 'completed', count: 12 },
     { status: 'cancelled', count: 2 }
   ];
@@ -278,9 +290,12 @@ function getDefaultMonthlyData() {
   const now = dayjs();
   return Array.from({ length: 6 }, (_, i) => {
     const month = now.subtract(i, 'month');
+    const totalCount = Math.floor(Math.random() * 15) + 5; // 随机5-20之间的数
+    const completedCount = Math.floor(totalCount * 0.7); // 约70%的完成率
     return {
       month: `${month.year()}-${month.format('MM')}`,
-      count: Math.floor(Math.random() * 15) + 5 // 随机5-20之间的数
+      count: totalCount,
+      completed: completedCount
     };
   }).reverse();
 } 

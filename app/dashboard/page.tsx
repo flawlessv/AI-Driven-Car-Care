@@ -20,14 +20,16 @@ import {
   AppstoreOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { Column, Pie } from '@ant-design/plots';
+import { Pie } from '@ant-design/plots';
 
 const { Title, Text } = Typography;
 
 // 状态颜色映射
 const STATUS_COLORS = {
   pending: '#faad14',
+  assigned: '#1677ff',
   in_progress: '#1890ff',
+  pending_check: '#722ed1',
   completed: '#52c41a',
   cancelled: '#d9d9d9',
 };
@@ -94,10 +96,6 @@ interface DashboardDataType {
       category: string;
       count: number;
     }[];
-    monthlyWorkOrders: {
-      month: string;
-      count: number;
-    }[];
   };
 }
 
@@ -108,7 +106,9 @@ export default function DashboardPage() {
   // 中文状态映射
   const statusMap: Record<string, string> = {
     'pending': '待处理',
+    'assigned': '已分配',
     'in_progress': '进行中',
+    'pending_check': '待审核',
     'completed': '已完成',
     'cancelled': '已取消'
   };
@@ -173,7 +173,6 @@ export default function DashboardPage() {
 
   // 准备默认图表数据
   const emptyPieData = [{ type: '暂无数据', value: 1 }];
-  const emptyColumnData = [{ month: '暂无数据', count: 0 }];
   
   // 工单状态饼图配置
   const workOrderStatusConfig = {
@@ -325,53 +324,6 @@ export default function DashboardPage() {
     },
   };
 
-  // 月度工单柱状图配置
-  const monthlyWorkOrdersConfig = {
-    data: dashboardData?.charts?.monthlyWorkOrders?.length 
-      ? dashboardData.charts.monthlyWorkOrders.map(item => ({
-          month: item.month.includes('-') ? item.month.split('-')[1] + '月' : item.month,
-          count: item.count
-        }))
-      : emptyColumnData,
-    xField: 'month',
-    yField: 'count',
-    meta: {
-      month: {
-        alias: '月份',
-      },
-      count: {
-        alias: '工单数量',
-      },
-    },
-    label: {
-      position: 'middle',
-      style: {
-        fill: '#FFFFFF',
-        opacity: 0.6,
-      },
-    },
-    xAxis: {
-      label: {
-        formatter: (val: string) => val,
-        autoHide: true,
-        autoRotate: false
-      },
-    },
-    yAxis: {
-      title: {
-        text: '工单数量',
-      },
-      min: 0,
-    },
-    tooltip: {
-      formatter: (datum: any) => {
-        return { name: '工单数量', value: `${datum.count} 个` };
-      },
-    },
-    color: '#1890ff',
-    interactions: [{ type: 'element-active' }],
-  };
-
   // 加载中状态
   if (loading) {
     return (
@@ -509,22 +461,6 @@ export default function DashboardPage() {
               >
                 <div className="h-64">
                   <Pie {...workOrderTypeConfig} />
-                </div>
-              </Card>
-            </Col>
-          </Row>
-
-          <Row gutter={[16, 16]} className="mt-4">
-            <Col span={24}>
-              <Card 
-                title="月度工单趋势" 
-                className="chart-card" 
-                bordered={false}
-              >
-                <div className="h-80">
-                  <Column 
-                    {...monthlyWorkOrdersConfig}
-                  />
                 </div>
               </Card>
             </Col>
