@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
           await Vehicle.findByIdAndUpdate(appointment.vehicle._id, {
             owner: customerId,
             ownerName: savedCustomer.name || appointment.customer?.name || 'Unknown Customer',
-            ownerContact: savedCustomer.phone || appointment.customer?.phone || ''
+            ownerPhone: savedCustomer.phone || appointment.customer?.phone || ''
           });
         }
       }
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
         await Vehicle.findByIdAndUpdate(appointment.vehicle._id, {
           owner: customerId,
           ownerName: defaultCustomer.name || 'Default Customer',
-          ownerContact: defaultCustomer.phone || ''
+          ownerPhone: defaultCustomer.phone || ''
         });
       }
     }

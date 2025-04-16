@@ -11,7 +11,7 @@ export interface Vehicle {
   status: 'active' | 'inactive' | 'maintenance'; // 状态
   owner?: string; // 车主ID
   ownerName: string; // 车主姓名
-  ownerContact: string; // 联系方式
+  ownerPhone: string; // 联系电话
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,7 +25,7 @@ export interface VehicleFormData {
   mileage: number;
   status: Vehicle['status'];
   ownerName: string;
-  ownerContact: string;
+  ownerPhone: string;
 }
 
 export interface MaintenanceRecord {

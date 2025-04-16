@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
       'mileage', 
       'status',
       'ownerName',
-      'ownerContact'
+      'ownerPhone'
     ];
     const missingFields = requiredFields.filter(field => !data[field]);
     if (missingFields.length > 0) {
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
 
     // 验证联系方式格式
     const phoneRegex = /^1[3-9]\d{9}$/;
-    if (!phoneRegex.test(data.ownerContact)) {
+    if (!phoneRegex.test(data.ownerPhone)) {
       return validationErrorResponse('联系方式格式不正确，请输入正确的手机号码');
     }
 

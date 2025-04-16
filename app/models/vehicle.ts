@@ -28,6 +28,14 @@ const vehicleSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  ownerName: {
+    type: String,
+    required: true,
+  },
+  ownerPhone: {
+    type: String,
+    required: true,
+  },
   mileage: {
     type: Number,
     default: 0,

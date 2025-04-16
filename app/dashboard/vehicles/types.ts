@@ -8,7 +8,7 @@ export interface Vehicle {
   mileage: number;
   status: 'active' | 'maintenance' | 'inactive';
   ownerName: string;
-  ownerContact: string;
+  ownerPhone: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,7 +22,7 @@ export interface VehicleFormData {
   mileage: number;
   status: Vehicle['status'];
   ownerName: string;
-  ownerContact: string;
+  ownerPhone: string;
 }
 
 export interface VehicleResponse {

@@ -43,26 +43,19 @@ interface HealthScore {
 
 interface VehicleFile {
   _id: string;
-  licensePlate: string;
   brand: string;
   model: string;
   year: number;
+  licensePlate: string;
   vin: string;
-  engineNumber?: string;
-  color?: string;
-  transmission?: string;
-  fuelType?: string;
-  mileage: number;
-  lastMaintenanceDate?: string;
-  nextMaintenanceDate?: string;
-  maintenanceRecords?: any[];
-  insuranceRecords?: any[];
+  mileage?: number;
   status: 'active' | 'inactive' | 'maintenance';
   ownerName: string;
-  ownerContact: string;
+  ownerPhone: string;
   createdAt: string;
   updatedAt: string;
-  healthScore?: HealthScore;
+  healthScore?: number;
+  maintenanceRecords?: any[];
 }
 
 interface PaginationData {
@@ -202,19 +195,18 @@ export default function VehicleFilesPage() {
       }
 
       // 正确获取嵌套的数据结构
-      const vehicleData = {
-        ...vehicleResult.data.data,
-        maintenanceRecords: Array.isArray(vehicleResult.data.data.maintenanceRecords) ? vehicleResult.data.data.maintenanceRecords : [],
-        mileage: typeof vehicleResult.data.data.mileage === 'number' ? vehicleResult.data.data.mileage : 0,
-        year: typeof vehicleResult.data.data.year === 'number' ? vehicleResult.data.data.year : new Date().getFullYear(),
+      const vehicleData: VehicleFile = {
+        _id: vehicleResult.data.data._id || '',
         brand: vehicleResult.data.data.brand || '',
         model: vehicleResult.data.data.model || '',
+        year: vehicleResult.data.data.year || 0,
         licensePlate: vehicleResult.data.data.licensePlate || '',
         vin: vehicleResult.data.data.vin || '',
         ownerName: vehicleResult.data.data.ownerName || '',
-        ownerContact: vehicleResult.data.data.ownerContact || '',
+        ownerPhone: vehicleResult.data.data.ownerPhone || '',
         status: vehicleResult.data.data.status || 'inactive',
-        healthScore: healthResult.data
+        createdAt: vehicleResult.data.data.createdAt || '',
+        updatedAt: vehicleResult.data.data.updatedAt || '',
       };
 
       console.log('处理后的车辆数据:', vehicleData);
@@ -248,7 +240,7 @@ export default function VehicleFilesPage() {
             }
           </Descriptions.Item>
           <Descriptions.Item label="车主姓名">{selectedVehicle.ownerName || '-'}</Descriptions.Item>
-          <Descriptions.Item label="联系方式">{selectedVehicle.ownerContact || '-'}</Descriptions.Item>
+          <Descriptions.Item label="联系方式">{selectedVehicle.ownerPhone || '-'}</Descriptions.Item>
           <Descriptions.Item label="状态">
             <Tag color={
               selectedVehicle.status === 'active' ? 'green' :

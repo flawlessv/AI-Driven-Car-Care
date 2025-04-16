@@ -482,7 +482,7 @@ export default function AppointmentsPage() {
           body: JSON.stringify({
             ...vehicleData,
             ownerName: values['customer.name'],
-            ownerContact: values['customer.phone'],
+            ownerPhone: values['customer.phone'],
             status: 'active',
             year: new Date().getFullYear(),
             vin: `TEMP${Date.now()}`, // 临时VIN，可以后续更新

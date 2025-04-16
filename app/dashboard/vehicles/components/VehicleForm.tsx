@@ -29,7 +29,7 @@ export default function VehicleForm({
       mileage: values.mileage,
       status: values.status,
       ownerName: values.ownerName,
-      ownerContact: values.ownerContact,
+      ownerPhone: values.ownerPhone,
     };
     console.log('表单数据:', formData); // 添加日志
     onFinish(formData);
@@ -172,7 +172,7 @@ export default function VehicleForm({
 
       <div className="slide-up" style={{ animationDelay: '0.5s' }}>
         <Form.Item
-          name="ownerContact"
+          name="ownerPhone"
           label="联系方式"
           rules={[
             { required: true, message: '请输入联系方式' },

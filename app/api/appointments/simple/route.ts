@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
         registrationDate: new Date(),
         owner: user || null, // 如果有用户ID，关联车辆和用户
         ownerName: customer.name, // 添加车主姓名
-        ownerContact: customer.phone // 添加车主联系方式
+        ownerPhone: customer.phone // 添加车主联系方式
       });
       await vehicle.save();
     } else {
@@ -75,9 +75,9 @@ export async function POST(request: NextRequest) {
       }
       
       // 如果车辆没有车主姓名或联系方式，则更新
-      if (!vehicle.ownerName || !vehicle.ownerContact) {
+      if (!vehicle.ownerName || !vehicle.ownerPhone) {
         vehicle.ownerName = customer.name;
-        vehicle.ownerContact = customer.phone;
+        vehicle.ownerPhone = customer.phone;
         needsUpdate = true;
       }
       

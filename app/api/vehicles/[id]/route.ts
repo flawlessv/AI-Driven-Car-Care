@@ -68,7 +68,7 @@ export async function GET(
       licensePlate: vehicle.licensePlate || '',
       vin: vehicle.vin || '',
       ownerName: vehicle.ownerName || '',
-      ownerContact: vehicle.ownerContact || '',
+      ownerPhone: vehicle.ownerPhone || '',
       status: vehicle.status || 'inactive'
     };
 

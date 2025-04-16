@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证车辆是否有车主信息
-    if (!vehicle.ownerName || !vehicle.ownerContact) {
+    if (!vehicle.ownerName || !vehicle.ownerPhone) {
       return validationErrorResponse('该车辆未关联车主信息，请先完善车主信息');
     }
 
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
       notes: data.notes,
       customer: {
         name: vehicle.ownerName,
-        contact: vehicle.ownerContact
+        contact: vehicle.ownerPhone
       },
       createdBy: new mongoose.Types.ObjectId(),
       updatedBy: new mongoose.Types.ObjectId(),
