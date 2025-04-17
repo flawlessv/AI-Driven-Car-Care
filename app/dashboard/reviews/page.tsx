@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   Table,
@@ -15,148 +15,232 @@ import {
   Select,
   Typography,
   Tooltip,
+  Avatar,
 } from 'antd';
-import { StarOutlined, MessageOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  StarOutlined,
+  MessageOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CloseCircleOutlined,
+  UserOutlined,
+  CommentOutlined,
+  CarOutlined,
+  ToolOutlined,
+} from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/app/lib/store';
 import PermissionChecker from '@/app/components/PermissionChecker';
+import { useRouter } from 'next/navigation';
+import dayjs from 'dayjs';
 
-const { Title } = Typography;
+const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
+/**
+ * 评论状态枚举
+ * 描述评论在系统中的状态
+ */
+enum ReviewStatus {
+  PENDING = 'pending',    // 待审核
+  APPROVED = 'approved',  // 已批准
+  REJECTED = 'rejected'   // 已拒绝
+}
+
+/**
+ * 评论对象接口定义
+ * 描述系统中评论的数据结构
+ */
 interface Review {
-  _id: string;
-  author: {
+  _id: string;             // 评论ID
+  maintenanceId: string;   // 关联的维修记录ID
+  technicianId: string;    // 技师ID
+  authorId: string;        // 评论作者ID（客户）
+  authorName: string;      // 评论作者姓名
+  vehicleName: string;     // 车辆名称
+  rating: number;          // 评分(1-5)
+  comment: string;         // 评论内容
+  status: ReviewStatus;    // 评论状态
+  createdAt: string;       // 创建时间
+  updatedAt: string;       // 更新时间
+  technicianName?: string; // 技师姓名（可选）
+  workOrder?: string;      // 工单ID
+  workOrderNumber?: string; // 工单编号
+  author?: {              // 作者详细信息
     _id: string;
     username: string;
     phone?: string;
     email?: string;
-  } | string;
-  authorName?: string;
-  authorPhone?: string;
-  authorEmail?: string;
-  targetType: 'technician' | 'shop';
-  targetId: {
-    _id: string;
-    name: string;
-    username?: string;
-    level?: string;
   };
-  maintenanceRecord: {
-    _id: string;
-    date: string;
-    type: string;
-    cost: number;
-  };
-  workOrder?: string;
-  workOrderNumber?: string;
-  rating: number;
-  content: string;
-  status: 'published' | 'hidden' | 'deleted';
-  createdAt: string;
+  authorPhone?: string;    // 作者电话
+  authorEmail?: string;    // 作者邮箱
 }
 
+/**
+ * 技师信息接口
+ * 用于显示和过滤评论中的技师信息
+ */
 interface Technician {
-  _id: string;
-  name: string;
+  _id: string;       // 技师ID
+  username: string;  // 用户名
+  fullName: string;  // 全名
 }
 
-export default function ReviewsPage() {
-  const [loading, setLoading] = useState(false);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [technicians, setTechnicians] = useState<Technician[]>([]);
+/**
+ * 评论管理页面组件
+ * 负责展示所有评论记录，并提供审核、筛选和管理功能
+ */
+const ReviewsPage = () => {
+  const router = useRouter();
   const { user } = useSelector((state: RootState) => state.auth);
+  
+  // 状态管理
+  const [loading, setLoading] = useState(false);            // 加载状态
+  const [reviews, setReviews] = useState<Review[]>([]);     // 评论数据
+  const [currentPage, setCurrentPage] = useState(1);        // 当前页码
+  const [pageSize, setPageSize] = useState(10);             // 每页显示条数
+  const [total, setTotal] = useState(0);                    // 总评论数
+  const [statusFilter, setStatusFilter] = useState<string>('all');  // 状态筛选
+  const [technicianFilter, setTechnicianFilter] = useState<string>('all'); // 技师筛选
+  const [ratingFilter, setRatingFilter] = useState<string>('all');   // 评分筛选
+  const [technicians, setTechnicians] = useState<Technician[]>([]);  // 技师列表
+  const [searchText, setSearchText] = useState('');         // 搜索文本
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null); // 当前选中评论
+  const [detailModalVisible, setDetailModalVisible] = useState(false); // 详情模态框显示状态
 
+  /**
+   * 组件初始化时检查用户登录状态
+   * 未登录则重定向到登录页
+   */
   useEffect(() => {
-    fetchReviews();
-    fetchTechnicians();
-  }, [page, pageSize]);
+    if (!user) {
+      console.log('用户未登录，重定向到登录页面');
+      router.push('/login');
+      return;
+    }
 
-  useEffect(() => {
-    fetchTechnicians();
-  }, []);
+    console.log('用户已登录，角色:', user.role);
+    fetchReviews();      // 获取评论列表
+    fetchTechnicians();  // 获取技师列表
+  }, [user, router]);
 
+  /**
+   * 获取评论列表数据
+   * 从API获取评论数据并更新状态
+   */
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `/api/reviews?page=${page}&limit=${pageSize}`
-      );
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || '获取评价列表失败');
-      }
-
-      const formattedReviews = result.data.items.map((review: any) => {
-        let author = review.author || {};
-        if (typeof author !== 'object') {
-          author = { _id: author };
+      const response = await fetch('/api/reviews', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
         }
-        
-        if (review.authorName && !author.username) {
-          author.username = review.authorName;
-        }
-        
-        if (!author.username && author._id) {
-          author.username = '用户' + author._id.toString().substring(author._id.toString().length - 4);
-        }
-        
-        return {
-          ...review,
-          author
-        };
       });
-
-      setReviews(formattedReviews);
-      setTotal(result.data.total);
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || '获取评论列表失败');
+      }
+      
+      if (Array.isArray(result.data)) {
+        console.log('获取到评论数据:', result.data.length);
+        setReviews(result.data);
+        setTotal(result.data.length);
+      } else {
+        console.error('评论列表数据格式错误:', result);
+        setReviews([]);
+        setTotal(0);
+      }
     } catch (error: any) {
-      message.error(error.message || '获取评价列表失败');
+      console.error('获取评论列表失败:', error);
+      message.error(error.message || '获取评论列表失败');
+      setReviews([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * 获取技师列表
+   * 用于筛选评论的技师下拉选择
+   */
   const fetchTechnicians = async () => {
     try {
-      const response = await fetch('/api/technicians');
+      const response = await fetch('/api/users?role=technician', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
       const result = await response.json();
       
-      if (response.ok && result.success) {
-        console.log('获取到的技师数据:', result.data);
-        setTechnicians(result.data);
-      } else {
-        console.error('获取技师列表失败:', result);
+      if (!response.ok) {
+        throw new Error(result.message || '获取技师列表失败');
       }
-    } catch (error) {
+      
+      if (Array.isArray(result.data)) {
+        // 转换技师数据格式以适合下拉选择器
+        const techList = result.data.map((tech: any) => ({
+          _id: tech._id,
+          username: tech.username,
+          fullName: tech.fullName || tech.username
+        }));
+        
+        setTechnicians(techList);
+      } else {
+        console.error('技师列表数据格式错误:', result);
+        setTechnicians([]);
+      }
+    } catch (error: any) {
       console.error('获取技师列表失败:', error);
+      message.error(error.message || '获取技师列表失败');
+      setTechnicians([]);
     }
   };
 
-  const handleStatusChange = async (record: Review, status: Review['status']) => {
+  /**
+   * 更新评论状态
+   * 向API发送请求更新评论审核状态
+   * @param reviewId 评论ID
+   * @param status 新状态
+   */
+  const updateReviewStatus = async (reviewId: string, status: ReviewStatus) => {
     try {
-      const response = await fetch(`/api/reviews/${record._id}`, {
-        method: 'PUT',
+      setLoading(true);
+      const response = await fetch(`/api/reviews/${reviewId}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ status }),
       });
 
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.message || '更新状态失败');
+      if (response.ok) {
+        // 更新本地状态而不是重新获取所有数据
+        setReviews(prevReviews =>
+          prevReviews.map(review =>
+            review._id === reviewId ? { ...review, status } : review
+          )
+        );
+        message.success('评论状态已更新');
+      } else {
+        message.error('更新评论状态失败');
       }
-
-      message.success('状态更新成功');
-      fetchReviews();
-    } catch (error: any) {
-      message.error(error.message || '更新状态失败');
+    } catch (error) {
+      console.error('更新评论状态出错:', error);
+      message.error('更新评论状态时发生错误');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -196,35 +280,28 @@ export default function ReviewsPage() {
     },
     {
       title: '评价内容',
-      dataIndex: 'content',
-      key: 'content',
+      dataIndex: 'comment',
+      key: 'comment',
       width: 300,
       ellipsis: true,
+      render: (text: string, record: Review) => (
+        <Tooltip title={text}>
+          <span>{text || '-'}</span>
+        </Tooltip>
+      ),
     },
     {
-      title: '评价人',
-      key: 'author',
-      render: (_, record) => {
-        let username = '';
-        let contact = '';
-        
-        if (record.author && typeof record.author === 'object') {
-          username = record.author.username || '';
-          contact = record.author.phone || record.author.email || '';
-        } else if (record.authorName) {
-          username = record.authorName;
-          contact = record.authorPhone || record.authorEmail || '';
-        } else if (record.author && typeof record.author === 'string') {
-          username = '用户' + record.author.substring(record.author.length - 4);
-        } else {
-          username = '未知用户';
-        }
+      title: '联系方式',
+      key: 'contact',
+      render: (_, record: Review) => {
+        const phone = record.authorPhone || record.author?.phone || '-';
+        const email = record.authorEmail || record.author?.email || '-';
         
         return (
-          <Space direction="vertical">
-            <span>{username}</span>
-            {contact && <span className="text-gray-500">{contact}</span>}
-          </Space>
+          <>
+            <div>{phone && typeof phone === 'string' && phone.length > 4 ? `${phone.substring(0, 3)}****${phone.substring(phone.length - 4)}` : phone}</div>
+            <div>{email || '-'}</div>
+          </>
         );
       },
     },
@@ -240,9 +317,9 @@ export default function ReviewsPage() {
       key: 'status',
       render: (status) => {
         const statusMap: Record<string, { text: string; color: string }> = {
-          published: { text: '已发布', color: 'green' },
-          hidden: { text: '已隐藏', color: 'orange' },
-          deleted: { text: '已删除', color: 'red' },
+          pending: { text: '待审核', color: 'orange' },
+          approved: { text: '已批准', color: 'green' },
+          rejected: { text: '已拒绝', color: 'red' },
         };
         return <Tag color={statusMap[status].color}>{statusMap[status].text}</Tag>;
       },
@@ -282,43 +359,40 @@ export default function ReviewsPage() {
                 
                 return (
                   <Space>
-                    {record.status === 'published' ? (
-                      <PermissionChecker
-                        menuKey="reviews"
-                        requiredPermission={isAuthor ? "write" : "manage"}
-                        buttonProps={{
-                          size: "small",
-                          onClick: () => handleStatusChange(record, 'hidden')
-                        }}
-                        noPermissionTip="您没有管理评价的权限"
-                      >
-                        隐藏
-                      </PermissionChecker>
-                    ) : (
-                      <PermissionChecker
-                        menuKey="reviews"
-                        requiredPermission={isAuthor ? "write" : "manage"}
-                        buttonProps={{
-                          type: "primary",
-                          size: "small",
-                          onClick: () => handleStatusChange(record, 'published')
-                        }}
-                        noPermissionTip="您没有管理评价的权限"
-                      >
-                        发布
-                      </PermissionChecker>
-                    )}
+                    <Button
+                      type="primary"
+                      size="small"
+                      onClick={() => updateReviewStatus(record._id, ReviewStatus.APPROVED)}
+                      disabled={record.status === ReviewStatus.APPROVED}
+                    >
+                      通过
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={() => updateReviewStatus(record._id, ReviewStatus.PENDING)}
+                      disabled={record.status === ReviewStatus.PENDING}
+                    >
+                      待审核
+                    </Button>
+                    <Button
+                      danger
+                      size="small"
+                      onClick={() => updateReviewStatus(record._id, ReviewStatus.REJECTED)}
+                      disabled={record.status === ReviewStatus.REJECTED}
+                    >
+                      拒绝
+                    </Button>
                   </Space>
                 );
               },
             },
           ]}
           pagination={{
-            current: page,
+            current: currentPage,
             pageSize: pageSize,
             total: total,
             onChange: (p, s) => {
-              setPage(p);
+              setCurrentPage(p);
               if (s !== pageSize) {
                 setPageSize(s);
               }
@@ -331,4 +405,6 @@ export default function ReviewsPage() {
       </Card>
     </div>
   );
-} 
+}
+
+export default ReviewsPage; 

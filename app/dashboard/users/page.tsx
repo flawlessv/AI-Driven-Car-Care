@@ -14,17 +14,29 @@ import PermissionGuard from '@/app/components/PermissionGuard';
 
 const { Search } = Input;
 
+/**
+ * 用户角色选项列表
+ * 用于角色筛选和显示
+ */
 const roleOptions = [
   { label: '管理员', value: 'admin' },
   { label: '技师', value: 'technician' },
   { label: '客户', value: 'customer' },
 ];
 
+/**
+ * 用户状态选项列表
+ * 用于状态筛选和显示
+ */
 const statusOptions = [
   { label: '正常', value: 'active' },
   { label: '禁用', value: 'disabled' },
 ];
 
+/**
+ * 用户管理页面组件
+ * 提供用户列表展示、搜索、筛选、添加、编辑和删除等功能
+ */
 export default function UsersPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -40,8 +52,16 @@ export default function UsersPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   
+  // 从Redux获取当前登录用户信息
   const currentUser = useSelector((state: RootState) => state.auth.user);
 
+  /**
+   * 获取用户列表数据
+   * 根据页码、每页数量和筛选条件从API获取用户数据
+   * @param page 当前页码
+   * @param limit 每页显示数量
+   * @param filters 筛选条件（搜索关键词和角色）
+   */
   const fetchUsers = async (
     page = currentPage,
     limit = pageSize,
@@ -81,10 +101,17 @@ export default function UsersPage() {
     }
   };
 
+  // 当页码、每页数量、搜索关键词或角色筛选变化时重新获取用户列表
   useEffect(() => {
     fetchUsers();
   }, [currentPage, pageSize, search, roleFilter]);
 
+  /**
+   * 更新用户状态
+   * 向API发送请求更改用户的状态（启用/禁用）
+   * @param newStatus 新的用户状态
+   * @param userId 用户ID
+   */
   const handleStatusChange = async (newStatus: string, userId: string) => {
     try {
       const response = await fetch(`/api/users/${userId}`, {
@@ -110,6 +137,10 @@ export default function UsersPage() {
     }
   };
 
+  /**
+   * 删除用户
+   * 向API发送删除请求并更新用户列表
+   */
   const handleDelete = async () => {
     if (!selectedUser) return;
     
@@ -135,27 +166,59 @@ export default function UsersPage() {
     }
   };
 
+  /**
+   * 显示删除确认对话框
+   * @param user 要删除的用户对象
+   */
   const showDeleteConfirm = (user: User) => {
     setSelectedUser(user);
     setDeleteModalVisible(true);
   };
 
+  /**
+   * 处理用户创建成功的回调
+   * 关闭创建模态框并刷新用户列表
+   */
   const handleCreateSuccess = () => {
     setCreateModalVisible(false);
     fetchUsers();
   };
 
+  /**
+   * 处理用户编辑成功的回调
+   * 关闭编辑模态框并刷新用户列表
+   */
   const handleEditSuccess = () => {
     setEditModalVisible(false);
     setSelectedUser(null);
     fetchUsers();
   };
 
+  /**
+   * 显示编辑用户模态框
+   * @param user 要编辑的用户对象
+   */
   const showEditModal = (user: User) => {
     setSelectedUser(user);
     setEditModalVisible(true);
   };
 
+  /**
+   * 根据角色获取对应的颜色
+   * 用于在界面上以不同颜色显示不同角色
+   * @param role 用户角色
+   * @returns 对应的颜色字符串
+   */
+  const getRoleColor = (role: string) => {
+    const colorMap: Record<string, string> = {
+      admin: 'red',
+      technician: 'blue',
+      customer: 'green'
+    };
+    return colorMap[role] || 'default';
+  };
+
+  // 表格列定义
   const columns: ColumnsType<User> = [
     {
       title: '用户名/姓名',
@@ -251,19 +314,6 @@ export default function UsersPage() {
   const handleRoleFilterChange = (value: string) => {
     setRoleFilter(value);
     setCurrentPage(1);
-  };
-
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'red';
-      case 'technician':
-        return 'blue';
-      case 'customer':
-        return 'green';
-      default:
-        return 'default';
-    }
   };
 
   return (

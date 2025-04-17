@@ -48,30 +48,41 @@ import dayjs from 'dayjs';
 
 const { TextArea } = Input;
 
+/**
+ * 技师统计信息接口
+ * 包含技师完成的订单数量、完成率和平均评分等指标
+ */
 interface TechnicianStats {
-  totalOrders: number;
-  completedOrders: number;
-  completionRate: number;
-  averageRating: number;
+  totalOrders: number;      // 总订单数
+  completedOrders: number;  // 已完成订单数
+  completionRate: number;   // 完成率
+  averageRating: number;    // 平均评分
 }
 
+/**
+ * 扩展的技师信息接口，包含基本用户信息和统计数据
+ */
 interface TechnicianWithStats extends User {
-  stats?: TechnicianStats;
+  stats?: TechnicianStats;  // 技师统计信息
 }
 
+/**
+ * 技师管理页面组件
+ * 用于展示所有技师信息、统计数据，并提供添加、编辑、删除技师等功能
+ */
 const TechniciansPage = () => {
   const router = useRouter();
   const { user } = useSelector((state: RootState) => state.auth);
   const [loading, setLoading] = useState(false);
-  const [technicians, setTechnicians] = useState<TechnicianWithStats[]>([]);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingTechnician, setEditingTechnician] = useState<TechnicianWithStats | null>(null);
+  const [technicians, setTechnicians] = useState<TechnicianWithStats[]>([]); // 技师列表
+  const [modalVisible, setModalVisible] = useState(false);                   // 控制模态框显示
+  const [editingTechnician, setEditingTechnician] = useState<TechnicianWithStats | null>(null); // 当前编辑的技师
   const [form] = Form.useForm();
-  const [technicianStats, setTechnicianStats] = useState<Record<string, TechnicianStats>>({});
-  const [selectedTechnician, setSelectedTechnician] = useState<TechnicianWithStats | null>(null);
-  const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [availabilityFilter, setAvailabilityFilter] = useState<string>('all');
-  const [specialtyFilter, setSpecialtyFilter] = useState<string>('all');
+  const [technicianStats, setTechnicianStats] = useState<Record<string, TechnicianStats>>({}); // 技师统计数据映射
+  const [selectedTechnician, setSelectedTechnician] = useState<TechnicianWithStats | null>(null); // 当前选中的技师
+  const [detailModalVisible, setDetailModalVisible] = useState(false);       // 详情模态框显示控制
+  const [availabilityFilter, setAvailabilityFilter] = useState<string>('all'); // 可用性筛选器
+  const [specialtyFilter, setSpecialtyFilter] = useState<string>('all');      // 专业筛选器
 
   useEffect(() => {
     // 检查用户是否登录
@@ -82,9 +93,13 @@ const TechniciansPage = () => {
     }
 
     console.log('用户已登录，角色:', user.role);
-    fetchTechnicians();
+    fetchTechnicians(); // 获取技师列表
   }, [user, router]);
 
+  /**
+   * 获取技师列表
+   * 从API获取所有技师信息并更新状态
+   */
   const fetchTechnicians = async () => {
     try {
       console.log('开始获取技师列表');
@@ -104,7 +119,10 @@ const TechniciansPage = () => {
         throw new Error(result.message || '获取技师列表失败');
       }
       
-      // 添加计算技师认证的逻辑
+      /**
+       * 验证和完善技师认证信息
+       * 确保每个技师都有认证字段，没有则设为空数组
+       */
       const checkForCertifications = (techniciansList: TechnicianWithStats[]) => {
         // 检查每个技师是否有认证字段，如果没有，设置为空数组
         return techniciansList.map(tech => {
@@ -135,7 +153,11 @@ const TechniciansPage = () => {
     }
   };
 
-  // 获取技师统计数据
+  /**
+   * 获取技师统计数据
+   * 为每个技师获取工作统计信息，包括完成订单数、评分等
+   * @param techniciansList 技师列表
+   */
   const fetchTechnicianStats = async (techniciansList: TechnicianWithStats[]) => {
     try {
       setLoading(true);
@@ -206,104 +228,228 @@ const TechniciansPage = () => {
     }
   };
 
-  const handleEdit = (record: TechnicianWithStats) => {
-    setEditingTechnician(record);
-    form.setFieldsValue(record);
-    setModalVisible(true);
-  };
-
-  const handleDelete = (record: TechnicianWithStats) => {
+  /**
+   * 处理技师删除
+   * 向API发送删除请求并更新本地技师列表
+   * @param technician 要删除的技师对象
+   */
+  const handleDelete = async (technician: TechnicianWithStats) => {
     Modal.confirm({
       title: '确认删除',
-      content: `确定要删除技师 ${record.username} 吗？`,
+      content: `确定要删除技师 ${technician.username} 吗？`,
+      okText: '确认',
+      cancelText: '取消',
       onOk: async () => {
         try {
-          const response = await fetch(`/api/users/${record._id}`, {
+          setLoading(true);
+          
+          const response = await fetch(`/api/users/${technician._id}`, {
             method: 'DELETE',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            }
           });
+
+          const result = await response.json();
           
           if (!response.ok) {
-            throw new Error('删除失败');
+            throw new Error(result.message || '删除技师失败');
           }
-
-          message.success('删除成功');
-          fetchTechnicians();
-        } catch (error) {
+          
+          message.success('技师删除成功');
+          // 从本地列表中移除删除的技师
+          setTechnicians(prev => prev.filter(tech => tech._id !== technician._id));
+        } catch (error: any) {
           console.error('删除技师失败:', error);
-          message.error('删除技师失败');
+          message.error(error.message || '删除技师失败');
+        } finally {
+          setLoading(false);
         }
-      },
+      }
     });
   };
 
-  const handleSubmit = async (values: any) => {
-    try {
-      // 确保技师等级有默认值
-      if (!values.level) {
-        values.level = '初级技师';
-      }
-      
-      // 转换数值类型
-      if (values.workExperience) {
-        values.workExperience = Number(values.workExperience);
-      }
-      
-      const url = editingTechnician
-        ? `/api/users/${editingTechnician._id}`
-        : '/api/users';
-      const method = editingTechnician ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...values,
-          role: 'technician'
-        }),
+  /**
+   * 打开添加/编辑技师模态框
+   * @param technician 要编辑的技师对象（为null时表示添加新技师）
+   */
+  const openModal = (technician: TechnicianWithStats | null = null) => {
+    setEditingTechnician(technician);
+    form.resetFields();
+    
+    if (technician) {
+      // 编辑现有技师，填充表单数据
+      form.setFieldsValue({
+        username: technician.username,
+        email: technician.email,
+        phone: technician.phone,
+        specialties: technician.specialties || [],
+        certifications: technician.certifications || [],
+        status: technician.status,
+        description: technician.description || '',
+        level: technician.level || '初级技师',
+        workExperience: technician.workExperience || '',
       });
+    }
+    
+    setModalVisible(true);
+  };
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || '操作失败');
+  /**
+   * 处理表单提交
+   * 创建新技师或更新现有技师信息
+   */
+  const handleFormSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      setLoading(true);
+      
+      // 确保认证字段是一个数组
+      if (!Array.isArray(values.certifications)) {
+        values.certifications = values.certifications 
+          ? values.certifications.split(',').map((cert: string) => cert.trim()) 
+          : [];
       }
-
-      message.success('操作成功');
+      
+      // 确保专业字段是一个数组
+      if (!Array.isArray(values.specialties)) {
+        values.specialties = values.specialties 
+          ? values.specialties.split(',').map((specialty: string) => specialty.trim()) 
+          : [];
+      }
+      
+      if (editingTechnician) {
+        // 更新现有技师
+        const response = await fetch(`/api/users/${editingTechnician._id}`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            ...values,
+            role: USER_ROLES.TECHNICIAN
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.message || '更新技师失败');
+        }
+        
+        message.success('技师信息更新成功');
+        
+        // 更新本地技师列表
+        setTechnicians(prev => 
+          prev.map(tech => tech._id === editingTechnician._id ? { ...tech, ...values } : tech)
+        );
+      } else {
+        // 创建新技师
+        const response = await fetch('/api/users', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            ...values,
+            role: USER_ROLES.TECHNICIAN,
+            password: values.phone.slice(-6) // 默认密码为手机号后6位
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.message || '创建技师失败');
+        }
+        
+        message.success('技师创建成功');
+        
+        // 添加新技师到列表
+        fetchTechnicians(); // 重新获取列表以确保有完整的数据
+      }
+      
+      // 关闭模态框
       setModalVisible(false);
-      form.resetFields();
-      fetchTechnicians();
     } catch (error: any) {
-      console.error('保存技师信息失败:', error);
-      message.error(error.message || '保存失败');
+      if (error.errorFields) {
+        // 表单验证错误
+        message.error('请检查表单中的错误');
+      } else {
+        console.error('提交技师表单失败:', error);
+        message.error(error.message || '提交失败');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const showTechnicianDetail = (record: TechnicianWithStats) => {
-    setSelectedTechnician(record);
+  /**
+   * 打开技师详情模态框
+   * @param technician 要查看详情的技师对象
+   */
+  const openDetailModal = (technician: TechnicianWithStats) => {
+    setSelectedTechnician(technician);
     setDetailModalVisible(true);
   };
 
-  const getStatusColor = (status: string) => {
-    const statusMap = {
-      active: { color: 'green', text: '在岗' },
-      leave: { color: 'orange', text: '请假' },
-      busy: { color: 'blue', text: '工作中' },
-      inactive: { color: 'red', text: '离职' }
-    };
-    const currentStatus = statusMap[status as keyof typeof statusMap] || { color: 'default', text: '未知' };
-    return currentStatus;
+  /**
+   * 根据可用性过滤技师列表
+   * @param availability 可用性状态
+   */
+  const handleAvailabilityFilterChange = (availability: string) => {
+    setAvailabilityFilter(availability);
   };
 
-  const getLevelColor = (level: string) => {
-    const levelMap = {
-      '初级技师': { color: 'blue', text: '初级技师' },
-      '中级技师': { color: 'purple', text: '中级技师' },
-      '高级技师': { color: 'gold', text: '高级技师' },
-      '专家技师': { color: 'magenta', text: '专家技师' }
-    };
-    return levelMap[level as keyof typeof levelMap] || { color: 'default', text: level };
+  /**
+   * 根据专业过滤技师列表
+   * @param specialty 专业类型
+   */
+  const handleSpecialtyFilterChange = (specialty: string) => {
+    setSpecialtyFilter(specialty);
   };
+
+  /**
+   * 过滤技师列表
+   * 根据当前设置的可用性和专业过滤条件筛选技师
+   */
+  const filteredTechnicians = technicians.filter(technician => {
+    // 根据可用性过滤
+    if (availabilityFilter !== 'all' && technician.status !== availabilityFilter) {
+      return false;
+    }
+    
+    // 根据专业过滤
+    if (specialtyFilter !== 'all' && !(technician.specialties || []).includes(specialtyFilter)) {
+      return false;
+    }
+    
+    return true;
+  });
+
+  /**
+   * 获取所有唯一的专业列表
+   * 从所有技师数据中提取不重复的专业类型
+   */
+  const getAllSpecialties = () => {
+    const specialtiesSet = new Set<string>();
+    
+    technicians.forEach(technician => {
+      if (Array.isArray(technician.specialties)) {
+        technician.specialties.forEach(specialty => {
+          if (specialty) specialtiesSet.add(specialty);
+        });
+      }
+    });
+    
+    return Array.from(specialtiesSet);
+  };
+
+  // 获取所有专业选项
+  const allSpecialties = getAllSpecialties();
 
   const columns = [
     {
@@ -418,7 +564,7 @@ const TechniciansPage = () => {
             buttonProps={{
               size: "small",
               icon: <EditOutlined />,
-              onClick: () => handleEdit(record)
+              onClick: () => openModal(record)
             }}
             noPermissionTip="您没有编辑技师信息的权限"
           >
@@ -498,7 +644,7 @@ const TechniciansPage = () => {
           <Select
             defaultValue="all"
             style={{ width: 120 }}
-            onChange={setAvailabilityFilter}
+            onChange={handleAvailabilityFilterChange}
             options={[
               { value: 'all', label: '全部状态' },
               { value: 'active', label: '在职' },
@@ -510,7 +656,7 @@ const TechniciansPage = () => {
           <Select
             defaultValue="all"
             style={{ width: 120 }}
-            onChange={setSpecialtyFilter}
+            onChange={handleSpecialtyFilterChange}
             options={[
               { value: 'all', label: '全部专长' },
               ...specialtyOptions
@@ -529,10 +675,7 @@ const TechniciansPage = () => {
           <Button 
             type="primary" 
             icon={<PlusOutlined />} 
-            onClick={() => {
-              setEditingTechnician(null);
-              setModalVisible(true);
-            }}
+            onClick={() => openModal()}
             className="admin-btn admin-btn-primary"
           >
             新增技师
@@ -597,7 +740,7 @@ const TechniciansPage = () => {
       <Card className="dashboard-card fade-in">
         <Table
           columns={columns}
-          dataSource={technicians}
+          dataSource={filteredTechnicians}
           rowKey="_id"
           loading={loading}
           pagination={{
@@ -780,7 +923,7 @@ const TechniciansPage = () => {
                   type="primary" 
                   onClick={() => {
                     setDetailModalVisible(false);
-                    handleEdit(selectedTechnician);
+                    openModal(selectedTechnician);
                   }}
                   className="admin-btn admin-btn-primary"
                 >
@@ -803,7 +946,7 @@ const TechniciansPage = () => {
         <Form
           form={form}
           layout="vertical"
-          onFinish={handleSubmit}
+          onFinish={handleFormSubmit}
           className="admin-form mt-4"
         >
           <Form.Item
