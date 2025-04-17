@@ -1,30 +1,49 @@
+/**
+ * 仪表盘页面组件
+ * 
+ * 这个文件实现了系统的主仪表盘页面，显示各种统计数据和图表
+ * 'use client' 标记表示在浏览器端运行
+ */
 'use client';
 
+// 导入React相关钩子，用于状态管理和副作用
 import React, { useState, useEffect } from 'react';
+// 导入Ant Design组件，用于构建用户界面
 import {
-  Card,
-  Row,
-  Col,
-  Statistic,
-  Spin,
-  message,
-  Typography,
-  Divider,
+  Card,       // 卡片容器
+  Row,        // 行布局
+  Col,        // 列布局
+  Statistic,  // 统计数字
+  Spin,       // 加载动画
+  message,    // 消息提示
+  Typography, // 文字排版
+  Divider,    // 分割线
 } from 'antd';
+// 导入图标组件
 import {
-  CarOutlined,
-  ToolOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  UserOutlined,
-  AppstoreOutlined,
-  ExclamationCircleOutlined,
+  CarOutlined,               // 汽车图标
+  ToolOutlined,              // 工具图标
+  CheckCircleOutlined,       // 勾选图标
+  ClockCircleOutlined,       // 时钟图标
+  UserOutlined,              // 用户图标
+  AppstoreOutlined,          // 应用图标
+  ExclamationCircleOutlined, // 警告图标
 } from '@ant-design/icons';
+// 导入饼图组件
 import { Pie } from '@ant-design/plots';
 
+// 从Typography组件中解构出Title和Text组件
 const { Title, Text } = Typography;
 
-// 状态颜色映射
+/**
+ * 不同工单状态对应的颜色
+ * pending: 黄色 - 待处理
+ * assigned: 蓝色 - 已分配
+ * in_progress: 亮蓝色 - 进行中
+ * pending_check: 紫色 - 待审核
+ * completed: 绿色 - 已完成
+ * cancelled: 灰色 - 已取消
+ */
 const STATUS_COLORS = {
   pending: '#faad14',
   assigned: '#1677ff',
@@ -34,7 +53,14 @@ const STATUS_COLORS = {
   cancelled: '#d9d9d9',
 };
 
-// 工单类型颜色映射
+/**
+ * 不同工单类型对应的颜色
+ * regular: 蓝色 - 常规保养
+ * repair: 粉色 - 维修
+ * inspection: 绿色 - 检查
+ * maintenance: 紫色 - 保养
+ * emergency: 橙色 - 紧急维修
+ */
 const TYPE_COLORS = {
   regular: '#1890ff',
   repair: '#eb2f96',
@@ -43,7 +69,15 @@ const TYPE_COLORS = {
   emergency: '#fa541c',
 };
 
-// 配件类型颜色映射
+/**
+ * 不同配件类型对应的颜色
+ * engine: 蓝色 - 发动机
+ * transmission: 粉色 - 变速箱
+ * brake: 绿色 - 刹车系统
+ * electrical: 紫色 - 电气系统
+ * body: 橙色 - 车身部件
+ * other: 浅橙色 - 其他配件
+ */
 const PART_CATEGORY_COLORS = {
   engine: '#1890ff',
   transmission: '#eb2f96',
@@ -53,57 +87,70 @@ const PART_CATEGORY_COLORS = {
   other: '#fa8c16',
 };
 
+/**
+ * 仪表盘数据类型接口
+ * 定义了从服务器获取的仪表盘数据的结构
+ */
 interface DashboardDataType {
-  username: string;
-  overview: {
-    vehicles: {
-      total: number;
-      active: number;
-      inMaintenance: number;
+  username: string;  // 用户名
+  overview: {  // 概览数据
+    vehicles: {  // 车辆统计
+      total: number;  // 车辆总数
+      active: number;  // 活跃车辆
+      inMaintenance: number;  // 维修中车辆
     };
-    appointments: {
-      total: number;
-      pending: number;
-      today: number;
+    appointments: {  // 预约统计
+      total: number;  // 预约总数
+      pending: number;  // 待处理预约
+      today: number;  // 今日预约
     };
-    workOrders: {
-      total: number;
-      pending: number;
-      inProgress: number;
-      completed: number;
-      thisMonth: number;
+    workOrders: {  // 工单统计
+      total: number;  // 工单总数
+      pending: number;  // 待处理工单
+      inProgress: number;  // 进行中工单
+      completed: number;  // 已完成工单
+      thisMonth: number;  // 本月工单
     };
-    technicians: {
-      total: number;
-      active: number;
+    technicians: {  // 技师统计
+      total: number;  // 技师总数
+      active: number;  // 活跃技师
     };
-    parts: {
-      total: number;
-      lowStock: number;
-      outOfStock: number;
+    parts: {  // 配件统计
+      total: number;  // 配件总数
+      lowStock: number;  // 低库存配件
+      outOfStock: number;  // 缺货配件
     };
   };
-  charts: {
-    workOrderStatus: {
-      status: string;
-      count: number;
+  charts: {  // 图表数据
+    workOrderStatus: {  // 工单状态分布
+      status: string;  // 状态
+      count: number;   // 数量
     }[];
-    workOrderTypes: {
-      type: string;
-      count: number;
+    workOrderTypes: {  // 工单类型分布
+      type: string;  // 类型
+      count: number;  // 数量
     }[];
-    partCategories: {
-      category: string;
-      count: number;
+    partCategories: {  // 配件类型分布
+      category: string;  // 类别
+      count: number;     // 数量
     }[];
   };
 }
 
+/**
+ * 仪表盘页面组件
+ * 展示系统概览和数据统计图表
+ */
 export default function DashboardPage() {
+  // 状态管理：记录是否正在加载数据
   const [loading, setLoading] = useState(true);
+  // 状态管理：存储仪表盘数据
   const [dashboardData, setDashboardData] = useState<DashboardDataType | null>(null);
 
-  // 中文状态映射
+  /**
+   * 工单状态的中文映射
+   * 将英文状态转换为用户友好的中文显示
+   */
   const statusMap: Record<string, string> = {
     'pending': '待处理',
     'assigned': '已分配',
@@ -113,7 +160,10 @@ export default function DashboardPage() {
     'cancelled': '已取消'
   };
 
-  // 中文工单类型映射
+  /**
+   * 工单类型的中文映射
+   * 将英文类型转换为用户友好的中文显示
+   */
   const typeMap: Record<string, string> = {
     'regular': '常规保养',
     'repair': '维修',
@@ -122,7 +172,10 @@ export default function DashboardPage() {
     'emergency': '紧急维修'
   };
 
-  // 中文配件类型映射
+  /**
+   * 配件类型的中文映射
+   * 将英文类型转换为用户友好的中文显示
+   */
   const partCategoryMap: Record<string, string> = {
     'engine': '发动机',
     'transmission': '变速箱',
@@ -132,72 +185,92 @@ export default function DashboardPage() {
     'other': '其他配件'
   };
 
+  /**
+   * 使用useEffect钩子在组件挂载时获取仪表盘数据
+   */
   useEffect(() => {
+    /**
+     * 获取仪表盘数据的异步函数
+     * 向服务器发送请求，获取统计数据
+     */
     const fetchDashboardData = async () => {
       try {
+        // 设置加载状态为true，显示加载动画
         setLoading(true);
+        // 向服务器发送获取仪表盘数据的请求
         const response = await fetch('/api/dashboard/stats');
         
+        // 记录API响应状态
         console.log('API响应状态:', response.status);
         
+        // 如果响应状态为401（未授权），则显示错误消息
         if (response.status === 401) {
           message.error('您未登录或登录已过期，请重新登录');
           setLoading(false);
           return;
         }
         
+        // 如果响应不成功，抛出错误
         if (!response.ok) {
           throw new Error('获取仪表盘数据失败');
         }
         
+        // 解析返回的JSON数据
         const result = await response.json();
-        console.log('仪表盘数据:', result); // 添加调试信息
+        // 记录仪表盘数据，用于调试
+        console.log('仪表盘数据:', result);
         
+        // 检查返回的数据格式是否正确
         if (!result.data) {
           message.error('服务器返回的数据格式不正确');
           setLoading(false);
           return;
         }
         
+        // 更新仪表盘数据状态
         setDashboardData(result.data);
       } catch (error) {
+        // 捕获并处理任何可能发生的错误
         console.error('加载仪表盘数据失败:', error);
         message.error('加载仪表盘数据失败，请稍后再试');
       } finally {
+        // 无论成功还是失败，都设置加载状态为false，隐藏加载动画
         setLoading(false);
       }
     };
 
+    // 调用获取仪表盘数据的函数
     fetchDashboardData();
-  }, []);
+  }, []); // 空依赖数组表示只在组件挂载时执行一次
 
-  // 准备默认图表数据
+  // 准备默认图表数据（当没有数据时显示）
   const emptyPieData = [{ type: '暂无数据', value: 1 }];
   
   // 工单状态饼图配置
   const workOrderStatusConfig = {
+    // 使用dashboardData中的数据，如果没有数据则使用emptyPieData
     data: dashboardData?.charts?.workOrderStatus?.length 
       ? dashboardData.charts.workOrderStatus.map(item => ({
-          type: statusMap[item.status] || item.status,
-          value: item.count,
+          type: statusMap[item.status] || item.status,  // 转换为中文状态
+          value: item.count,  // 数量
         }))
       : emptyPieData,
-    angleField: 'value',
-    colorField: 'type',
-    radius: 0.8,
-    legend: {
-      position: 'bottom',
-      layout: 'horizontal',
+    angleField: 'value',  // 数值字段
+    colorField: 'type',   // 颜色字段
+    radius: 0.8,          // 饼图半径
+    legend: {  // 图例配置
+      position: 'bottom',     // 位置在底部
+      layout: 'horizontal',   // 水平布局
       itemName: {
         style: {
-          fontSize: 12
+          fontSize: 12        // 字体大小
         }
       }
     },
-    label: {
-      type: 'inner',
-      offset: '-30%',
-      content: ({ percent }: { percent: number }) => `${(percent * 100).toFixed(0)}%`,
+    label: {  // 标签配置
+      type: 'inner',             // 内部标签
+      offset: '-30%',            // 偏移量
+      content: ({ percent }: { percent: number }) => `${(percent * 100).toFixed(0)}%`,  // 显示百分比
       style: {
         textAlign: 'center',
         fontSize: 14,

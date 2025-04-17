@@ -1,126 +1,177 @@
+/**
+ * 预约管理页面
+ * 
+ * 这个页面用于管理车辆保养和维修预约，提供预约的创建、编辑、删除和查看功能
+ * 'use client' 标记表示这个组件在浏览器端运行，而不是在服务器端
+ */
 'use client';
 
+// 导入React钩子，用于状态管理和副作用
 import { useState, useEffect } from 'react';
+// 导入Ant Design组件，用于构建用户界面
 import {
-  Table,
-  Button,
-  Space,
-  Tag,
-  message,
-  Modal,
-  Form,
-  Input,
-  Select,
-  DatePicker,
-  TimePicker,
-  Card,
-  InputNumber,
-  Tooltip,
-  Row,
-  Col,
+  Table,        // 表格组件
+  Button,       // 按钮组件
+  Space,        // 间距容器
+  Tag,          // 标签组件
+  message,      // 消息提示
+  Modal,        // 模态框
+  Form,         // 表单
+  Input,        // 输入框
+  Select,       // 下拉选择框
+  DatePicker,   // 日期选择器
+  TimePicker,   // 时间选择器
+  Card,         // 卡片容器
+  InputNumber,  // 数字输入框
+  Tooltip,      // 文字提示
+  Row,          // 行布局
+  Col,          // 列布局
 } from 'antd';
+// 导入表格列类型定义
 import type { ColumnsType } from 'antd/es/table';
+// 导入各种图标组件
 import { EditOutlined, DeleteOutlined, PlusOutlined, SyncOutlined, CalendarOutlined, ClockCircleOutlined, CarOutlined, UserOutlined, ToolOutlined } from '@ant-design/icons';
+// 导入日期处理库
 import dayjs from 'dayjs';
+// 导入预约类型定义
 import type { Appointment } from '@/types/appointment';
+// 导入Redux选择器，用于获取全局状态
 import { useSelector } from 'react-redux';
+// 导入根状态类型
 import type { RootState } from '@/app/lib/store';
 
+// 从Input组件中提取TextArea子组件
 const { TextArea } = Input;
 
+/**
+ * 预约状态颜色映射
+ * 不同状态对应不同的标签颜色
+ */
 const statusColors = {
-  pending: 'orange',
-  processed: 'blue',
-  completed: 'green',
-  cancelled: 'red',
+  pending: 'orange',     // 待处理：橙色
+  processed: 'blue',     // 已处理：蓝色
+  completed: 'green',    // 已完成：绿色
+  cancelled: 'red',      // 已取消：红色
 };
 
+/**
+ * 预约状态文本映射
+ * 将英文状态转换为用户友好的中文显示
+ */
 const statusText = {
-  pending: '待处理',
-  processed: '已处理',
-  completed: '已完成',
-  cancelled: '已取消',
+  pending: '待处理',      // 待处理状态
+  processed: '已处理',    // 已处理状态
+  completed: '已完成',    // 已完成状态
+  cancelled: '已取消',    // 已取消状态
 };
 
-// 添加服务项目预设选项
+/**
+ * 服务项目预设选项
+ * 按类别分组的预设服务列表，包含名称、时长和基础价格
+ */
 const serviceOptions = [
   {
-    category: 'maintenance',
+    category: 'maintenance', // 保养类别
     items: [
-      { name: '常规保养', duration: 60, basePrice: 300 },
-      { name: '机油更换', duration: 30, basePrice: 200 },
-      { name: '轮胎更换', duration: 45, basePrice: 400 },
-      { name: '刹车检查', duration: 30, basePrice: 150 },
+      { name: '常规保养', duration: 60, basePrice: 300 },  // 1小时，300元
+      { name: '机油更换', duration: 30, basePrice: 200 },  // 30分钟，200元
+      { name: '轮胎更换', duration: 45, basePrice: 400 },  // 45分钟，400元
+      { name: '刹车检查', duration: 30, basePrice: 150 },  // 30分钟，150元
     ],
   },
   {
-    category: 'repair',
+    category: 'repair', // 维修类别
     items: [
-      { name: '发动机维修', duration: 180, basePrice: 1500 },
-      { name: '变速箱维修', duration: 240, basePrice: 2000 },
-      { name: '空调维修', duration: 120, basePrice: 800 },
-      { name: '底盘维修', duration: 150, basePrice: 1000 },
+      { name: '发动机维修', duration: 180, basePrice: 1500 },  // 3小时，1500元
+      { name: '变速箱维修', duration: 240, basePrice: 2000 },  // 4小时，2000元
+      { name: '空调维修', duration: 120, basePrice: 800 },     // 2小时，800元
+      { name: '底盘维修', duration: 150, basePrice: 1000 },    // 2.5小时，1000元
     ],
   },
   {
-    category: 'inspection',
+    category: 'inspection', // 检查类别
     items: [
-      { name: '年度检查', duration: 90, basePrice: 500 },
-      { name: '故障诊断', duration: 60, basePrice: 300 },
-      { name: '排放检测', duration: 45, basePrice: 250 },
-      { name: '安全检查', duration: 60, basePrice: 300 },
+      { name: '年度检查', duration: 90, basePrice: 500 },     // 1.5小时，500元
+      { name: '故障诊断', duration: 60, basePrice: 300 },     // 1小时，300元
+      { name: '排放检测', duration: 45, basePrice: 250 },     // 45分钟，250元
+      { name: '安全检查', duration: 60, basePrice: 300 },     // 1小时，300元
     ],
   },
 ];
 
-// 添加调试代码，将选项打印到控制台
+// 开发调试代码，将服务类型选项打印到控制台
 console.log('可用的服务类型选项:', serviceOptions.map(opt => opt.category));
 
+/**
+ * 预约管理页面组件
+ * 展示预约列表并提供管理功能
+ */
 export default function AppointmentsPage() {
+  // 状态管理：预约数据列表
   const [data, setData] = useState<Appointment[]>([]);
+  // 状态管理：加载状态
   const [loading, setLoading] = useState(true);
+  // 状态管理：模态框显示状态
   const [modalVisible, setModalVisible] = useState(false);
+  // 状态管理：当前正在编辑的预约
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  // 状态管理：车辆列表
   const [vehicles, setVehicles] = useState<any[]>([]);
+  // 状态管理：技师列表
   const [technicians, setTechnicians] = useState<any[]>([]);
+  // 创建表单实例
   const [form] = Form.useForm();
   
-  // 获取当前用户信息和角色
+  // 从Redux状态中获取当前用户信息
   const { user } = useSelector((state: RootState) => state.auth);
+  // 判断当前用户是否为客户角色
   const isCustomer = user?.role === 'customer';
 
+  /**
+   * 使用useEffect钩子在组件挂载时获取数据
+   */
   useEffect(() => {
-    fetchAppointments();
-    fetchVehicles();
-    fetchTechnicians();
+    fetchAppointments(); // 获取预约列表
+    fetchVehicles();     // 获取车辆列表
+    fetchTechnicians();  // 获取技师列表
   }, []);
 
+  /**
+   * 获取预约列表的异步函数
+   * 从服务器获取全部预约数据
+   */
   const fetchAppointments = async () => {
     try {
+      // 设置加载状态为true，显示加载动画
       setLoading(true);
       console.log('开始获取预约列表...');
       
-      // 使用fetch的完整选项，确保正确处理响应
+      // 发送获取预约列表的请求，使用fetch的完整选项确保正确处理响应
       const response = await fetch('/api/appointments', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
         },
-        credentials: 'include' // 包含cookie
+        credentials: 'include' // 包含cookie以确保认证状态
       });
       
+      // 记录响应状态码
       console.log('API响应状态:', response.status);
+      // 解析返回的JSON数据
       const result = await response.json();
+      // 记录完整响应
       console.log('API响应:', result);
       
+      // 如果响应不成功，抛出错误
       if (!response.ok) {
         throw new Error(result.message || '获取预约列表失败');
       }
 
-      // 确保我们获取到正确的数据
+      // 确保我们获取到正确格式的数据
       const appointmentsData = Array.isArray(result.data) ? result.data : [];
       console.log('获取到预约数据:', appointmentsData.length, '条记录');
       
+      // 输出第一条预约记录作为示例，方便调试
       if (appointmentsData.length > 0) {
         console.log('第一条预约示例:', JSON.stringify(appointmentsData[0], null, 2));
       }
@@ -140,54 +191,87 @@ export default function AppointmentsPage() {
         return 0;
       });
       
+      // 更新预约数据状态
       setData(sortedData);
     } catch (error: any) {
+      // 记录错误信息到控制台
       console.error('获取预约列表失败:', error);
+      // 向用户显示错误提示
       message.error(error.message || '获取预约列表失败');
+      // 出错时设置为空数组
       setData([]);
     } finally {
+      // 无论成功还是失败，都设置加载状态为false，隐藏加载动画
       setLoading(false);
     }
   };
 
+  /**
+   * 获取车辆列表的异步函数
+   * 从服务器获取所有车辆数据，用于预约创建和编辑
+   */
   const fetchVehicles = async () => {
     try {
+      // 发送获取车辆列表的请求
       const response = await fetch('/api/vehicles');
+      // 解析返回的JSON数据
       const result = await response.json();
       
+      // 如果响应不成功，抛出错误
       if (!response.ok) {
         throw new Error(result.message || '获取车辆列表失败');
       }
 
+      // 更新车辆列表状态
       setVehicles(result.data?.data || []);
     } catch (error: any) {
+      // 记录错误信息到控制台
       console.error('获取车辆列表失败:', error);
+      // 向用户显示错误提示
       message.error(error.message || '获取车辆列表失败');
     }
   };
 
+  /**
+   * 获取技师列表的异步函数
+   * 从服务器获取所有技师数据，用于预约分配
+   */
   const fetchTechnicians = async () => {
     try {
+      // 发送获取技师列表的请求，过滤出技师角色的用户
       const response = await fetch('/api/users?role=technician');
+      // 解析返回的JSON数据
       const result = await response.json();
       
+      // 如果响应不成功，抛出错误
       if (!response.ok) {
         throw new Error(result.message || '获取技师列表失败');
       }
 
-      // 确保只获取在职的技师
+      // 确保只获取在职的技师（状态为active的技师）
       const activeTechnicians = (result.data || []).filter((tech: any) => tech.status === 'active');
+      // 更新技师列表状态
       setTechnicians(activeTechnicians);
     } catch (error: any) {
+      // 记录错误信息到控制台
       console.error('获取技师列表失败:', error);
+      // 向用户显示错误提示
       message.error(error.message || '获取技师列表失败');
     }
   };
 
-  // 预约状态标签渲染函数
+  /**
+   * 预约状态标签渲染函数
+   * 根据不同状态使用不同的样式渲染状态标签
+   * 
+   * @param {string} status - 预约状态值
+   * @returns {JSX.Element} 状态标签元素
+   */
   const renderStatusTag = (status: string) => {
+    // 根据状态值确定CSS类名
     const statusClass = `status-badge status-badge-${status === 'processed' ? 'in-progress' : status === 'completed' ? 'completed' : status === 'cancelled' ? 'cancelled' : 'pending'}`;
     
+    // 返回带有相应类名的状态标签
     return (
       <span className={statusClass}>
         {statusText[status as keyof typeof statusText] || status}
@@ -195,95 +279,121 @@ export default function AppointmentsPage() {
     );
   };
 
+  /**
+   * 表格列配置
+   * 定义了预约列表中每一列的标题、数据源和渲染方式
+   */
   const columns: ColumnsType<Appointment> = [
     {
-      title: '预约编号',
-      dataIndex: '_id',
-      key: '_id',
-      width: 100,
+      title: '预约编号',  // 列标题
+      dataIndex: '_id',  // 数据字段名
+      key: '_id',        // 唯一键
+      width: 100,        // 列宽度
+      // 自定义渲染函数，只显示ID的后8位，更简洁美观
       render: (id: string) => <span className="font-medium">{id.slice(-8)}</span>,
     },
     {
-      title: '客户信息',
-      dataIndex: 'customer',
-      key: 'customer',
-      width: 180,
+      title: '客户信息',  // 列标题
+      dataIndex: 'customer',  // 数据字段名
+      key: 'customer',        // 唯一键
+      width: 180,             // 列宽度
+      // 自定义渲染函数，显示客户姓名和电话
       render: (customer: any) => (
         <div>
-          <div className="font-medium flex items-center"><UserOutlined className="mr-1 text-blue-500" /> {customer?.name}</div>
-          <div className="text-gray-500 text-sm">{customer?.phone}</div>
+          <div className="font-medium flex items-center">
+            <UserOutlined className="mr-1 text-blue-500" /> {/* 用户图标 */}
+            {customer?.name} {/* 客户姓名 */}
+          </div>
+          <div className="text-gray-500 text-sm">{customer?.phone}</div> {/* 客户电话 */}
         </div>
       ),
     },
     {
-      title: '车辆信息',
-      dataIndex: 'vehicle',
-      key: 'vehicle',
-      width: 200,
+      title: '车辆信息',  // 列标题
+      dataIndex: 'vehicle',  // 数据字段名
+      key: 'vehicle',        // 唯一键
+      width: 200,            // 列宽度
+      // 自定义渲染函数，显示车辆品牌、型号和车牌号
       render: (vehicle: any) => 
         vehicle ? (
           <div className="flex items-center">
-            <CarOutlined className="mr-1 text-green-500" />
-            <span>{vehicle.brand} {vehicle.model} <span className="text-gray-600">({vehicle.licensePlate})</span></span>
+            <CarOutlined className="mr-1 text-green-500" /> {/* 汽车图标 */}
+            <span>
+              {vehicle.brand} {vehicle.model} {/* 车辆品牌和型号 */}
+              <span className="text-gray-600">({vehicle.licensePlate})</span> {/* 车牌号 */}
+            </span>
           </div>
-        ) : '-',
+        ) : '-', // 如果没有车辆信息，显示短横线
     },
     {
-      title: '服务项目',
-      dataIndex: ['service', 'name'],
-      key: 'serviceName',
-      ellipsis: true,
-      width: 150,
+      title: '服务项目',  // 列标题
+      dataIndex: ['service', 'name'],  // 嵌套数据字段路径
+      key: 'serviceName',              // 唯一键
+      ellipsis: true,                  // 文本过长时显示省略号
+      width: 150,                      // 列宽度
+      // 自定义渲染函数，显示服务项目名称，带工具图标
       render: (name: string, record: any) => (
         <div className="flex items-center">
-          <ToolOutlined className="mr-1 text-purple-500" />
-          <Tooltip title={name}>
+          <ToolOutlined className="mr-1 text-purple-500" /> {/* 工具图标 */}
+          <Tooltip title={name}> {/* 鼠标悬停时显示完整名称 */}
             <span>{name}</span>
           </Tooltip>
         </div>
       ),
     },
     {
-      title: '预约时间',
-      dataIndex: 'timeSlot',
-      key: 'appointmentTime',
-      width: 180,
+      title: '预约时间',  // 列标题
+      dataIndex: 'timeSlot',  // 数据字段名
+      key: 'appointmentTime',  // 唯一键
+      width: 180,              // 列宽度
+      // 自定义渲染函数，显示预约日期和时间段
       render: (timeSlot: any, record: any) => {
-        // 支持扁平结构和嵌套结构
+        // 支持扁平结构和嵌套结构的数据格式
         const date = record.date || (timeSlot?.date ? timeSlot.date : null);
         const startTime = record.startTime || (timeSlot?.startTime || '');
         const endTime = record.endTime || (timeSlot?.endTime || '');
         
+        // 如果没有日期，显示短横线
         if (!date) return '-';
         
-        // 确保日期是有效的
+        // 确保日期是有效的，格式化为中文日期格式
         let formattedDate = '-';
         try {
           formattedDate = typeof date === 'string' 
             ? dayjs(date).format('YYYY年MM月DD日') 
             : dayjs(date).format('YYYY年MM月DD日');
         } catch (error) {
+          // 记录日期格式化错误
           console.error('日期格式化错误:', error);
         }
           
+        // 返回格式化的日期和时间段
         return (
           <span>
-            <div className="flex items-center"><CalendarOutlined className="mr-1 text-blue-500" /> {formattedDate}</div>
-            <div className="text-gray-500 flex items-center"><ClockCircleOutlined className="mr-1" /> {startTime} - {endTime || '未指定'}</div>
+            <div className="flex items-center">
+              <CalendarOutlined className="mr-1 text-blue-500" /> {/* 日历图标 */}
+              {formattedDate}
+            </div>
+            <div className="text-gray-500 flex items-center">
+              <ClockCircleOutlined className="mr-1" /> {/* 时钟图标 */}
+              {startTime} - {endTime || '未指定'}
+            </div>
           </span>
         );
       },
     },
     {
-      title: '技师',
-      key: 'technicianName',
-      width: 120,
+      title: '技师',  // 列标题
+      key: 'technicianName',  // 唯一键
+      width: 120,             // 列宽度
+      // 自定义渲染函数，显示负责的技师信息
       render: (_, record: any) => {
         const technician = record.technician || {};
+        // 如果已分配技师，显示技师姓名和头像，否则显示"未分配"
         return technician?.name ? (
           <div className="flex items-center">
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-500 mr-1">
-              {technician.name.charAt(0)}
+              {technician.name.charAt(0)} {/* 显示技师姓名首字母作为头像 */}
             </span>
             {technician.name}
           </div>
@@ -291,44 +401,54 @@ export default function AppointmentsPage() {
       },
     },
     {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: renderStatusTag,
+      title: '状态',  // 列标题
+      dataIndex: 'status',  // 数据字段名
+      key: 'status',        // 唯一键
+      width: 100,           // 列宽度
+      render: renderStatusTag,  // 使用上面定义的状态标签渲染函数
     },
     {
-      title: '操作',
-      key: 'action',
-      width: 200,
-      fixed: 'right',
+      title: '操作',  // 列标题
+      key: 'action',  // 唯一键
+      width: 200,     // 列宽度
+      fixed: 'right', // 固定在右侧
+      // 自定义渲染函数，显示操作按钮
       render: (_, record) => (
         <Space size="small" direction="vertical" style={{ width: '100%' }}>
+          {/* 编辑按钮 */}
           <Button
             type="text"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
             className="text-blue-500 hover:text-blue-600"
-            style={{ padding: '0 4px', width: '100%', textAlign: 'left' }}
+            // 客户角色且非自己创建的预约不能编辑
+            disabled={isCustomer && (record.user?._id !== user?._id)}
           >
             编辑
           </Button>
-          {record.status !== 'completed' && record.status !== 'cancelled' && (
+          
+          {/* 将预约转换为工单的按钮，仅管理员和技师可见 */}
+          {!isCustomer && record.status !== 'cancelled' && (
             <Button
               type="text"
-              className="text-green-500 hover:text-green-600"
+              icon={<EditOutlined />}
               onClick={() => handleConvertToWorkOrder(record)}
-              style={{ padding: '0 4px', width: '100%', textAlign: 'left' }}
+              className="text-green-500 hover:text-green-600"
+              disabled={record.status === 'completed'}
             >
-              转工单
+              转为工单
             </Button>
           )}
+          
+          {/* 删除按钮 */}
           <Button
             type="text"
             danger
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(record)}
-            style={{ padding: '0 4px', width: '100%', textAlign: 'left' }}
+            className="text-red-500 hover:text-red-600"
+            // 客户角色且非自己创建的预约不能删除
+            disabled={isCustomer && (record.user?._id !== user?._id)}
           >
             删除
           </Button>
@@ -337,78 +457,95 @@ export default function AppointmentsPage() {
     },
   ];
 
+  /**
+   * 处理编辑预约按钮点击事件
+   * 打开编辑模态框并填充当前预约数据
+   * 
+   * @param {any} record - 要编辑的预约记录
+   */
   const handleEdit = (record: any) => {
-    console.log(record,'record');
+    console.log('编辑预约:', record);
     
-    // 打印接收到的数据，方便调试
-    console.log('编辑预约数据:', JSON.stringify(record, null, 2));
-    
+    // 设置正在编辑的预约
     setEditingAppointment(record);
     
-    // 处理服务类型
-    let serviceType = '';
-    if (record.service?.category) {
-      // 将中文服务类型转换为英文
-      const category = record.service.category;
-      if (category === '保养' || category.includes('保养')) {
-        serviceType = 'maintenance';
-      } else if (category === '维修' || category.includes('维修')) {
-        serviceType = 'repair';
-      } else if (category === '检查' || category.includes('检查')) {
-        serviceType = 'inspection';
-      } else {
-        serviceType = record.service.category;
-      }
-    } else if (record.service?.type) {
-      serviceType = record.service.type;
-    }
+    // 准备预约日期和时间数据
+    const appointmentDate = record.date || (record.timeSlot?.date ? record.timeSlot.date : null);
+    const startTime = record.startTime || (record.timeSlot?.startTime ? dayjs(`2022-01-01 ${record.timeSlot.startTime}`) : null);
+    const endTime = record.endTime || (record.timeSlot?.endTime ? dayjs(`2022-01-01 ${record.timeSlot.endTime}`) : null);
     
-    // 处理技师ID
-    const technicianId = record.technician?._id || record.technician || record.timeSlot?.technician?._id || record.timeSlot?.technician;
-
-    // 处理日期和时间 - 支持扁平结构和嵌套结构
-    const dateValue = record.date || record.timeSlot?.date;
-    const startTimeValue = record.startTime || record.timeSlot?.startTime;
-    const endTimeValue = record.endTime || record.timeSlot?.endTime;
-    
-    // 设置表单值，字段名称必须与表单中的字段名称完全一致
-    const formValues = {
-      vehicleId: record.vehicle?._id || '',
-      technicianId: technicianId || '',
-      serviceType: serviceType,
-      serviceId: record.service?.name || '',
-      date: dateValue ? dayjs(dateValue) : null,
-      time: [
-        startTimeValue ? dayjs(startTimeValue, 'HH:mm') : null,
-        endTimeValue ? dayjs(endTimeValue, 'HH:mm') : null
-      ],
-      description: record.notes || '',
-      status: record.status || 'pending'
+    // 创建表单初始值对象
+    const initialValues = {
+      // 客户信息
+      'customer.name': record.customer?.name || '',
+      'customer.phone': record.customer?.phone || '',
+      'customer.email': record.customer?.email || '',
+      
+      // 车辆信息
+      vehicle: record.vehicle?._id || '',
+      
+      // 服务信息
+      'service.name': record.service?.name || '',
+      estimatedDuration: record.estimatedDuration || 60,
+      estimatedCost: record.estimatedCost || 0,
+      
+      // 预约时间信息
+      date: appointmentDate ? dayjs(appointmentDate) : null,
+      startTime: startTime,
+      endTime: endTime,
+      
+      // 技师信息
+      technician: record.technician?._id || '',
+      
+      // 状态信息
+      status: record.status || 'pending',
     };
-
-    console.log('设置表单值:', formValues);
-    form.setFieldsValue(formValues);
+    
+    // 在控制台记录表单初始值，用于调试
+    console.log('表单初始值:', initialValues);
+    
+    // 重置并设置表单字段值
+    form.resetFields();
+    form.setFieldsValue(initialValues);
+    
+    // 显示编辑模态框
     setModalVisible(true);
   };
 
+  /**
+   * 处理删除预约按钮点击事件
+   * 显示确认对话框并执行删除操作
+   * 
+   * @param {Appointment} record - 要删除的预约记录
+   */
   const handleDelete = (record: Appointment) => {
+    // 显示确认对话框
     Modal.confirm({
       title: '确认删除',
-      content: '确定要删除这条预约记录吗？',
+      content: `您确定要删除此预约吗？此操作不可撤销。`,
+      okText: '确认',
+      okType: 'danger',
+      cancelText: '取消',
       onOk: async () => {
         try {
+          // 发送删除预约的请求
           const response = await fetch(`/api/appointments/${record._id}`, {
             method: 'DELETE',
           });
+          
           const result = await response.json();
           
+          // 如果响应不成功，抛出错误
           if (!response.ok) {
             throw new Error(result.message || '删除预约失败');
           }
-
-          message.success('删除成功');
+          
+          // 显示成功消息
+          message.success('预约已成功删除');
+          // 刷新预约列表
           fetchAppointments();
         } catch (error: any) {
+          // 显示错误消息
           message.error(error.message || '删除预约失败');
         }
       },
