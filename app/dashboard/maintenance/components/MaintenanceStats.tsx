@@ -1,3 +1,8 @@
+/**
+ * 保养统计信息组件
+ * 用于展示保养记录的统计数据，包括总费用、维修次数、类型分布等
+ * 支持多种筛选条件和导出功能
+ */
 import React from 'react';
 import {
   Card,
@@ -26,12 +31,23 @@ import type {
 
 const { RangePicker } = DatePicker;
 
+// 保养类型的中文显示映射
 const typeText = {
   regular: '常规保养',
   repair: '维修',
   inspection: '检查',
 };
 
+/**
+ * 保养统计组件属性接口
+ * @param stats - 保养统计数据
+ * @param loading - 是否正在加载数据
+ * @param onTimeGroupChange - 时间分组变更回调
+ * @param onDateRangeChange - 日期范围变更回调
+ * @param onTypeChange - 维修类型变更回调
+ * @param onVehicleChange - 车辆选择变更回调
+ * @param onExport - 导出统计数据回调
+ */
 interface MaintenanceStatsProps {
   stats: MaintenanceStats;
   loading?: boolean;
@@ -51,6 +67,7 @@ export default function MaintenanceStats({
   onVehicleChange,
   onExport,
 }: MaintenanceStatsProps) {
+  // 维修类型表格列配置
   const typeColumns = [
     {
       title: '维修类型',
@@ -80,6 +97,7 @@ export default function MaintenanceStats({
     },
   ];
 
+  // 车辆维修表格列配置
   const vehicleColumns = [
     {
       title: '车辆信息',
@@ -111,6 +129,7 @@ export default function MaintenanceStats({
     },
   ];
 
+  // 时间统计表格列配置
   const timeColumns = [
     {
       title: '时间',
@@ -148,8 +167,10 @@ export default function MaintenanceStats({
 
   return (
     <div className="space-y-6">
+      {/* 筛选工具栏 */}
       <div className="flex justify-between items-center mb-6">
         <Space size="large">
+          {/* 时间分组选择器 */}
           <Select
             placeholder="时间分组"
             style={{ width: 120 }}
@@ -161,6 +182,8 @@ export default function MaintenanceStats({
             <Select.Option value="month">按月</Select.Option>
             <Select.Option value="year">按年</Select.Option>
           </Select>
+          
+          {/* 日期范围选择器 */}
           <RangePicker
             onChange={(_, dateStrings) =>
               onDateRangeChange?.([
@@ -169,6 +192,8 @@ export default function MaintenanceStats({
               ])
             }
           />
+          
+          {/* 维修类型选择器 */}
           <Select
             placeholder="维修类型"
             style={{ width: 120 }}
@@ -182,6 +207,8 @@ export default function MaintenanceStats({
             ))}
           </Select>
         </Space>
+        
+        {/* 导出按钮 */}
         <Button
           type="primary"
           icon={<DownloadOutlined />}
@@ -191,7 +218,9 @@ export default function MaintenanceStats({
         </Button>
       </div>
 
+      {/* 数据概览卡片组 */}
       <Row gutter={16}>
+        {/* 总维修次数统计卡片 */}
         <Col span={6}>
           <Card>
             <Statistic
@@ -201,6 +230,8 @@ export default function MaintenanceStats({
             />
           </Card>
         </Col>
+        
+        {/* 总维修费用统计卡片 */}
         <Col span={6}>
           <Card>
             <Statistic
@@ -212,6 +243,8 @@ export default function MaintenanceStats({
             />
           </Card>
         </Col>
+        
+        {/* 平均维修费用统计卡片 */}
         <Col span={6}>
           <Card>
             <Statistic
@@ -223,6 +256,8 @@ export default function MaintenanceStats({
             />
           </Card>
         </Col>
+        
+        {/* 平均配件数量统计卡片 */}
         <Col span={6}>
           <Card>
             <Statistic
@@ -236,8 +271,10 @@ export default function MaintenanceStats({
         </Col>
       </Row>
 
+      {/* 费用构成卡片 */}
       <Card title="费用构成">
         <Row gutter={16}>
+          {/* 工时费用占比 */}
           <Col span={12}>
             <div className="text-center mb-4">工时费用占比</div>
             <Progress
@@ -246,6 +283,8 @@ export default function MaintenanceStats({
               format={percent => `${percent}%`}
             />
           </Col>
+          
+          {/* 配件费用占比 */}
           <Col span={12}>
             <div className="text-center mb-4">配件费用占比</div>
             <Progress
@@ -257,30 +296,41 @@ export default function MaintenanceStats({
         </Row>
       </Card>
 
-      <Card title="按维修类型统计">
+      {/* 维修类型统计表格 */}
+      <Card title="按维修类型统计" loading={loading}>
         <Table
-          columns={typeColumns}
           dataSource={stats.byType}
+          columns={typeColumns}
           rowKey="_id"
-          loading={loading}
+          pagination={false}
         />
       </Card>
 
-      <Card title="按车辆统计">
+      {/* 车辆维修统计表格 */}
+      <Card title="按车辆统计" loading={loading}>
         <Table
-          columns={vehicleColumns}
           dataSource={stats.byVehicle}
+          columns={vehicleColumns}
           rowKey="_id"
-          loading={loading}
+          pagination={{
+            pageSize: 5,
+            showSizeChanger: true,
+            pageSizeOptions: ['5', '10', '20'],
+          }}
         />
       </Card>
 
-      <Card title="按时间统计">
+      {/* 时间维度统计表格 */}
+      <Card title="按时间统计" loading={loading}>
         <Table
-          columns={timeColumns}
           dataSource={stats.byTime}
+          columns={timeColumns}
           rowKey="_id"
-          loading={loading}
+          pagination={{
+            pageSize: 5,
+            showSizeChanger: true,
+            pageSizeOptions: ['5', '10', '20'],
+          }}
         />
       </Card>
     </div>

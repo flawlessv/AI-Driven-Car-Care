@@ -7,23 +7,12 @@ import {
   Button,
   Space,
   Tag,
-  Timeline,
   message,
-  Modal,
   Form,
-  Input,
-  Select,
-  Row,
-  Col,
   Spin,
-  Rate,
 } from 'antd';
 import {
-  EditOutlined,
-  HistoryOutlined,
-  FileTextOutlined,
   ArrowLeftOutlined,
-  StarOutlined,
 } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
@@ -48,9 +37,7 @@ export default function MaintenanceDetailPage({ params }: { params: { id: string
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<MaintenanceRecord | null>(null);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
-  const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [form] = Form.useForm();
-  const [reviewForm] = Form.useForm();
 
   useEffect(() => {
     fetchMaintenanceDetail();
@@ -84,82 +71,6 @@ export default function MaintenanceDetailPage({ params }: { params: { id: string
     }
   };
 
-  const handleStatusUpdate = async (values: any) => {
-    try {
-      const response = await fetch(`/api/maintenance/${params.id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || '更新状态失败');
-      }
-
-      message.success('状态更新成功');
-      setStatusModalVisible(false);
-      form.resetFields();
-      fetchMaintenanceDetail();
-    } catch (error: any) {
-      message.error(error.message || '更新状态失败');
-    }
-  };
-
-  const handleSubmitReview = async (values: any) => {
-    try {
-      if (!data?.customer?._id) {
-        message.error('客户信息不完整，无法提交评价');
-        return;
-      }
-      
-      if (!data?.technician?._id) {
-        message.error('技师信息不完整，无法提交评价');
-        return;
-      }
-
-      // 打印调试信息
-      console.log('提交评价数据:', {
-        customer: data.customer,
-        technician: data.technician,
-        values
-      });
-
-      const response = await fetch('/api/reviews', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          author: data.customer._id,
-          targetType: 'technician',
-          targetId: data.technician._id,
-          maintenanceRecord: params.id,
-          rating: values.rating,
-          content: values.content,
-          tags: values.tags || [],
-          images: values.images || [],
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || '提交评价失败');
-      }
-
-      message.success('评价提交成功');
-      setReviewModalVisible(false);
-      reviewForm.resetFields();
-      fetchMaintenanceDetail();
-    } catch (error: any) {
-      console.error('提交评价失败:', error);
-      message.error(error.message || '提交评价失败，请确保所有必要信息完整');
-    }
-  };
 
   if (loading) {
     return (

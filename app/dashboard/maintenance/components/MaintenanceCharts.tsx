@@ -1,3 +1,8 @@
+/**
+ * 保养统计图表组件
+ * 用于展示保养数据的多种统计图表，包括费用趋势、类型分布、车辆对比等
+ * 使用Ant Design Plots库实现可视化效果
+ */
 import React from 'react';
 import { Card, Row, Col } from 'antd';
 import {
@@ -15,18 +20,26 @@ import type {
   MaintenanceVehicleStats,
 } from '../types';
 
+// 保养类型的中文显示映射
 const typeText = {
   regular: '常规保养',
   repair: '维修',
   inspection: '检查',
 };
 
+/**
+ * 保养图表组件属性接口
+ * @param stats - 保养统计数据
+ */
 interface MaintenanceChartsProps {
   stats: MaintenanceStats;
 }
 
 export default function MaintenanceCharts({ stats }: MaintenanceChartsProps) {
-  // 费用趋势折线图配置
+  /**
+   * 费用趋势折线图配置
+   * 展示不同时间段的保养费用变化趋势
+   */
   const costTrendConfig: LineConfig = {
     data: stats.byTime,
     xField: '_id',
@@ -58,7 +71,10 @@ export default function MaintenanceCharts({ stats }: MaintenanceChartsProps) {
     },
   };
 
-  // 维修类型饼图配置
+  /**
+   * 维修类型饼图配置
+   * 展示不同类型保养的占比分布
+   */
   const typeDistributionConfig: PieConfig = {
     data: stats.byType.map(item => ({
       type: typeText[item._id],
@@ -81,7 +97,10 @@ export default function MaintenanceCharts({ stats }: MaintenanceChartsProps) {
     },
   };
 
-  // 车辆维修对比柱状图配置
+  /**
+   * 车辆维修对比柱状图配置
+   * 展示不同车辆的维修次数和费用对比
+   */
   const vehicleComparisonConfig: BarConfig = {
     data: stats.byVehicle.map(item => ({
       vehicle: `${item.vehicle.brand} ${item.vehicle.model}`,
@@ -107,7 +126,10 @@ export default function MaintenanceCharts({ stats }: MaintenanceChartsProps) {
     },
   };
 
-  // 费用构成堆叠图配置
+  /**
+   * 费用构成堆叠图配置
+   * 展示各时间段的费用构成（工时费用和配件费用）
+   */
   const costCompositionConfig: BarConfig = {
     data: stats.byTime.map(item => [
       {
@@ -141,6 +163,7 @@ export default function MaintenanceCharts({ stats }: MaintenanceChartsProps) {
 
   return (
     <div className="space-y-6">
+      {/* 第一行图表：费用趋势和维修类型分布 */}
       <Row gutter={16}>
         <Col span={12}>
           <Card title="维修费用趋势">
@@ -154,6 +177,7 @@ export default function MaintenanceCharts({ stats }: MaintenanceChartsProps) {
         </Col>
       </Row>
 
+      {/* 第二行图表：车辆对比和费用构成 */}
       <Row gutter={16}>
         <Col span={12}>
           <Card title="车辆维修费用对比">

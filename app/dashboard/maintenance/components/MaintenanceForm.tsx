@@ -1,11 +1,24 @@
 'use client';
 
+/**
+ * 保养表单组件
+ * 该组件用于创建或编辑保养记录，包含所有保养相关的表单字段
+ * 支持初始化数据展示、表单验证和提交功能
+ */
+
 import { useEffect, useState } from 'react';
 import { Form, Input, Select, DatePicker, InputNumber, Button, Space, message } from 'antd';
 import type { MaintenanceFormData, MaintenanceRecord } from '../types';
 import type { Vehicle } from '../../vehicles/types';
 import dayjs from 'dayjs';
 
+/**
+ * 保养表单组件属性接口
+ * @param initialValues - 可选的初始值，用于编辑模式
+ * @param onFinish - 表单完成提交时的回调函数
+ * @param onCancel - 取消表单时的回调函数
+ * @param loading - 是否显示加载状态
+ */
 interface MaintenanceFormProps {
   initialValues?: MaintenanceRecord;
   onFinish: (values: MaintenanceFormData) => void;
@@ -19,17 +32,25 @@ export default function MaintenanceForm({
   onCancel,
   loading = false,
 }: MaintenanceFormProps) {
+  // 表单实例
   const [form] = Form.useForm();
+  // 车辆列表状态
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [fetchingVehicles, setFetchingVehicles] = useState(false);
+  // 技师列表状态
   const [technicians, setTechnicians] = useState([]);
   const [loadingTechnicians, setLoadingTechnicians] = useState(false);
 
+  // 组件挂载时获取车辆和技师数据
   useEffect(() => {
     fetchVehicles();
     fetchTechnicians();
   }, []);
 
+  /**
+   * 获取车辆列表数据
+   * 从API获取所有可用的车辆信息并更新状态
+   */
   const fetchVehicles = async () => {
     try {
       setFetchingVehicles(true);
@@ -49,6 +70,10 @@ export default function MaintenanceForm({
     }
   };
 
+  /**
+   * 获取技师列表数据
+   * 从API获取所有在职技师信息并更新状态
+   */
   const fetchTechnicians = async () => {
     try {
       setLoadingTechnicians(true);
@@ -74,6 +99,10 @@ export default function MaintenanceForm({
     }
   };
 
+  /**
+   * 处理表单提交
+   * 格式化日期并调用onFinish回调函数
+   */
   const handleFinish = async (values: any) => {
     try {
       const formData: MaintenanceFormData = {
@@ -98,6 +127,7 @@ export default function MaintenanceForm({
     }
   };
 
+  // 当初始值存在时，设置表单字段值
   useEffect(() => {
     if (initialValues) {
       form.setFieldsValue({
@@ -119,6 +149,7 @@ export default function MaintenanceForm({
         status: 'pending',
       }}
     >
+      {/* 车辆选择字段 */}
       <Form.Item
         name="vehicle"
         label="车辆"
@@ -134,6 +165,7 @@ export default function MaintenanceForm({
         />
       </Form.Item>
 
+      {/* 保养类型字段 */}
       <Form.Item
         name="type"
         label="保养类型"
@@ -148,6 +180,7 @@ export default function MaintenanceForm({
         />
       </Form.Item>
 
+      {/* 保养描述字段 */}
       <Form.Item
         name="description"
         label="描述"
@@ -156,6 +189,7 @@ export default function MaintenanceForm({
         <Input.TextArea rows={4} placeholder="请输入保养描述" />
       </Form.Item>
 
+      {/* 开始日期字段 */}
       <Form.Item
         name="startDate"
         label="开始日期"
@@ -164,6 +198,7 @@ export default function MaintenanceForm({
         <DatePicker style={{ width: '100%' }} />
       </Form.Item>
 
+      {/* 完成日期字段（可选） */}
       <Form.Item
         name="completionDate"
         label="完成日期"
@@ -171,6 +206,7 @@ export default function MaintenanceForm({
         <DatePicker style={{ width: '100%' }} />
       </Form.Item>
 
+      {/* 里程数字段 */}
       <Form.Item
         name="mileage"
         label="当前里程数"
@@ -184,6 +220,7 @@ export default function MaintenanceForm({
         />
       </Form.Item>
 
+      {/* 费用字段 */}
       <Form.Item
         name="cost"
         label="费用"
@@ -197,6 +234,7 @@ export default function MaintenanceForm({
         />
       </Form.Item>
 
+      {/* 状态字段 */}
       <Form.Item
         name="status"
         label="状态"
@@ -212,6 +250,7 @@ export default function MaintenanceForm({
         />
       </Form.Item>
 
+      {/* 技师字段 */}
       <Form.Item
         name="technician"
         label="技师"
@@ -226,6 +265,7 @@ export default function MaintenanceForm({
         />
       </Form.Item>
 
+      {/* 备注字段（可选） */}
       <Form.Item
         name="notes"
         label="备注"
@@ -233,6 +273,7 @@ export default function MaintenanceForm({
         <Input.TextArea rows={4} placeholder="请输入备注信息" />
       </Form.Item>
 
+      {/* 表单按钮区域 */}
       <Form.Item>
         <Space className="w-full justify-end">
           <Button onClick={onCancel}>取消</Button>

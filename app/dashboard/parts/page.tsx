@@ -1,147 +1,204 @@
-'use client';
+'use client';  // 表示这个组件在浏览器（客户端）运行，而不是在服务器上
+
+/**
+ * 配件管理页面
+ * 
+ * 这个页面用于展示、添加、编辑和删除汽车维修配件信息
+ * 包含配件列表、统计信息和操作按钮
+ * 用户可以根据不同条件筛选配件，并进行库存管理
+ */
 
 import { useState, useEffect } from 'react';
 import {
-  Table,
-  Button,
-  Space,
-  Tag,
-  message,
-  Modal,
-  Form,
-  Input,
-  InputNumber,
-  Select,
-  Card,
-  Row,
-  Col,
-  Tooltip,
-  Badge,
-  Statistic,
+  Table,          // 表格组件，用于展示配件列表
+  Button,         // 按钮组件
+  Space,          // 间距组件，用于组织按钮等元素
+  Tag,            // 标签组件，用于显示分类等信息
+  message,        // 消息提示组件，用于操作后的反馈
+  Modal,          // 对话框组件，用于添加/编辑配件
+  Form,           // 表单组件
+  Input,          // 输入框组件
+  InputNumber,    // 数字输入框组件
+  Select,         // 下拉选择组件
+  Card,           // 卡片组件，用于展示统计信息
+  Row,            // 行组件，用于布局
+  Col,            // 列组件，用于布局
+  Tooltip,        // 提示组件，鼠标悬停时显示更多信息
+  Badge,          // 徽章组件，用于显示数量或状态
+  Statistic,      // 统计数值组件
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import type { ColumnsType } from 'antd/es/table';  // 表格列定义类型
 import {
-  EditOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-  WarningOutlined,
-  SyncOutlined,
-  SearchOutlined,
-  AppstoreOutlined,
-  InboxOutlined,
-  ExclamationCircleOutlined,
-  ToolOutlined,
-  BarChartOutlined,
-} from '@ant-design/icons';
-import type { Part } from '@/types/part';
-import { useSelector } from 'react-redux';
-import type { RootState } from '@/app/lib/store';
-import PermissionChecker from '@/app/components/PermissionChecker';
+  EditOutlined,           // 编辑图标
+  DeleteOutlined,         // 删除图标
+  PlusOutlined,           // 添加图标
+  WarningOutlined,        // 警告图标
+  SyncOutlined,           // 同步/刷新图标
+  SearchOutlined,         // 搜索图标
+  AppstoreOutlined,       // 应用图标
+  InboxOutlined,          // 收件箱图标
+  ExclamationCircleOutlined, // 感叹号图标
+  ToolOutlined,           // 工具图标
+  BarChartOutlined,       // 图表图标
+} from '@ant-design/icons';  // 引入各种图标
+import type { Part } from '../types';  // 引入配件类型定义
+import { useSelector } from 'react-redux';  // 从全局状态获取数据的工具
+import type { RootState } from '@/app/lib/store';  // 全局状态类型
+import PermissionChecker from '@/app/components/PermissionChecker';  // 权限检查组件
 
-const { TextArea } = Input;
+const { TextArea } = Input;  // 获取文本区域组件
 
+/**
+ * 配件管理页面组件
+ * 整个配件管理模块的主界面
+ */
 export default function PartsPage() {
+  // 定义各种状态变量
+
+  // 页面加载状态，当为true时显示加载中效果
   const [loading, setLoading] = useState(false);
+  
+  // 配件数据列表，存储从服务器获取的配件信息
   const [data, setData] = useState<Part[]>([]);
+  
+  // 分页信息，包含当前页码、每页数量和总记录数
   const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0
+    current: 1,       // 当前页码，从1开始
+    pageSize: 10,     // 每页显示10条记录
+    total: 0          // 总记录数，初始为0
   });
+  
+  // 过滤器选项，包含可选的分类和制造商列表
   const [filters, setFilters] = useState<{
     categories: string[];
     manufacturers: string[];
   }>({
-    categories: [],
-    manufacturers: []
+    categories: [],    // 可选的分类列表
+    manufacturers: []  // 可选的制造商列表
   });
+  
+  // 模态框（弹出窗口）是否可见
   const [modalVisible, setModalVisible] = useState(false);
+  
+  // 当前正在编辑的配件信息，null表示新增模式
   const [editingPart, setEditingPart] = useState<Part | null>(null);
+  
+  // 表单实例，用于控制表单的行为
   const [form] = Form.useForm();
+  
+  // 从全局状态获取当前登录的用户信息
   const user = useSelector((state: RootState) => state.auth.user);
+  
+  // 统计信息，包含配件总数、库存不足数量等
   const [stats, setStats] = useState({
-    total: 0,
-    lowStock: 0,
-    outOfStock: 0,
-    categories: 0
+    total: 0,          // 配件总数
+    lowStock: 0,       // 库存不足的配件数量
+    outOfStock: 0,     // 无库存的配件数量
+    categories: 0      // 分类总数
   });
 
+  // 当组件加载或页码变化时，自动获取配件数据
   useEffect(() => {
-    fetchParts();
-  }, [pagination.current]);
+    fetchParts();  // 调用获取配件数据的函数
+  }, [pagination.current]);  // 当页码变化时重新获取数据
 
+  /**
+   * 从服务器获取配件数据的函数
+   * 发送请求到后端API，获取配件列表和相关统计信息
+   */
   const fetchParts = async () => {
     try {
+      // 设置加载状态为true，显示加载效果
       setLoading(true);
-      const response = await fetch(`/api/parts?page=${pagination.current}&limit=${pagination.pageSize}`);
-      const result = await response.json();
       
+      // 发送请求到配件API，附带分页参数
+      const response = await fetch(`/api/parts?page=${pagination.current}&limit=${pagination.pageSize}`);
+      const result = await response.json();  // 将响应转换为JSON对象
+      
+      // 如果响应不成功，抛出错误
       if (!response.ok) {
         throw new Error(result.message || '获取配件列表失败');
       }
 
-      // 处理嵌套的data结构
+      // 处理服务器返回的数据
+      // 从嵌套的data结构中提取配件数据
       const partsData = result.data?.data || [];
-      console.log('Parts data:', partsData);
+      console.log('Parts data:', partsData);  // 在控制台打印数据，方便调试
       
+      // 更新配件列表状态
       setData(partsData);
+      
+      // 更新分页信息，保留之前的设置，只更新总记录数
       setPagination(prev => ({
         ...prev,
         total: result.data.total || 0
       }));
       
-      // 设置过滤选项
+      // 如果返回了过滤器信息，更新过滤器选项
       if (result.data.filters) {
         setFilters(result.data.filters);
       }
       
-      // 设置统计数据
+      // 计算并更新统计信息
       setStats({
-        total: partsData.length,
-        lowStock: partsData.filter((part: Part) => part.stock <= part.minStock && part.stock > 0).length,
-        outOfStock: partsData.filter((part: Part) => part.stock === 0).length,
-        categories: new Set(partsData.map((part: Part) => part.category)).size
+        total: partsData.length,  // 配件总数
+        lowStock: partsData.filter((part: Part) => part.stock <= part.minStock && part.stock > 0).length,  // 库存不足数量
+        outOfStock: partsData.filter((part: Part) => part.stock === 0).length,  // 无库存数量
+        categories: new Set(partsData.map((part: Part) => part.category)).size  // 分类数量（不重复）
       });
     } catch (error: any) {
-      console.error('获取配件列表失败:', error);
-      message.error(error.message || '获取配件列表失败');
+      // 捕获并处理错误
+      console.error('获取配件列表失败:', error);  // 在控制台打印错误信息
+      message.error(error.message || '获取配件列表失败');  // 显示错误提示
     } finally {
+      // 无论成功还是失败，最后都设置加载状态为false
       setLoading(false);
     }
   };
 
-  // 优化状态标签渲染
+  /**
+   * 根据库存状态返回对应的标签样式
+   * 不同状态有不同的颜色和文本
+   */
   const renderStatusTag = (status: string) => {
+    // 定义状态与样式的对应关系
     const statusMap = {
       in_stock: { className: 'status-badge status-badge-completed', text: '有库存' },
       low_stock: { className: 'status-badge status-badge-pending', text: '库存不足' },
       out_of_stock: { className: 'status-badge status-badge-cancelled', text: '无库存' },
       discontinued: { className: 'status-badge status-badge-cancelled', text: '已停产' }
     };
+    // 获取当前状态的样式，如果找不到则使用默认样式
     const currentStatus = statusMap[status as keyof typeof statusMap] || { className: 'status-badge', text: '未知' };
     
+    // 返回带样式的状态标签
     return <span className={currentStatus.className}>{currentStatus.text}</span>;
   };
 
+  /**
+   * 表格列定义
+   * 设置表格每一列的显示内容和行为
+   */
   const columns: ColumnsType<Part> = [
     {
-      title: '配件编号',
-      dataIndex: 'code',
-      key: 'code',
-      render: (code: string) => <span className="font-medium">{code}</span>,
+      title: '配件编号',  // 列标题
+      dataIndex: 'code',  // 对应数据字段名
+      key: 'code',        // 列的唯一标识
+      render: (code: string) => <span className="font-medium">{code}</span>,  // 自定义渲染函数
     },
     {
-      title: '配件名称',
-      dataIndex: 'name',
-      key: 'name',
+      title: '配件名称',       // 列标题
+      dataIndex: 'name',       // 对应数据字段名
+      key: 'name',             // 列的唯一标识
       render: (name: string, record) => (
         <div className="flex items-center">
-          <AppstoreOutlined className="mr-2 text-blue-500" />
+          <AppstoreOutlined className="mr-2 text-blue-500" />  {/* 显示一个图标 */}
           <div>
-            <div className="font-medium">{name}</div>
+            <div className="font-medium">{name}</div>  {/* 显示配件名称 */}
+            {/* 如果库存低于最小库存，显示库存不足警告 */}
             {record.stock <= record.minStock && (
               <div className="flex items-center text-xs text-amber-500">
-                <WarningOutlined className="mr-1" />
+                <WarningOutlined className="mr-1" />  {/* 显示警告图标 */}
                 <span>库存不足</span>
               </div>
             )}
@@ -150,10 +207,11 @@ export default function PartsPage() {
       ),
     },
     {
-      title: '类别',
-      dataIndex: 'category',
-      key: 'category',
+      title: '类别',          // 列标题
+      dataIndex: 'category',  // 对应数据字段名
+      key: 'category',        // 列的唯一标识
       render: (category: string) => {
+        // 定义不同类别对应的颜色和文本
         const categoryMap: { [key: string]: { color: string; text: string } } = {
           engine: { color: 'blue', text: '发动机' },
           transmission: { color: 'purple', text: '变速箱' },
@@ -161,11 +219,12 @@ export default function PartsPage() {
           electrical: { color: 'cyan', text: '电气系统' },
           body: { color: 'orange', text: '车身部件' },
         };
+        // 获取当前类别的样式，如果找不到则使用原始类别名
         const currentCategory = categoryMap[category] || { color: 'default', text: category };
         return (
           <Tag color={currentCategory.color} className="px-2 py-1">
             <span className="flex items-center">
-              <ToolOutlined className="mr-1" />
+              <ToolOutlined className="mr-1" />  {/* 显示工具图标 */}
               {currentCategory.text}
             </span>
           </Tag>
@@ -173,65 +232,67 @@ export default function PartsPage() {
       },
     },
     {
-      title: '品牌',
-      dataIndex: 'manufacturer',
-      key: 'manufacturer',
+      title: '品牌',          // 列标题
+      dataIndex: 'manufacturer',  // 对应数据字段名
+      key: 'manufacturer',        // 列的唯一标识
     },
     {
-      title: '库存',
-      dataIndex: 'stock',
-      key: 'stock',
+      title: '库存',          // 列标题
+      dataIndex: 'stock',     // 对应数据字段名
+      key: 'stock',           // 列的唯一标识
       render: (stock: number, record) => (
         <Badge
-          count={stock}
-          showZero
-          color={stock <= record.minStock ? '#faad14' : '#52c41a'}
+          count={stock}  // 显示库存数量
+          showZero       // 即使是0也显示
+          color={stock <= record.minStock ? '#faad14' : '#52c41a'}  // 库存不足时显示黄色，否则显示绿色
           style={{ backgroundColor: stock <= record.minStock ? '#faad14' : '#52c41a' }}
           className="px-2 py-1"
         />
       ),
     },
     {
-      title: '单价',
-      dataIndex: 'price',
-      key: 'price',
-      render: (price: number) => <span className="font-medium">¥{price.toLocaleString()}</span>,
+      title: '单价',          // 列标题
+      dataIndex: 'price',     // 对应数据字段名
+      key: 'price',           // 列的唯一标识
+      render: (price: number) => <span className="font-medium">¥{price.toLocaleString()}</span>,  // 格式化价格显示
     },
     {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      render: renderStatusTag,
+      title: '状态',          // 列标题
+      dataIndex: 'status',    // 对应数据字段名
+      key: 'status',          // 列的唯一标识
+      render: renderStatusTag,  // 使用自定义函数渲染状态标签
     },
     {
-      title: '操作',
-      key: 'action',
+      title: '操作',          // 列标题：操作按钮列
+      key: 'action',          // 列的唯一标识
       render: (_, record) => (
-        <Space size="middle">
+        <Space size="middle">  {/* 使用Space组件给按钮之间添加间距 */}
+          {/* 编辑按钮：检查用户是否有权限 */}
           <PermissionChecker
-            menuKey="parts"
-            requiredPermission="write"
+            menuKey="parts"  // 对应的菜单键
+            requiredPermission="write"  // 需要的权限类型
             buttonProps={{
               type: "text",
-              icon: <EditOutlined />,
-              onClick: () => handleEdit(record),
-              className: "text-blue-500 hover:text-blue-600"
+              icon: <EditOutlined />,  // 使用编辑图标
+              onClick: () => handleEdit(record),  // 点击时调用编辑函数
+              className: "text-blue-500 hover:text-blue-600"  // 按钮样式
             }}
-            noPermissionTip="您没有编辑配件的权限"
+            noPermissionTip="您没有编辑配件的权限"  // 无权限时的提示
           >
             编辑
           </PermissionChecker>
           
+          {/* 删除按钮：检查用户是否有权限 */}
           <PermissionChecker
-            menuKey="parts"
-            requiredPermission="manage"
+            menuKey="parts"  // 对应的菜单键
+            requiredPermission="manage"  // 需要的权限类型（管理权限）
             buttonProps={{
               type: "text",
-              danger: true,
-              icon: <DeleteOutlined />,
-              onClick: () => handleDelete(record)
+              danger: true,  // 使用危险样式（红色）
+              icon: <DeleteOutlined />,  // 使用删除图标
+              onClick: () => handleDelete(record)  // 点击时调用删除函数
             }}
-            noPermissionTip="您没有删除配件的权限"
+            noPermissionTip="您没有删除配件的权限"  // 无权限时的提示
           >
             删除
           </PermissionChecker>
@@ -240,68 +301,130 @@ export default function PartsPage() {
     },
   ];
 
+  /**
+   * 处理编辑配件的函数
+   * 当用户点击编辑按钮时调用
+   * @param record - 要编辑的配件记录
+   */
   const handleEdit = (record: Part) => {
+    // 设置当前编辑的配件
     setEditingPart(record);
+    // 用配件数据填充表单
     form.setFieldsValue(record);
+    // 显示编辑模态框
     setModalVisible(true);
   };
 
+  /**
+   * 处理删除配件的函数
+   * 当用户点击删除按钮时调用
+   * @param record - 要删除的配件记录
+   */
   const handleDelete = (record: Part) => {
+    // 显示确认对话框，避免误删
     Modal.confirm({
       title: '确认删除',
-      content: '确定要删除这个配件吗？',
-      okText: '确定',
-      okType: 'danger',
+      icon: <ExclamationCircleOutlined />,  // 显示感叹号图标
+      content: `确定要删除配件 "${record.name}" 吗？此操作不可撤销。`,  // 确认信息
+      okText: '确认',
       cancelText: '取消',
+      okButtonProps: { danger: true },  // 确认按钮使用危险样式（红色）
+      // 用户点击确认时
       onOk: async () => {
         try {
+          // 发送删除请求到API
           const response = await fetch(`/api/parts/${record._id}`, {
             method: 'DELETE',
           });
+          
           const result = await response.json();
           
+          // 如果响应不成功，抛出错误
           if (!response.ok) {
             throw new Error(result.message || '删除配件失败');
           }
-
-          message.success('删除成功');
+          
+          // 显示成功消息
+          message.success('配件已成功删除');
+          // 重新获取配件列表，刷新数据
           fetchParts();
         } catch (error: any) {
+          // 显示错误消息
           message.error(error.message || '删除配件失败');
         }
       },
     });
   };
 
+  /**
+   * 处理表单提交的函数
+   * 当用户在模态框中填写完表单并提交时调用
+   * @param values - 表单数据
+   */
   const handleSubmit = async (values: any) => {
     try {
-      const url = editingPart
-        ? `/api/parts/${editingPart._id}`
-        : '/api/parts';
-      const method = editingPart ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
-
+      // 设置加载状态为true，显示提交中效果
+      setLoading(true);
+      
+      let response;
+      
+      // 如果是编辑现有配件
+      if (editingPart?._id) {
+        // 发送更新请求到API
+        response = await fetch(`/api/parts/${editingPart._id}`, {
+          method: 'PUT',  // 使用PUT方法表示更新
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(values),  // 将表单数据转为JSON
+        });
+      } else {
+        // 否则是添加新配件
+        // 发送创建请求到API
+        response = await fetch('/api/parts', {
+          method: 'POST',  // 使用POST方法表示创建
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(values),  // 将表单数据转为JSON
+        });
+      }
+      
       const result = await response.json();
       
+      // 如果响应不成功，抛出错误
       if (!response.ok) {
-        throw new Error(result.message || '操作失败');
+        throw new Error(result.message || '保存配件失败');
       }
-
-      message.success('操作成功');
+      
+      // 显示成功消息
+      message.success(editingPart ? '配件已更新' : '配件已添加');
+      // 关闭模态框
       setModalVisible(false);
+      // 重置编辑状态
+      setEditingPart(null);
+      // 重置表单
       form.resetFields();
+      // 重新获取配件列表，刷新数据
       fetchParts();
     } catch (error: any) {
-      message.error(error.message || '操作失败');
+      // 显示错误消息
+      message.error(error.message || '保存配件失败');
+    } finally {
+      // 无论成功还是失败，最后都设置加载状态为false
+      setLoading(false);
     }
   };
+
+  /**
+   * 处理批量导入配件的函数
+   * 当用户点击批量导入按钮时调用
+   */
+  const handleImport = () => {
+    // 显示提示，这个功能尚未实现
+    message.info('批量导入功能正在开发中');
+  };
+
 
   return (
     <div className="page-transition">

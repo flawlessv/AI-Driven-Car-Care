@@ -1,3 +1,8 @@
+/**
+ * 保养报告组件
+ * 用于展示完整的保养记录报告，包括车辆信息、保养详情、配件清单等
+ * 支持打印功能
+ */
 import React from 'react';
 import { Card, Descriptions, Table, Typography, Divider, Tag, Button } from 'antd';
 import { PrinterOutlined } from '@ant-design/icons';
@@ -5,6 +10,7 @@ import type { MaintenanceReport } from '../types';
 
 const { Title, Text } = Typography;
 
+// 保养状态的中文映射
 const statusText = {
   pending: '待处理',
   in_progress: '进行中',
@@ -12,24 +18,32 @@ const statusText = {
   cancelled: '已取消',
 };
 
+// 保养类型的中文映射
 const typeText = {
   regular: '常规保养',
   repair: '维修',
   inspection: '检查',
 };
 
+/**
+ * 保养报告组件属性接口
+ * @param report - 保养报告数据
+ * @param onPrint - 可选的打印回调函数
+ */
 interface MaintenanceReportProps {
   report: any;
   onPrint?: () => void;
 }
 
 export default function MaintenanceReport({ report, onPrint }: MaintenanceReportProps) {
+  // 数据加载时的处理
   if (!report || !report.data) {
     return <div>加载中...</div>;
   }
 
   const reportData = report.data;
 
+  // 解构报告数据，提供默认值防止渲染错误
   const {
     reportId = '',
     generatedAt = '',
@@ -68,6 +82,10 @@ export default function MaintenanceReport({ report, onPrint }: MaintenanceReport
     parts = []
   } = reportData;
 
+  /**
+   * 处理打印功能
+   * 如果提供了onPrint回调则使用它，否则使用浏览器默认打印
+   */
   const handlePrint = () => {
     if (onPrint) {
       onPrint();
@@ -76,6 +94,7 @@ export default function MaintenanceReport({ report, onPrint }: MaintenanceReport
     }
   };
 
+  // 配件表格列定义
   const partsColumns = [
     {
       title: '配件名称',
@@ -113,6 +132,7 @@ export default function MaintenanceReport({ report, onPrint }: MaintenanceReport
 
   return (
     <div className="max-w-4xl mx-auto p-8">
+      {/* 报告标题和打印按钮 */}
       <div className="flex justify-between items-center mb-8">
         <div>
           <Title level={2}>维修保养报告</Title>
@@ -127,6 +147,7 @@ export default function MaintenanceReport({ report, onPrint }: MaintenanceReport
         </Button>
       </div>
 
+      {/* 基本信息卡片 */}
       <Card title="基本信息" className="mb-6">
         <Descriptions column={2}>
           <Descriptions.Item label="生成时间">
@@ -152,6 +173,7 @@ export default function MaintenanceReport({ report, onPrint }: MaintenanceReport
         </Descriptions>
       </Card>
 
+      {/* 车辆信息卡片 */}
       <Card title="车辆信息" className="mb-6">
         <Descriptions column={2}>
           <Descriptions.Item label="品牌型号">
@@ -169,6 +191,7 @@ export default function MaintenanceReport({ report, onPrint }: MaintenanceReport
         </Descriptions>
       </Card>
 
+      {/* 维修详情卡片 */}
       <Card title="维修详情" className="mb-6">
         <Descriptions column={2}>
           <Descriptions.Item label="维修里程">
@@ -188,6 +211,7 @@ export default function MaintenanceReport({ report, onPrint }: MaintenanceReport
         )}
       </Card>
 
+      {/* 配件清单卡片 */}
       <Card title="配件清单" className="mb-6">
         <Table
           columns={partsColumns}
@@ -197,6 +221,7 @@ export default function MaintenanceReport({ report, onPrint }: MaintenanceReport
         />
       </Card>
 
+      {/* 费用汇总卡片 */}
       <Card title="费用汇总" className="mb-6">
         <Descriptions column={2}>
           <Descriptions.Item label="配件总数">
@@ -214,6 +239,7 @@ export default function MaintenanceReport({ report, onPrint }: MaintenanceReport
         </Descriptions>
       </Card>
 
+      {/* 状态变更历史记录卡片 */}
       <Card title="状态记录" className="mb-6">
         <Table
           dataSource={statusHistory}
@@ -250,24 +276,21 @@ export default function MaintenanceReport({ report, onPrint }: MaintenanceReport
         />
       </Card>
 
-      <Card title="报告信息" className="mb-6">
-        <Descriptions column={2}>
+      {/* 元数据卡片 */}
+      <Card title="元数据">
+        <Descriptions column={2} size="small">
           <Descriptions.Item label="创建人">
             {metadata.createdBy}
           </Descriptions.Item>
           <Descriptions.Item label="创建时间">
             {new Date(metadata.createdAt).toLocaleString()}
           </Descriptions.Item>
-          {metadata.updatedBy && (
-            <>
-              <Descriptions.Item label="最后修改人">
-                {metadata.updatedBy}
-              </Descriptions.Item>
-              <Descriptions.Item label="最后修改时间">
-                {new Date(metadata.updatedAt).toLocaleString()}
-              </Descriptions.Item>
-            </>
-          )}
+          <Descriptions.Item label="更新人">
+            {metadata.updatedBy || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="更新时间">
+            {new Date(metadata.updatedAt).toLocaleString()}
+          </Descriptions.Item>
         </Descriptions>
       </Card>
 
