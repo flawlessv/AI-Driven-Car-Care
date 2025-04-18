@@ -336,7 +336,7 @@ export default function AppointmentsPage() {
         <div className="flex items-center">
           <ToolOutlined className="mr-1 text-purple-500" /> {/* 工具图标 */}
           <Tooltip title={name}> {/* 鼠标悬停时显示完整名称 */}
-            <span>{name}</span>
+            <span>{record.service?.name || name}</span>
           </Tooltip>
         </div>
       ),
@@ -385,17 +385,18 @@ export default function AppointmentsPage() {
     {
       title: '技师',  // 列标题
       key: 'technicianName',  // 唯一键
+      dataIndex: 'technician', // 添加dataIndex字段
       width: 120,             // 列宽度
       // 自定义渲染函数，显示负责的技师信息
-      render: (_, record: any) => {
-        const technician = record.technician || {};
+      render: (technician: any) => {
+        console.log(technician,'technician');
         // 如果已分配技师，显示技师姓名和头像，否则显示"未分配"
-        return technician?.name ? (
+        return technician?.username ? (
           <div className="flex items-center">
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-500 mr-1">
-              {technician.name.charAt(0)} {/* 显示技师姓名首字母作为头像 */}
+              {technician.username.charAt(0)} {/* 显示技师姓名首字母作为头像 */}
             </span>
-            {technician.name}
+            {technician.username}
           </div>
         ) : '未分配';
       },
@@ -422,7 +423,7 @@ export default function AppointmentsPage() {
             onClick={() => handleEdit(record)}
             className="text-blue-500 hover:text-blue-600"
             // 客户角色且非自己创建的预约不能编辑
-            disabled={isCustomer && (record.user?._id !== user?._id)}
+            disabled={isCustomer && (record.user !== user?._id)}
           >
             编辑
           </Button>
@@ -448,7 +449,7 @@ export default function AppointmentsPage() {
             onClick={() => handleDelete(record)}
             className="text-red-500 hover:text-red-600"
             // 客户角色且非自己创建的预约不能删除
-            disabled={isCustomer && (record.user?._id !== user?._id)}
+            disabled={isCustomer && (record.user !== user?._id)}
           >
             删除
           </Button>
@@ -471,8 +472,8 @@ export default function AppointmentsPage() {
     
     // 准备预约日期和时间数据
     const appointmentDate = record.date || (record.timeSlot?.date ? record.timeSlot.date : null);
-    const startTime = record.startTime || (record.timeSlot?.startTime ? dayjs(`2022-01-01 ${record.timeSlot.startTime}`) : null);
-    const endTime = record.endTime || (record.timeSlot?.endTime ? dayjs(`2022-01-01 ${record.timeSlot.endTime}`) : null);
+    const startTime = record.startTime ? dayjs(`2022-01-01 ${record.startTime}`) : (record.timeSlot?.startTime ? dayjs(`2022-01-01 ${record.timeSlot.startTime}`) : null);
+    const endTime = record.endTime ? dayjs(`2022-01-01 ${record.endTime}`) : (record.timeSlot?.endTime ? dayjs(`2022-01-01 ${record.timeSlot.endTime}`) : null);
     
     // 创建表单初始值对象
     const initialValues = {
@@ -482,20 +483,21 @@ export default function AppointmentsPage() {
       'customer.email': record.customer?.email || '',
       
       // 车辆信息
-      vehicle: record.vehicle?._id || '',
+      vehicleId: record.vehicle?._id || '',
       
       // 服务信息
-      'service.name': record.service?.name || '',
+      serviceType: record.service?.category || 'maintenance',
+      serviceId: record.service?.name || '',
       estimatedDuration: record.estimatedDuration || 60,
       estimatedCost: record.estimatedCost || 0,
+      description: record.notes || '',
       
       // 预约时间信息
       date: appointmentDate ? dayjs(appointmentDate) : null,
-      startTime: startTime,
-      endTime: endTime,
+      time: [startTime, endTime],
       
       // 技师信息
-      technician: record.technician?._id || '',
+      technicianId: record.technician?._id || '',
       
       // 状态信息
       status: record.status || 'pending',
@@ -869,7 +871,7 @@ export default function AppointmentsPage() {
                   }
                   options={technicians.map(t => ({
                     value: t._id,
-                    label: t.name,
+                    label: t.username || t.name,
                   }))}
                 />
               </Form.Item>
