@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { hash } from 'bcryptjs';
 import { authMiddleware } from '@/app/lib/auth';
 import dbConnect from '@/app/lib/db-connect';
 import { getUserModel } from '@/app/lib/db/models';
