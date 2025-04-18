@@ -33,17 +33,6 @@ interface LoginFormData {
 }
 
 /**
- * 重置密码数据接口
- * 定义了重置密码表单需要收集的数据类型
- */
-interface ResetPasswordData {
-  email: string;           // 用户电子邮箱
-  oldPassword: string;     // 原密码
-  newPassword: string;     // 新密码
-  confirmPassword: string; // 确认新密码
-}
-
-/**
  * 登录表单组件
  * 提供用户登录界面和重置密码功能
  */

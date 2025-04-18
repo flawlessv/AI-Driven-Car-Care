@@ -3,7 +3,7 @@
 import { motion, useScroll, useSpring } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Modal } from 'antd';
+import {  Modal } from 'antd';
 import AppointmentForm from './components/AppointmentForm';
 
 export default function Home() {

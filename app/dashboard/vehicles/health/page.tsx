@@ -15,14 +15,6 @@ import {
   message,
   Tag,
 } from 'antd';
-import {
-  CheckCircleOutlined,
-  WarningOutlined,
-  CarOutlined,
-  ToolOutlined,
-  ClockCircleOutlined,
-  AlertOutlined,
-} from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
@@ -47,30 +39,6 @@ interface Vehicle {
   status: 'active' | 'maintenance' | 'inactive';
   healthScore?: HealthScore;
 }
-
-interface HealthReport {
-  score: HealthScore;
-  recommendations: string[];
-  warnings: string[];
-  lastUpdate: Date;
-}
-
-// 默认健康评分数据
-const defaultHealthReport: HealthReport = {
-  score: {
-    totalScore: 0,
-    details: {
-      ageScore: 0,
-      mileageScore: 0,
-      maintenanceScore: 0,
-      statusScore: 0,
-    },
-    suggestions: [],
-  },
-  recommendations: [],
-  warnings: [],
-  lastUpdate: new Date(),
-};
 
 export default function VehicleHealthPage() {
   const [loading, setLoading] = useState(true);
@@ -163,7 +131,8 @@ export default function VehicleHealthPage() {
     return '#f5222d';
   };
 
-  const getScoreStatus = (score: number) => {
+  const getScoreStatus = (score: number | undefined) => {
+    if (!score) return '无数据';
     if (score >= 80) return '良好';
     if (score >= 60) return '一般';
     return '需注意';

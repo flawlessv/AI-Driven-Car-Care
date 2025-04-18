@@ -8,9 +8,7 @@ import {
   Space,
   Tag,
   Modal,
-  Form,
-  Input,
-  Select,
+
   message,
   Descriptions,
   Tabs,
@@ -22,10 +20,7 @@ import {
 import {
   CarOutlined,
   FileTextOutlined,
-  ToolOutlined,
   ClockCircleOutlined,
-  EditOutlined,
-  DeleteOutlined,
 } from '@ant-design/icons';
 import type { TabsProps } from 'antd';
 import dayjs from 'dayjs';
@@ -54,7 +49,7 @@ interface VehicleFile {
   ownerPhone: string;
   createdAt: string;
   updatedAt: string;
-  healthScore?: number;
+  healthScore?: HealthScore;
   maintenanceRecords?: any[];
 }
 

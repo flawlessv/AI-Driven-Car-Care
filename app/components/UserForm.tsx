@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Input, Select, Button, message } from 'antd';
-import { User, USER_ROLES, ROLE_NAMES } from '@/types/user';
+import { User, ROLE_NAMES } from '@/types/user';
 
 interface UserFormProps {
   initialData?: Partial<User>;

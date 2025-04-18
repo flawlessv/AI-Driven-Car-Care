@@ -8,8 +8,8 @@
 import { ReactNode } from 'react';
 // 导入Redux的选择器钩子，用于从全局状态获取数据
 import { useSelector } from 'react-redux';
-// 导入Next.js的路由和路径钩子，用于获取当前页面路径
-import { useRouter, usePathname } from 'next/navigation';
+// 导入Next.js的路径钩子，用于获取当前页面路径
+import { usePathname } from 'next/navigation';
 // 导入Ant Design的卡片组件，用于显示权限不足提示
 import { Card } from 'antd';
 // 导入锁图标组件，用于权限不足时显示

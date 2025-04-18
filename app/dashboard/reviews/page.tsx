@@ -7,39 +7,17 @@ import {
   Tag,
   Space,
   Button,
-  Modal,
-  Rate,
   message,
-  Form,
-  Input,
-  Select,
   Typography,
   Tooltip,
-  Avatar,
+  Rate,
 } from 'antd';
-import {
-  StarOutlined,
-  MessageOutlined,
-  EyeOutlined,
-  PlusOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  CloseCircleOutlined,
-  UserOutlined,
-  CommentOutlined,
-  CarOutlined,
-  ToolOutlined,
-} from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/app/lib/store';
-import PermissionChecker from '@/app/components/PermissionChecker';
 import { useRouter } from 'next/navigation';
-import dayjs from 'dayjs';
 
-const { Title, Text, Paragraph } = Typography;
-const { TextArea } = Input;
-const { Option } = Select;
+const { Title } = Typography;
 
 /**
  * 评论状态枚举
@@ -81,16 +59,6 @@ interface Review {
 }
 
 /**
- * 技师信息接口
- * 用于显示和过滤评论中的技师信息
- */
-interface Technician {
-  _id: string;       // 技师ID
-  username: string;  // 用户名
-  fullName: string;  // 全名
-}
-
-/**
  * 评论状态颜色映射
  * 为不同状态提供统一的样式配置
  */
@@ -114,13 +82,6 @@ const ReviewsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);        // 当前页码
   const [pageSize, setPageSize] = useState(10);             // 每页显示条数
   const [total, setTotal] = useState(0);                    // 总评论数
-  const [statusFilter, setStatusFilter] = useState<string>('all');  // 状态筛选
-  const [technicianFilter, setTechnicianFilter] = useState<string>('all'); // 技师筛选
-  const [ratingFilter, setRatingFilter] = useState<string>('all');   // 评分筛选
-  const [technicians, setTechnicians] = useState<Technician[]>([]);  // 技师列表
-  const [searchText, setSearchText] = useState('');         // 搜索文本
-  const [selectedReview, setSelectedReview] = useState<Review | null>(null); // 当前选中评论
-  const [detailModalVisible, setDetailModalVisible] = useState(false); // 详情模态框显示状态
 
   /**
    * 组件初始化时检查用户登录状态
@@ -135,7 +96,6 @@ const ReviewsPage = () => {
 
     console.log('用户已登录，角色:', user.role);
     fetchReviews();      // 获取评论列表
-    fetchTechnicians();  // 获取技师列表
   }, [user, router]);
 
   /**
@@ -175,46 +135,6 @@ const ReviewsPage = () => {
       setTotal(0);
     } finally {
       setLoading(false);
-    }
-  };
-
-  /**
-   * 获取技师列表
-   * 用于筛选评论的技师下拉选择
-   */
-  const fetchTechnicians = async () => {
-    try {
-      const response = await fetch('/api/users?role=technician', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.message || '获取技师列表失败');
-      }
-      
-      if (Array.isArray(result.data)) {
-        // 转换技师数据格式以适合下拉选择器
-        const techList = result.data.map((tech: any) => ({
-          _id: tech._id,
-          username: tech.username,
-          fullName: tech.fullName || tech.username
-        }));
-        
-        setTechnicians(techList);
-      } else {
-        console.error('技师列表数据格式错误:', result);
-        setTechnicians([]);
-      }
-    } catch (error: any) {
-      console.error('获取技师列表失败:', error);
-      message.error(error.message || '获取技师列表失败');
-      setTechnicians([]);
     }
   };
 
