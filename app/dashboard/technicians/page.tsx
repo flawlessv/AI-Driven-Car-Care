@@ -67,6 +67,68 @@ interface TechnicianWithStats extends User {
 }
 
 /**
+ * 获取技师等级对应的颜色和文字
+ * 根据技师等级返回对应的显示颜色和文本信息
+ * @param level 技师等级
+ * @returns 包含颜色和文本的对象
+ */
+const getLevelColor = (level: string) => {
+  const levelMap: Record<string, { text: string; color: string }> = {
+    '初级技师': { text: '初级技师', color: 'blue' },
+    '中级技师': { text: '中级技师', color: 'cyan' },
+    '高级技师': { text: '高级技师', color: 'green' },
+    '专家技师': { text: '专家技师', color: 'gold' },
+  };
+  return levelMap[level] || { text: level, color: 'default' };
+};
+
+/**
+ * 获取技师状态对应的颜色和文字
+ * 根据技师状态返回对应的显示颜色和文本信息
+ * @param status 技师状态
+ * @returns 包含颜色和文本的对象
+ */
+const getStatusColor = (status: string) => {
+  const statusMap: Record<string, { text: string; color: string }> = {
+    'active': { text: '在岗', color: 'green' },
+    'leave': { text: '请假', color: 'orange' },
+    'busy': { text: '工作中', color: 'blue' },
+    'vacation': { text: '休假', color: 'purple' },
+    'sick': { text: '病假', color: 'red' },
+    'inactive': { text: '离职', color: 'gray' },
+  };
+  return statusMap[status] || { text: '未知状态', color: 'default' };
+};
+
+/**
+ * 检查并处理筛选状态
+ * 根据当前选择的筛选条件更新技师列表显示
+ * @param technicians 技师列表
+ * @param availabilityFilter 可用性筛选条件
+ * @param specialtyFilter 专业筛选条件
+ * @returns 筛选后的技师列表
+ */
+const filterTechnicians = (
+  technicians: TechnicianWithStats[],
+  availabilityFilter: string,
+  specialtyFilter: string
+): TechnicianWithStats[] => {
+  return technicians.filter(technician => {
+    // 根据可用性过滤
+    if (availabilityFilter !== 'all' && technician.status !== availabilityFilter) {
+      return false;
+    }
+    
+    // 根据专业过滤
+    if (specialtyFilter !== 'all' && !(technician.specialties || []).includes(specialtyFilter)) {
+      return false;
+    }
+    
+    return true;
+  });
+};
+
+/**
  * 技师管理页面组件
  * 用于展示所有技师信息、统计数据，并提供添加、编辑、删除技师等功能
  */
@@ -416,19 +478,7 @@ const TechniciansPage = () => {
    * 过滤技师列表
    * 根据当前设置的可用性和专业过滤条件筛选技师
    */
-  const filteredTechnicians = technicians.filter(technician => {
-    // 根据可用性过滤
-    if (availabilityFilter !== 'all' && technician.status !== availabilityFilter) {
-      return false;
-    }
-    
-    // 根据专业过滤
-    if (specialtyFilter !== 'all' && !(technician.specialties || []).includes(specialtyFilter)) {
-      return false;
-    }
-    
-    return true;
-  });
+  const filteredTechnicians = filterTechnicians(technicians, availabilityFilter, specialtyFilter);
 
   /**
    * 获取所有唯一的专业列表
@@ -451,6 +501,10 @@ const TechniciansPage = () => {
   // 获取所有专业选项
   const allSpecialties = getAllSpecialties();
 
+  /**
+   * 表格列定义
+   * 设置技师表格的列结构和数据渲染方式
+   */
   const columns = [
     {
       title: '技师信息',
@@ -589,6 +643,10 @@ const TechniciansPage = () => {
     },
   ];
 
+  /**
+   * 技师专业选项
+   * 定义技师可选择的专业类型
+   */
   const specialtyOptions = [
     {
       value: '发动机维修',

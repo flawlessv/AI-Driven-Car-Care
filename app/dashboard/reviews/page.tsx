@@ -91,6 +91,16 @@ interface Technician {
 }
 
 /**
+ * 评论状态颜色映射
+ * 为不同状态提供统一的样式配置
+ */
+const reviewStatusMap: Record<string, { text: string; color: string }> = {
+  [ReviewStatus.PENDING]: { text: '待审核', color: 'orange' },
+  [ReviewStatus.APPROVED]: { text: '已批准', color: 'green' },
+  [ReviewStatus.REJECTED]: { text: '已拒绝', color: 'red' },
+};
+
+/**
  * 评论管理页面组件
  * 负责展示所有评论记录，并提供审核、筛选和管理功能
  */
@@ -244,6 +254,10 @@ const ReviewsPage = () => {
     }
   };
 
+  /**
+   * 表格列配置
+   * 定义评论表格的各列显示和交互行为
+   */
   const columns: ColumnsType<Review> = [
     {
       title: '关联工单',
@@ -316,12 +330,7 @@ const ReviewsPage = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status) => {
-        const statusMap: Record<string, { text: string; color: string }> = {
-          pending: { text: '待审核', color: 'orange' },
-          approved: { text: '已批准', color: 'green' },
-          rejected: { text: '已拒绝', color: 'red' },
-        };
-        return <Tag color={statusMap[status].color}>{statusMap[status].text}</Tag>;
+        return <Tag color={reviewStatusMap[status].color}>{reviewStatusMap[status].text}</Tag>;
       },
     },
   ];

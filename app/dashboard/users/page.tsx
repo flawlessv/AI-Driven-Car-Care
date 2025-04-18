@@ -301,16 +301,31 @@ export default function UsersPage() {
     },
   ];
 
+  /**
+   * 处理表格变更
+   * 当分页参数变化时更新页码和每页显示数量
+   * @param pagination 分页相关参数
+   */
   const handleTableChange = (pagination: any) => {
     setCurrentPage(pagination.current);
     setPageSize(pagination.pageSize);
   };
 
+  /**
+   * 处理搜索功能
+   * 根据搜索关键词筛选用户数据
+   * @param value 搜索关键词
+   */
   const handleSearch = (value: string) => {
     setSearch(value);
     setCurrentPage(1);
   };
 
+  /**
+   * 处理角色筛选变更
+   * 根据选择的角色更新筛选条件
+   * @param value 选择的角色值
+   */
   const handleRoleFilterChange = (value: string) => {
     setRoleFilter(value);
     setCurrentPage(1);
@@ -386,15 +401,17 @@ export default function UsersPage() {
           footer={null}
           width={600}
         >
-          <UserForm
-            initialData={selectedUser}
-            onSuccess={handleEditSuccess}
-            onCancel={() => {
-              setEditModalVisible(false);
-              setSelectedUser(null);
-            }}
-            isEdit={true}
-          />
+          {selectedUser && (
+            <UserForm
+              initialData={selectedUser}
+              onSuccess={handleEditSuccess}
+              onCancel={() => {
+                setEditModalVisible(false);
+                setSelectedUser(null);
+              }}
+              isEdit={true}
+            />
+          )}
         </Modal>
 
         {/* 删除确认弹窗 */}
