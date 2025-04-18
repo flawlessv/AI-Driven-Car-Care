@@ -893,6 +893,8 @@ export default function AppointmentsPage() {
                   onChange={value => {
                     // 当服务类型改变时，重置服务项目
                     form.setFieldsValue({ serviceId: undefined });
+                    // 触发表单值变化，确保服务项目下拉菜单更新
+                    form.validateFields(['serviceId']);
                   }}
                 />
               </Form.Item>
@@ -915,6 +917,7 @@ export default function AppointmentsPage() {
                         label: `${item.name} (¥${item.basePrice})`,
                       })) || []
                   }
+                  notFoundContent="请先选择服务类型"
                 />
               </Form.Item>
             </Col>

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '../../../../lib/mongodb';
+import { connectDB } from '@/app/lib/mongodb';
 import MaintenanceRecord from '@/app/models/maintenance';
 import dayjs from 'dayjs';
 
@@ -43,6 +43,7 @@ export async function GET(request: Request) {
     await connectDB();
 
     // 查询指定日期范围内的维修记录
+    // 查询条件：日期在起止日期之间，按日期升序排列
     const maintenanceRecords = await MaintenanceRecord.find({
       date: {
         $gte: new Date(startDate),
@@ -51,14 +52,16 @@ export async function GET(request: Request) {
     }).sort({ date: 1 });
 
     // 计算基础统计数据：总订单数、总收入和平均订单价值
-    const totalOrders = maintenanceRecords.length;
-    const totalRevenue = maintenanceRecords.reduce((sum, record) => sum + record.cost, 0);
-    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const totalOrders = maintenanceRecords.length;  // 订单总数就是记录条数
+    const totalRevenue = maintenanceRecords.reduce((sum, record) => sum + record.cost, 0);  // 计算总收入
+    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;  // 计算平均订单价值
 
     // 计算与上一时期相比的收入增长率
+    // 例如：如果当前查询是3月数据，则上一时期是2月数据
     const previousPeriodStart = dayjs(startDate).subtract(1, 'month').toDate();
     const previousPeriodEnd = dayjs(endDate).subtract(1, 'month').toDate();
     
+    // 查询上一时期的维修记录
     const previousRecords = await MaintenanceRecord.find({
       date: {
         $gte: previousPeriodStart,
@@ -66,12 +69,15 @@ export async function GET(request: Request) {
       },
     });
 
+    // 计算上一时期的总收入
     const previousRevenue = previousRecords.reduce((sum, record) => sum + record.cost, 0);
+    // 计算收入增长率（百分比）
     const revenueGrowth = previousRevenue > 0 
       ? ((totalRevenue - previousRevenue) / previousRevenue) * 100 
       : 0;
 
     // 按服务类型统计收入
+    // 使用reduce聚合收入数据，按维修类型分组
     const revenueByService = Object.entries(
       maintenanceRecords.reduce((acc: any, record) => {
         if (!acc[record.type]) {
@@ -81,41 +87,43 @@ export async function GET(request: Request) {
         return acc;
       }, {})
     ).map(([type, data]: [string, any]) => ({
-      type,
-      revenue: data.revenue,
+      type,  // 服务类型
+      revenue: data.revenue,  // 该类型的总收入
     }));
 
     // 按月份统计收入
+    // 使用Map确保月份唯一，并按月份格式（YYYY-MM）归类收入
     const revenueByMonth = Array.from(
       maintenanceRecords.reduce((acc, record) => {
-        const month = dayjs(record.date).format('YYYY-MM');
-        acc.set(month, (acc.get(month) || 0) + record.cost);
+        const month = dayjs(record.date).format('YYYY-MM');  // 将日期格式化为年月
+        acc.set(month, (acc.get(month) || 0) + record.cost);  // 累加该月份的收入
         return acc;
-      }, new Map())
-    ).map(([month, revenue]) => ({
-      month,
-      revenue,
-    })).sort((a, b) => a.month.localeCompare(b.month));
+      }, new Map<string, number>())
+    ).map(([month, revenue]: [string, number]) => ({
+      month,  // 月份（YYYY-MM格式）
+      revenue,  // 该月的总收入
+    })).sort((a, b) => a.month.localeCompare(b.month));  // 按月份升序排列
 
     // 按服务类型和描述统计并提取收入最高的前5个服务
+    // 组合服务类型和描述作为唯一标识
     const topServices = Object.entries(
       maintenanceRecords.reduce((acc: any, record) => {
-        const serviceKey = `${record.type}-${record.description}`;
+        const serviceKey = `${record.type}-${record.description}`;  // 创建服务唯一标识
         if (!acc[serviceKey]) {
           acc[serviceKey] = {
-            service: record.description || record.type,
-            revenue: 0,
-            orders: 0,
+            service: record.description || record.type,  // 服务名称
+            revenue: 0,  // 收入
+            orders: 0,  // 订单数
           };
         }
-        acc[serviceKey].revenue += record.cost;
-        acc[serviceKey].orders += 1;
+        acc[serviceKey].revenue += record.cost;  // 累加收入
+        acc[serviceKey].orders += 1;  // 累加订单数
         return acc;
       }, {})
     )
-      .map(([_, data]: [string, any]) => data)
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
+      .map(([_, data]: [string, any]) => data)  // 提取服务数据
+      .sort((a, b) => b.revenue - a.revenue)  // 按收入降序排序
+      .slice(0, 5);  // 只取前5个热门服务
 
     // 返回所有统计数据
     return NextResponse.json({
@@ -130,6 +138,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error: any) {
+    // 错误处理
     console.error('获取收入报表数据失败:', error);
     return NextResponse.json(
       { message: '获取收入报表数据失败' },

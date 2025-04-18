@@ -5,6 +5,8 @@ import {
   Select,
   InputNumber,
   DatePicker,
+  Button,
+  Space,
 } from 'antd';
 import type { FormInstance } from 'antd/es/form';
 import type { Vehicle } from '@/types/vehicle';
@@ -18,6 +20,8 @@ interface WorkOrderFormProps {
   vehicles: Vehicle[];
   initialValues?: WorkOrder;
   mode?: 'create' | 'edit';
+  onFinish?: (values: any) => void;
+  onCancel?: () => void;
 }
 
 const priorityOptions = [
@@ -39,8 +43,22 @@ export default function WorkOrderForm({
   vehicles,
   initialValues,
   mode = 'create',
+  onFinish,
+  onCancel,
 }: WorkOrderFormProps) {
   console.log('WorkOrderForm props:', { vehicles, initialValues }); // 添加日志
+  
+  const handleFinish = () => {
+    form.validateFields()
+      .then(values => {
+        if (onFinish) {
+          onFinish(values);
+        }
+      })
+      .catch(info => {
+        console.log('表单验证失败:', info);
+      });
+  };
   
   return (
     <Form
@@ -53,6 +71,7 @@ export default function WorkOrderForm({
         startDate: initialValues?.startDate ? dayjs(initialValues.startDate) : undefined,
         completionDate: initialValues?.completionDate ? dayjs(initialValues.completionDate) : undefined,
       }}
+      onFinish={onFinish}
     >
       <Form.Item
         name="vehicle"
@@ -195,6 +214,16 @@ export default function WorkOrderForm({
           </Form.Item>
         </>
       )}
+      
+      {/* 添加表单底部的按钮组 */}
+      <Form.Item className="mb-0 mt-6">
+        <div className="flex justify-end gap-2">
+          <Button onClick={onCancel}>取消</Button>
+          <Button type="primary" onClick={handleFinish} className="admin-btn admin-btn-primary">
+            提交
+          </Button>
+        </div>
+      </Form.Item>
     </Form>
   );
 } 

@@ -26,7 +26,7 @@ const vehicleSchema = new mongoose.Schema({
   // 车辆生产年份
   year: {
     type: Number,      // 数字类型
-    required: true,    // 必填项
+    required: false,   // 改为非必填项
   },
   // 车牌号码，用于唯一标识车辆
   licensePlate: {
@@ -37,8 +37,9 @@ const vehicleSchema = new mongoose.Schema({
   // 车辆识别号码(VIN)，每辆车的全球唯一标识
   vin: {
     type: String,      // 字符串类型
-    required: true,    // 必填项
+    required: false,   // 非必填项
     unique: true,      // 唯一值，不能重复
+    sparse: true,      // 只对非null值应用unique约束
   },
   // 车主信息，关联到用户表
   owner: {

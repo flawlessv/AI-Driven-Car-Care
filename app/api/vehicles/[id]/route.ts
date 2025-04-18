@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '@/app/lib/mongodb';
 import Vehicle from '@/app/models/vehicle';
+import Maintenance from '@/app/models/maintenance';
 import { authMiddleware } from '@/app/lib/auth';
 import {
   successResponse,
@@ -48,7 +49,7 @@ export async function GET(
     }
 
     // 获取最近的维修记录
-    const maintenanceRecords = await mongoose.model('Maintenance').find({ 
+    const maintenanceRecords = await Maintenance.find({ 
       vehicle: vehicle._id 
     })
     .sort({ startDate: -1 })

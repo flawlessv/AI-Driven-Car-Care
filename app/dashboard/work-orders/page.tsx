@@ -558,9 +558,10 @@ export default function WorkOrdersPage() {
         className="enhanced-modal"
       >
         <WorkOrderForm
-          onFinish={handleSubmit}
           vehicles={vehicles}
           form={form}
+          onFinish={handleSubmit}
+          onCancel={() => setModalVisible(false)}
         />
       </Modal>
     </div>

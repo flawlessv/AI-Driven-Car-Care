@@ -67,8 +67,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const {user} = await authMiddleware(request);
-    if (!user) {
+    // 验证用户身份
+    const authResult = await authMiddleware(request);
+    if (!authResult || !authResult.user) {
       return errorResponse('未授权访问', 401);
     }
 
@@ -78,20 +79,25 @@ export async function PUT(
     const data = await request.json();
     console.log('接收到的更新数据:', data);
 
-    // 构建更新对象
-    const updateData = {
-      username: data.name,
-      phone: data.phone,
-      email: data.email,
-      specialties: Array.isArray(data.specialties) ? data.specialties : [],
-      certifications: Array.isArray(data.certifications) ? data.certifications : [],
-      workExperience: Number(data.workExperience || 0),
-      status: data.status || 'active',
-      role: data.role || 'technician',
-      totalOrders: Number(data.totalOrders || 0),
-      completedOrders: Number(data.completedOrders || 0),
-      rating: Number(data.rating || 0)
-    };
+    // 构建更新对象，只包含请求中提供的字段
+    const updateData: any = {};
+    
+    // 只修改请求中提供的字段
+    if (data.name !== undefined) updateData.username = data.name;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.specialties !== undefined) updateData.specialties = Array.isArray(data.specialties) ? data.specialties : [];
+    if (data.certifications !== undefined) updateData.certifications = Array.isArray(data.certifications) ? data.certifications : [];
+    if (data.workExperience !== undefined) updateData.workExperience = Number(data.workExperience || 0);
+    if (data.role !== undefined) updateData.role = data.role;
+    if (data.totalOrders !== undefined) updateData.totalOrders = Number(data.totalOrders || 0);
+    if (data.completedOrders !== undefined) updateData.completedOrders = Number(data.completedOrders || 0);
+    if (data.rating !== undefined) updateData.rating = Number(data.rating || 0);
+    
+    // 状态字段特殊处理，如果只传了status字段，确保它能被正确处理
+    if (data.status !== undefined) {
+      updateData.status = data.status;
+    }
 
     // 如果提供了新密码，则进行加密
     if (data.password) {
@@ -99,6 +105,11 @@ export async function PUT(
     }
 
     console.log('准备更新的数据:', updateData);
+    
+    // 如果没有任何要更新的字段，返回错误
+    if (Object.keys(updateData).length === 0) {
+      return errorResponse('未提供有效的更新字段', 400);
+    }
 
     // 检查用户是否存在
     const existingUser = await User.findById(params.id);
@@ -108,30 +119,35 @@ export async function PUT(
     }
     console.log('找到现有用户:', existingUser._id);
 
-    // 更新用户
-    const updatedUser = await User.findByIdAndUpdate(
-      params.id,
-      { $set: updateData },
-      { 
-        new: true,
-        runValidators: true,
-        context: 'query'
+    try {
+      // 更新用户并处理验证错误
+      const updatedUser = await User.findByIdAndUpdate(
+        params.id,
+        { $set: updateData },
+        { 
+          new: true,
+          runValidators: true,
+          context: 'query'
+        }
+      ).select('-password');
+
+      if (!updatedUser) {
+        console.log('更新失败，未返回更新后的用户');
+        return errorResponse('更新用户失败', 500);
       }
-    ).select('-password');
 
-    if (!updatedUser) {
-      console.log('更新失败，未返回更新后的用户');
-      return errorResponse('更新用户失败', 500);
+      console.log('用户更新成功，更新后的数据:', updatedUser);
+      return successResponse(updatedUser);
+    } catch (validationError: any) {
+      console.error('验证错误:', validationError);
+      if (validationError.name === 'ValidationError') {
+        return validationErrorResponse(validationError.message);
+      }
+      throw validationError; // 重新抛出非验证错误
     }
-
-    console.log('用户更新成功，更新后的数据:', updatedUser);
-    return successResponse(updatedUser);
   } catch (error: any) {
     console.error('更新用户信息失败:', error);
-    if (error.name === 'ValidationError') {
-      return validationErrorResponse(error.message);
-    }
-    return errorResponse(error.message);
+    return errorResponse(`更新用户信息失败: ${error.message}`, 500);
   }
 }
 

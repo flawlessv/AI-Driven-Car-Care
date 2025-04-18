@@ -41,8 +41,9 @@ export async function GET(request: Request) {
     await connectDB();
 
     // 从车辆数据中提取唯一客户信息
+    // 因为一个客户可能拥有多辆车，所以需要去重
     const vehicles = await Vehicle.find({});
-    // 提取唯一的客户信息
+    // 使用Map数据结构确保客户ID唯一，提取客户相关信息
     const uniqueCustomers = Array.from(
       new Map(
         vehicles.map(vehicle => [
@@ -57,9 +58,11 @@ export async function GET(request: Request) {
       ).values()
     );
     
+    // 计算总客户数
     const totalCustomers = uniqueCustomers.length;
 
     // 获取指定日期范围内的新增车辆(代表新客户)
+    // 基于车辆创建日期来估算新客户数量
     const newVehicles = await Vehicle.countDocuments({
       createdAt: {
         $gte: new Date(startDate),
@@ -70,7 +73,8 @@ export async function GET(request: Request) {
     // 假设每辆新车对应一个新客户
     const newCustomers = newVehicles;
 
-    // 获取指定日期范围内的维修记录
+    // 获取指定日期范围内的所有维修记录
+    // 使用populate填充车辆信息以便后续分析
     const maintenanceRecords = await MaintenanceRecord.find({
       date: {
         $gte: new Date(startDate),
@@ -78,28 +82,31 @@ export async function GET(request: Request) {
       },
     }).populate('vehicle');
 
-    // 根据维修记录计算活跃车主(客户)
+    // 计算活跃客户：在指定时期内有维修记录的唯一客户数
+    // 使用Set数据结构确保客户ID唯一
     const activeCustomerIds = new Set(
       maintenanceRecords
-        .filter(record => record.vehicle)
-        .map(record => record.vehicle.owner?.toString())
-        .filter(Boolean)
+        .filter(record => record.vehicle)  // 过滤掉没有关联车辆的记录
+        .map(record => record.vehicle.owner?.toString())  // 提取车主ID
+        .filter(Boolean)  // 过滤掉undefined或null值
     );
     const activeCustomers = activeCustomerIds.size;
 
-    // 计算总消费和平均消费
+    // 计算总消费金额：所有维修记录成本的总和
     const totalSpending = maintenanceRecords.reduce(
       (sum, record) => sum + record.cost,
       0
     );
+    // 计算平均客户消费：总消费除以总客户数
     const averageSpending = totalCustomers > 0 ? totalSpending / totalCustomers : 0;
 
-    // 按客户类型分组并统计数量和消费金额
+    // 按客户类型分组统计
+    // 计算每种类型的客户数量和消费金额
     const customersByType = Object.entries(
       uniqueCustomers.reduce((acc: Record<string, { count: number; spending: number }>, customer: any) => {
         const customerType = customer.type || 'individual';
         
-        // 初始化客户类型统计
+        // 初始化客户类型统计对象
         if (!acc[customerType]) {
           acc[customerType] = { count: 0, spending: 0 };
         }
@@ -110,7 +117,7 @@ export async function GET(request: Request) {
           record => record.vehicle && record.vehicle.owner?.toString() === customer._id.toString()
         );
         
-        // 计算该类型客户的总消费
+        // 累计该类型客户的总消费
         acc[customerType].spending += customerRecords.reduce(
           (sum: number, record: any) => sum + record.cost,
           0
@@ -119,16 +126,18 @@ export async function GET(request: Request) {
         return acc;
       }, {})
     ).map(([type, data]: [string, any]) => ({
-      type,
-      count: data.count,
-      spending: data.spending,
+      type,  // 客户类型
+      count: data.count,  // 该类型的客户数量
+      spending: data.spending,  // 该类型客户的总消费
     }));
 
-    // 计算每个客户的消费金额、访问次数和最近访问时间
-    const customerSpending = new Map<string, number>();
-    const customerVisits = new Map<string, number>();
-    const customerLastVisit = new Map<string, Date>();
+    // 计算每个客户的详细指标
+    // 创建三个Map来存储不同维度的统计数据
+    const customerSpending = new Map<string, number>();  // 存储客户消费金额
+    const customerVisits = new Map<string, number>();    // 存储客户访问次数
+    const customerLastVisit = new Map<string, Date>();   // 存储客户最近访问时间
 
+    // 遍历所有维修记录，计算客户维度的统计数据
     maintenanceRecords.forEach(record => {
       if (!record.vehicle || !record.vehicle.owner) return;
       
@@ -165,9 +174,9 @@ export async function GET(request: Request) {
         lastVisit: customerLastVisit.get(customer._id.toString())?.toISOString() || '',
       }))
       .sort((a: { spending: number }, b: { spending: number }) => b.spending - a.spending)
-      .slice(0, 10);
+      .slice(0, 10);  // 只取前10名客户
 
-    // 返回所有统计数据
+    // 返回所有统计数据，构建最终响应结构
     return NextResponse.json({
       data: {
         totalCustomers,
@@ -180,6 +189,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error: any) {
+    // 错误处理
     console.error('获取客户报表数据失败:', error);
     return NextResponse.json(
       { message: '获取客户报表数据失败' },

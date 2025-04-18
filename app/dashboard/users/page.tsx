@@ -114,6 +114,8 @@ export default function UsersPage() {
    */
   const handleStatusChange = async (newStatus: string, userId: string) => {
     try {
+      console.log(`尝试将用户 ${userId} 的状态更新为: ${newStatus}`);
+      
       const response = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: {
@@ -125,14 +127,17 @@ export default function UsersPage() {
       });
 
       const result = await response.json();
+      console.log('状态更新响应:', result);
 
       if (!response.ok) {
+        console.error('状态更新失败:', result);
         throw new Error(result.message || '更新用户状态失败');
       }
 
-      message.success('更新状态成功');
-      fetchUsers();
+      message.success('用户状态已成功更新');
+      fetchUsers(); // 刷新用户列表
     } catch (error: any) {
+      console.error('更新用户状态时出错:', error);
       message.error(error.message || '更新用户状态失败');
     }
   };

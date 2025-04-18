@@ -188,11 +188,15 @@ export async function PUT(
       .populate('service', 'name description category duration basePrice')
       .populate('technician', 'name username');
     
+    if (!updatedAppointment) {
+      return errorResponse('更新成功但无法获取最新数据', 404);
+    }
+    
     console.log('更新成功，最终数据:', JSON.stringify({
       id: updatedAppointment._id,
       status: updatedAppointment.status,
-      date: updatedAppointment.date,
-      startTime: updatedAppointment.startTime,
+      date: updatedAppointment.timeSlot?.date,
+      startTime: updatedAppointment.timeSlot?.startTime,
       service: updatedAppointment.service,
       technician: updatedAppointment.technician,
       vehicle: updatedAppointment.vehicle

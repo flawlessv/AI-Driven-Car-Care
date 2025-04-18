@@ -120,9 +120,14 @@ maintenanceSchema.pre('save', function(next) {
 // 使用函数来获取模型，确保只创建一次
 export function getMaintenanceModel(): Model<any> {
   try {
-    return mongoose.model('Maintenance');
-  } catch {
-    return mongoose.model('Maintenance', maintenanceSchema);
+    console.log('正在获取 Maintenance 模型...');
+    const modelName = 'Maintenance';
+    const model = mongoose.models[modelName] || mongoose.model(modelName, maintenanceSchema);
+    console.log('Maintenance 模型获取成功:', !!model);
+    return model;
+  } catch (error) {
+    console.error('获取 Maintenance 模型失败:', error);
+    throw error;
   }
 }
 
