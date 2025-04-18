@@ -1,6 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { clearAuthCookie } from '../../../lib/auth';
-import { successResponse } from '../../../lib/api-response';
+import {  NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 export async function POST() {

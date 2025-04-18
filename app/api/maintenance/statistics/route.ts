@@ -7,7 +7,6 @@ import {
   successResponse,
   errorResponse,
 } from '@/app/lib/api-response';
-import mongoose from 'mongoose';
 
 export async function GET(req: NextRequest) {
   try {

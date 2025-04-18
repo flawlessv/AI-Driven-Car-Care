@@ -5,22 +5,12 @@ import WorkOrder from '@/app/models/workOrder';
 import Vehicle from '@/app/models/vehicle';
 import {
   successResponse,
-  createdResponse,
   errorResponse,
   validationErrorResponse,
 } from '@/app/lib/api-response';
 import { validateWorkOrder, recordWorkOrderProgress } from '@/app/lib/work-order-utils';
 import { startOfMonth, endOfMonth, subMonths, format } from 'date-fns';
 
-// 状态显示文本
-const statusText = {
-  pending: '待处理',
-  assigned: '已分配',
-  in_progress: '进行中',
-  pending_check: '待审核',
-  completed: '已完成',
-  cancelled: '已取消'
-};
 
 // 获取工单列表
 export async function GET(request: NextRequest) {

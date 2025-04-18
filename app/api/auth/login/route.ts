@@ -5,22 +5,18 @@
  * 它是整个系统的"入口大门"，负责检查"钥匙"（用户名和密码）是否正确
  */
 
-// 导入Next.js请求类型，用于处理HTTP请求
-import { NextRequest } from 'next/server';
+
 // 导入数据库连接函数，用于连接到MongoDB数据库
 import { connectDB } from '@/app/lib/mongodb';
 // 导入获取用户模型的函数，用于操作用户数据
-import { getUserModel } from '../../../lib/db/models';
-// 导入API响应工具函数，用于统一响应格式
-import { successResponse, errorResponse } from '../../../lib/api-response';
+import { getUserModel } from '@/app/lib/db/models';
+
 // 导入令牌生成函数，用于创建JWT认证令牌
-import { generateToken } from '../../../lib/auth';
+import { generateToken } from '@/app/lib/auth';
 // 导入密码比较函数，用于安全地验证密码
 import { compare } from 'bcryptjs';
 // 导入Next.js响应类型，用于返回HTTP响应
 import { NextResponse } from 'next/server';
-// 导入cookies对象，用于设置浏览器cookie
-import { cookies } from 'next/headers';
 
 /**
  * POST方法处理函数 - 处理登录请求

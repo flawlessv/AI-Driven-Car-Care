@@ -7,7 +7,6 @@ import mongoose from 'mongoose';
 import Maintenance from '@/app/models/maintenance';
 import Vehicle from '@/app/models/vehicle';
 import Part from '@/app/models/part';
-import { getUserModel } from '@/app/lib/db/models';
 
 import {
   successResponse,
@@ -16,18 +15,7 @@ import {
   notFoundResponse,
 } from '@/app/lib/api-response';
 
-// 定义用户类型
-interface AuthUser {
-  _id: string;
-  role: string;
-}
 
-// 定义配件类型
-interface MaintenancePart {
-  part: mongoose.Types.ObjectId;
-  quantity: number;
-  unitPrice: number;
-}
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {

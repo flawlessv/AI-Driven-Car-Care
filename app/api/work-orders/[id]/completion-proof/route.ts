@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from '@/app/lib/auth';
 import WorkOrder from '@/app/models/workOrder';
 import WorkOrderProgress from '@/app/models/workOrderProgress';
-import User from '@/app/models/user';
 import { ObjectId } from 'mongodb';
 import { connectDB } from '@/app/lib/mongodb';
 import { checkRole } from '@/app/lib/auth';

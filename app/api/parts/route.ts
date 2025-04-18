@@ -4,7 +4,6 @@ import { authMiddleware } from '@/app/lib/auth';
 import Part from '@/app/models/part';
 import {
   successResponse,
-  createdResponse,
   errorResponse,
   validationErrorResponse,
 } from '@/app/lib/api-response';

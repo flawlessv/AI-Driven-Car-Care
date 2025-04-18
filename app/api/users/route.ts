@@ -2,12 +2,10 @@ import { NextRequest } from 'next/server';
 import { connectDB } from '../../lib/mongodb';
 import { authMiddleware } from '../../lib/auth';
 import { getUserModel } from '../../lib/db/models';
-import { hash } from 'bcryptjs';
 import {
   successResponse,
   errorResponse,
-  validationErrorResponse,
-  forbiddenResponse,
+
 } from '../../lib/api-response';
 import { USER_ROLES } from '@/types/user';
 

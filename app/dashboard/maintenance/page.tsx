@@ -19,8 +19,8 @@ import {
   Row,
   Col,
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, FileTextOutlined, EyeOutlined } from '@ant-design/icons';
-import type { MaintenanceRecord, MaintenanceFormData, MaintenanceReport } from './types';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import type { MaintenanceRecord, MaintenanceFormData } from './types';
 import type { RootState } from '@/app/lib/store';
 import type { Vehicle } from '@/types/vehicle';
 import type { Part } from '../parts/types';
@@ -28,9 +28,10 @@ import type { User } from '@/types/user';
 import dayjs, { Dayjs } from 'dayjs';
 import StatusHistoryTimeline from './components/StatusHistory';
 import StatusUpdateModal from './components/StatusUpdateModal';
-import MaintenanceReport from './components/MaintenanceReport';
+import MaintenanceReportComponent from './components/MaintenanceReport';
 import ExportButton from './components/ExportButton';
 import type { ColumnsType } from 'antd/es/table';
+import type { MaintenanceReport } from './types';
 
 const { RangePicker } = DatePicker;
 
@@ -680,7 +681,7 @@ export default function MaintenancePage() {
         footer={null}
       >
         {reportData && (
-          <MaintenanceReport report={reportData} />
+          <MaintenanceReportComponent report={reportData} />
         )}
       </Modal>
     </div>

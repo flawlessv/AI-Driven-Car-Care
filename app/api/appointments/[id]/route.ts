@@ -1,7 +1,5 @@
-import { NextRequest } from 'next/server';
 import { connectDB } from '@/app/lib/mongodb';
 import { getAppointmentModel } from '@/app/models/appointment';
-import Vehicle from '@/app/models/vehicle';
 import { getServiceModel } from '@/app/models/service';
 import { successResponse, errorResponse } from '@/app/lib/api-response';
 

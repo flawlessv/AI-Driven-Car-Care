@@ -19,7 +19,6 @@ const SERVICE_CATEGORY_MAP = {
   'inspection': '检查'
 } as const;
 
-type ServiceCategory = '维修' | '保养' | '检查';
 // 获取预约列表
 export async function GET(request: NextRequest) {
   try {

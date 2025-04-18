@@ -6,10 +6,8 @@ import User from '@/app/models/user';
 import {
   successResponse,
   errorResponse,
-  validationErrorResponse,
 } from '@/app/lib/api-response';
 import {
-  isValidStatusTransition,
   recordWorkOrderProgress,
 } from '@/app/lib/work-order-utils';
 

@@ -5,14 +5,11 @@ import Maintenance from '@/app/models/maintenance';
 import Vehicle from '@/app/models/vehicle';
 import {
   successResponse,
-  createdResponse,
   errorResponse,
   validationErrorResponse,
   notFoundResponse,
 } from '@/app/lib/api-response';
 import mongoose from 'mongoose';
-import Part from '@/app/models/part';
-import { getUserModel } from '@/app/lib/db/models';
 
 export async function GET(req: NextRequest) {
   try {

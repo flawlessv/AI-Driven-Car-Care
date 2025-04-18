@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server';
 import { connectDB } from '@/app/lib/mongodb';
 import { authMiddleware } from '@/app/lib/auth';
 import Maintenance from '@/app/models/maintenance';
-import Vehicle from '@/app/models/vehicle';
 import {
   successResponse,
   errorResponse,
