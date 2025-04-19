@@ -268,16 +268,12 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const {user} = await authMiddleware(request);
-    if (!user) {
+    const authResult = await authMiddleware(request);
+    if (!authResult.success || !authResult.user) {
       return errorResponse('未授权访问', 401);
     }
 
-    // 只有管理员可以删除工单
-    if (user.role !== 'admin') {
-      return errorResponse('无权删除工单', 403);
-    }
-
+    const user = authResult.user;
     await connectDB();
 
     const workOrder = await WorkOrder.findById(params.id);
@@ -285,9 +281,27 @@ export async function DELETE(
       return errorResponse('工单不存在', 404);
     }
 
-    // 如果工单状态不是 pending 或 cancelled，不允许删除
-    if (!['pending', 'cancelled'].includes(workOrder.status)) {
-      return errorResponse('只能删除待处理或已取消的工单');
+    // 如果是客户，只能删除自己的工单
+    if (user.role === 'customer') {
+      // 获取工单的客户ID
+      const workOrderCustomerId = workOrder.customer && typeof workOrder.customer === 'object' 
+        ? workOrder.customer._id?.toString() 
+        : workOrder.customer?.toString();
+      
+      // 检查是否是客户自己的工单
+      const userId = user._id?.toString();
+      if (workOrderCustomerId !== userId) {
+        return errorResponse('您只能删除自己的工单', 403);
+      }
+      
+      // 客户只能删除待处理或已取消的工单
+      if (!['pending', 'cancelled'].includes(workOrder.status)) {
+        return errorResponse('只能删除待处理或已取消的工单');
+      }
+    }
+    // 如果是管理员，可以删除任何工单
+    else if (user.role !== 'admin') {
+      return errorResponse('无权删除工单', 403);
     }
 
     await workOrder.deleteOne();
@@ -309,13 +323,20 @@ function canChangeStatus(userRole: string, currentStatus: string, newStatus: str
   const statusFlow = {
     admin: ['pending', 'assigned', 'in_progress', 'pending_check', 'completed', 'cancelled'],
     technician: ['pending', 'assigned', 'in_progress', 'pending_check', 'completed'], // 技师可以操作除了取消外的所有状态
-    customer: ['pending', 'cancelled']
+    customer: ['cancelled'] // 客户只能将工单取消
   };
+
+  // 客户角色只能把特定状态的工单修改为取消状态
+  if (userRole === 'customer') {
+    // 客户只能取消待处理、已分配和进行中的工单
+    const canCancelStatuses = ['pending', 'assigned', 'in_progress'];
+    return newStatus === 'cancelled' && canCancelStatuses.includes(currentStatus);
+  }
 
   // 获取用户角色可操作的状态列表
   const allowedStatuses = statusFlow[userRole as keyof typeof statusFlow] || [];
 
-  // 检查当前状态和目标状态是否在允许列表中
+  // 其他角色按原有逻辑处理
   return allowedStatuses.includes(currentStatus) && allowedStatuses.includes(newStatus);
 }
 

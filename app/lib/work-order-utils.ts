@@ -67,9 +67,16 @@ export function isValidStatusTransition(
       completed: ['in_progress']
     },
     customer: {
-      pending: ['cancelled']
+      pending: ['cancelled'],
+      assigned: ['cancelled'],
+      in_progress: ['cancelled']
     }
   };
+
+  // 客户只能把工单状态改为"已取消"
+  if (userRole === 'customer') {
+    return newStatus === 'cancelled';
+  }
 
   // 获取当前用户角色允许的状态变更
   const transitions = allowedTransitions[userRole] || {};

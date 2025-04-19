@@ -100,10 +100,6 @@ export async function POST(
 
     console.log('找到工单:', workOrder);
     
-    // 检查technician是否存在
-    if (!workOrder.technician) {
-      return errorResponse('工单没有分配技师，无法评价', 400);
-    }
 
     if (workOrder.status !== 'completed') {
       return errorResponse('工单未完成，不能评价', 400);

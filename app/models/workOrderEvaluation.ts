@@ -6,6 +6,13 @@ export interface IWorkOrderEvaluation extends Document {
   technician: mongoose.Types.ObjectId;
   rating: number;
   feedback: string;
+  createdBy: mongoose.Types.ObjectId;
+  evaluatorInfo?: {
+    userId: mongoose.Types.ObjectId;
+    username: string;
+    email?: string;
+  };
+  status?: string;
   createdAt: Date;
 }
 
@@ -35,6 +42,24 @@ const workOrderEvaluationSchema = new Schema({
   feedback: {
     type: String,
     default: ''
+  },
+  createdBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  evaluatorInfo: {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    username: String,
+    email: String
+  },
+  status: {
+    type: String,
+    enum: ['visible', 'hidden'],
+    default: 'visible'
   },
   createdAt: {
     type: Date,

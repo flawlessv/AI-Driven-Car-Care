@@ -32,7 +32,7 @@ import MaintenanceForm from './components/MaintenanceForm';
 import { StarOutlined, UploadOutlined, CheckOutlined, CloseOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import WorkOrderCompletion from './components/WorkOrderCompletion';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { RcFile } from 'antd/es/upload';
 import { statusText, statusColor } from '../components/StatusTag';
 
@@ -108,9 +108,11 @@ const WorkOrderDetailPage = () => {
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [rejectionNotes, setRejectionNotes] = useState('');
   const [statusOptions, setStatusOptions] = useState<Array<{value: string, label: string, color: string}>>([]);
+  const [tempNewStatus, setTempNewStatus] = useState<string>('');
 
   const params = useParams();
   const user = useSelector((state: RootState) => state.auth.user);
+  const router = useRouter();
 
   // 获取可用的状态选项
   const fetchStatusOptions = async () => {
@@ -135,6 +137,13 @@ const WorkOrderDetailPage = () => {
       fetchStatusOptions();
     }
   }, [params.id, user?.role]);
+
+  // 状态模态框打开时，初始化临时状态为当前工单状态
+  useEffect(() => {
+    if (statusModalVisible && workOrder) {
+      setTempNewStatus(workOrder.status);
+    }
+  }, [statusModalVisible, workOrder]);
 
   useEffect(() => {
     if (workOrder && (workOrder.status === 'pending_check' || workOrder.status === 'completed')) {
@@ -370,75 +379,99 @@ const WorkOrderDetailPage = () => {
   };
 
   const handleStatusChange = async (status: string) => {
-    if (status === 'completed') {
+    // 添加调试日志，显示状态变更
+    console.log('状态变更:', {
+      原状态: workOrder?.status,
+      新状态: status,
+      用户角色: user?.role
+    });
+    
+    // 客户只能取消工单
+    if (user?.role === 'customer' && status !== 'cancelled') {
+      message.error('您只能取消工单');
+      return;
+    }
+
+    // 如果已经是相同状态，不做更改
+    if (workOrder?.status === status) {
+      message.info(`工单已经是${statusText[status as keyof typeof statusText]}状态`);
+      return;
+    }
+
+    // 如果状态更新为"已完成"，显示完成证明提交弹窗
+    if (status === 'completed' && ['admin', 'technician'].includes(user?.role || '')) {
+      console.log('状态是已完成，打开完成证明提交弹窗');
       setCompletionModalVisible(true);
-    } else {
-      try {
-        setLoading(true);
+      return;
+    }
+
+    setStatusModalVisible(true);
+    
+    try {
+      setLoading(true);
+      
+      const response = await fetch(`/api/work-orders/${params.id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          status,
+          notes: progressNotes  // 与模型字段保持一致，使用 notes
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || '更新状态失败');
+      }
+      
+      // 如果接口返回了最新的进度记录，对其进行排序后使用
+      if (result.progress && Array.isArray(result.progress)) {
+        console.log('API返回的进度记录:', result.progress);
         
-        const response = await fetch(`/api/work-orders/${params.id}/status`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            status,
-            notes: progressNotes  // 与模型字段保持一致，使用 notes
-          }),
+        // 确保进度数据的完整性
+        const validProgress = result.progress
+          .filter(item => item && typeof item === 'object')
+          .map(item => ({
+            ...item,
+            updatedBy: item.updatedBy || { username: '未知用户' },
+            status: item.status || 'unknown',
+            timestamp: item.timestamp || item.createdAt || new Date(),
+            notes: item.notes || ''
+          }));
+          
+        // 对进度记录按创建时间排序，确保显示正确顺序
+        const sortedProgress = [...validProgress].sort((a, b) => {
+          // 使用时间戳比较
+          const timeA = new Date(a.timestamp || a.createdAt).getTime();
+          const timeB = new Date(b.timestamp || b.createdAt).getTime();
+          return timeA - timeB;
         });
         
-        const result = await response.json();
+        console.log('排序后的进度记录:', sortedProgress);
         
-        if (!response.ok) {
-          throw new Error(result.message || '更新状态失败');
-        }
-        
-        // 如果接口返回了最新的进度记录，对其进行排序后使用
-        if (result.progress && Array.isArray(result.progress)) {
-          console.log('API返回的进度记录:', result.progress);
-          
-          // 确保进度数据的完整性
-          const validProgress = result.progress
-            .filter(item => item && typeof item === 'object')
-            .map(item => ({
-              ...item,
-              updatedBy: item.updatedBy || { username: '未知用户' },
-              status: item.status || 'unknown',
-              timestamp: item.timestamp || item.createdAt || new Date(),
-              notes: item.notes || ''
-            }));
-            
-          // 对进度记录按创建时间排序，确保显示正确顺序
-          const sortedProgress = [...validProgress].sort((a, b) => {
-            // 使用时间戳比较
-            const timeA = new Date(a.timestamp || a.createdAt).getTime();
-            const timeB = new Date(b.timestamp || b.createdAt).getTime();
-            return timeA - timeB;
-          });
-          
-          console.log('排序后的进度记录:', sortedProgress);
-          
-          setProgress(sortedProgress);
-        }
-        
-        // 更新工单状态
-        if (result.workOrder) {
-          setWorkOrder(prev => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              status: result.workOrder.status,
-              completionDate: result.workOrder.completionDate
-            };
-          });
-        }
-        
-        setStatusModalVisible(false);
-        setProgressNotes(''); // 清空进度备注
-        message.success('工单状态更新成功');
-      } catch (error: any) {
-        message.error(error.message || '更新状态失败');
-      } finally {
-        setLoading(false);
+        setProgress(sortedProgress);
       }
+      
+      // 更新工单状态
+      if (result.workOrder) {
+        setWorkOrder(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            status: result.workOrder.status,
+            completionDate: result.workOrder.completionDate
+          };
+        });
+      }
+      
+      setStatusModalVisible(false);
+      setProgressNotes(''); // 清空进度备注
+      message.success('工单状态更新成功');
+    } catch (error: any) {
+      message.error(error.message || '更新状态失败');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -556,8 +589,11 @@ const WorkOrderDetailPage = () => {
         throw new Error(errorData.message || '上传完成证明失败');
       }
 
-      message.success('完成证明提交成功，工单已变更为待审核状态');
-      fetchWorkOrder();
+      // 完成证明上传成功后，刷新工单数据
+      message.success('完成证明提交成功，工单状态已更新为待审核');
+      await fetchWorkOrder(); // 使用await确保数据刷新完成
+      
+      // 清理状态和关闭弹窗
       setCompletionModalVisible(false);
       setStatusModalVisible(false);
       setFileList([]);
@@ -679,12 +715,59 @@ const WorkOrderDetailPage = () => {
   const canAssign = ['admin', 'technician'].includes(user?.role || '') && 
     workOrder.status === 'pending';
 
-  const canChangeStatus =workOrder.status !== 'completed' && workOrder.status !== 'cancelled';
+  const canChangeStatus = ['admin', 'technician'].includes(user?.role || '') && 
+    workOrder.status !== 'completed' && workOrder.status !== 'cancelled';
 
   const canEvaluate = user?.role === 'customer' && 
     workOrder.customer._id === user._id &&
     workOrder.status === 'completed' &&
     !workOrder.rating;
+
+  // 添加删除工单的方法
+  const handleDelete = async () => {
+    // 客户只能删除待处理或已取消的工单
+    if (user?.role === 'customer' && workOrder && !['pending', 'cancelled'].includes(workOrder.status)) {
+      message.error('只能删除待处理或已取消的工单');
+      return;
+    }
+
+    // 管理员可以删除任何工单
+    if (user?.role !== 'admin' && user?.role !== 'customer') {
+      message.error('无权删除工单');
+      return;
+    }
+
+    Modal.confirm({
+      title: '确认删除',
+      content: '确定要删除这个工单吗？此操作不可恢复。',
+      okText: '确定',
+      cancelText: '取消',
+      okType: 'danger',
+      async onOk() {
+        try {
+          setLoading(true);
+          
+          const response = await fetch(`/api/work-orders/${params.id}`, {
+            method: 'DELETE',
+          });
+          
+          const result = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(result.message || '删除工单失败');
+          }
+          
+          message.success('工单已删除');
+          // 跳转到工单列表页
+          router.push('/dashboard/work-orders');
+        } catch (error: any) {
+          message.error(error.message || '删除工单失败');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
 
   return (
     <div className="p-6">
@@ -722,7 +805,12 @@ const WorkOrderDetailPage = () => {
             {canChangeStatus && (
               <Button
                 type="primary"
-                onClick={() => setStatusModalVisible(true)}
+                onClick={() => {
+                  // 打开状态更新弹窗前，先刷新工单数据确保状态正确
+                  fetchWorkOrder().then(() => {
+                    setStatusModalVisible(true);
+                  });
+                }}
               >
                 更新状态
               </Button>
@@ -735,6 +823,14 @@ const WorkOrderDetailPage = () => {
               </Button>
             )}
             {handleAddReview()}
+            {user?.role === 'admin' && (
+              <Button
+                danger
+                onClick={handleDelete}
+              >
+                删除工单
+              </Button>
+            )}
           </Space>
         </div>
 
@@ -1038,7 +1134,8 @@ const WorkOrderDetailPage = () => {
             loading={submitting || uploading}
             onClick={() => {
               if (workOrder) {
-                handleStatusChange(workOrder.status);
+                // 确保使用用户选择的新状态，而不是当前状态
+                handleStatusChange(tempNewStatus);
               }
             }}
           >
@@ -1049,8 +1146,8 @@ const WorkOrderDetailPage = () => {
         <Form layout="vertical">
           <Form.Item label="新状态">
             <Select
-              value={workOrder?.status}
-              onChange={value => setWorkOrder({ ...workOrder, status: value })}
+              value={tempNewStatus}
+              onChange={setTempNewStatus}
               style={{ width: '100%' }}
             >
               {statusOptions.map(option => (
@@ -1134,9 +1231,25 @@ const WorkOrderDetailPage = () => {
           setCompletionModalVisible(false);
           setFileList([]);
           setCompletionNotes('');
+          
+          // 当用户取消提交完成证明时，恢复工单原状态，避免状态选择混淆
+          if (workOrder) {
+            // 从API重新获取当前工单数据，确保状态正确
+            fetchWorkOrder();
+          }
         }}
         footer={[
-          <Button key="cancel" onClick={() => setCompletionModalVisible(false)}>
+          <Button key="cancel" onClick={() => {
+            setCompletionModalVisible(false);
+            setFileList([]);
+            setCompletionNotes('');
+            
+            // 当用户取消提交完成证明时，恢复工单原状态，避免状态选择混淆
+            if (workOrder) {
+              // 从API重新获取当前工单数据，确保状态正确
+              fetchWorkOrder();
+            }
+          }}>
             取消
           </Button>,
           <Button key="submit" type="primary" onClick={handleSubmitCompletionProof} loading={loading}>
@@ -1144,6 +1257,13 @@ const WorkOrderDetailPage = () => {
           </Button>
         ]}
       >
+        <Alert
+          message="提交完成证明说明"
+          description="工单标记为完成前，需要先提交完成证明。提交后，工单将变为待审核状态，等待管理员审核通过后才会变为已完成状态。"
+          type="info"
+          showIcon
+          style={{ marginBottom: '16px' }}
+        />
         <Form form={uploadForm} layout="vertical">
           <Form.Item
             label="完成证明照片"

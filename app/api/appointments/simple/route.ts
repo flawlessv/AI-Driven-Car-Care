@@ -28,6 +28,21 @@ export async function POST(request: NextRequest) {
     } = data;
 
     console.log('收到简易预约数据:', JSON.stringify(data, null, 2));
+    console.log('提取的用户ID:', user); // 添加用户ID日志
+
+    // 验证用户ID
+    if (user) {
+      try {
+        // 检查是否是有效的MongoDB ObjectId
+        if (mongoose.Types.ObjectId.isValid(user)) {
+          console.log('有效的用户ID:', user);
+        } else {
+          console.warn('提供的用户ID无效:', user);
+        }
+      } catch (error) {
+        console.error('验证用户ID时出错:', error);
+      }
+    }
 
     // 验证必填字段
     if (!customer?.name || !customer?.phone) {
@@ -61,7 +76,8 @@ export async function POST(request: NextRequest) {
         registrationDate: new Date(),
         owner: user || null, // 如果有用户ID，关联车辆和用户
         ownerName: customer.name, // 添加车主姓名
-        ownerPhone: customer.phone // 添加车主联系方式
+        ownerPhone: customer.phone, // 添加车主联系方式
+        vin: generateValidVIN(vehicleBrand, vehicleModel, licensePlate) // 生成有效的17位VIN码
       });
       await vehicle.save();
     } else {
@@ -116,7 +132,7 @@ export async function POST(request: NextRequest) {
       date: new Date(date),
       startTime: startTime,
       endTime: endTime,
-      technician: data.technician || null, // 允许前端传入技师ID，否则为null
+      technician: data.technician ? new mongoose.Types.ObjectId(data.technician) : null, // 将技师ID转换为ObjectId
       status: 'pending',
       estimatedDuration: 60,
       estimatedCost: 300,
@@ -126,10 +142,10 @@ export async function POST(request: NextRequest) {
         date: new Date(date),
         startTime: startTime,
         endTime: endTime,
-        technician: data.technician || null // 如果没有技师ID，则为null，等待后台分配
+        technician: data.technician ? new mongoose.Types.ObjectId(data.technician) : null // 将技师ID转换为ObjectId
       },
-      // 存储用户ID关联
-      user: user || null,
+      // 存储用户ID关联，确保转换为ObjectId
+      user: user ? new mongoose.Types.ObjectId(user) : null,
       // 添加创建时间
       createdAt: new Date(),
       updatedAt: new Date()
@@ -141,6 +157,10 @@ export async function POST(request: NextRequest) {
     const appointmentCollection = mongoose.connection.collection('appointments');
     const result = await appointmentCollection.insertOne(rawAppointment);
     const appointment = await Appointment.findById(result.insertedId);
+
+    if (!appointment) {
+      return errorResponse('预约创建失败，无法检索创建的预约数据');
+    }
 
     return successResponse({
       message: '预约创建成功，我们将尽快与您联系确认详细信息',
@@ -183,4 +203,40 @@ function calculateEndTime(startTime: string, durationMinutes: number): string {
   // 确保格式是两位数
   const formattedHours = endHours % 24;
   return `${formattedHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+}
+
+// 辅助函数：生成有效的17位VIN码
+function generateValidVIN(brand: string, model: string, licensePlate: string): string {
+  // 创建完全随机的17位VIN码
+  
+  // 1-3位：制造商代码，使用常见的中国制造商代码
+  const manufacturerCodes = ['LSV', 'LFV', 'LVS', 'LGJ', 'LBV'];
+  const manufacturerCode = manufacturerCodes[Math.floor(Math.random() * manufacturerCodes.length)];
+  
+  // 4-8位：车辆特征，完全随机生成
+  const characters = 'ABCDEFGHJKLMNPRSTUVWXYZ1234567890';
+  let vehicleDescriptor = '';
+  for (let i = 0; i < 5; i++) {
+    vehicleDescriptor += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  
+  // 9位：校验位
+  const checkDigit = '1';
+  
+  // 10位：年份代码
+  const yearCodes = 'ABCDEFGHJKLMNPRSTVWXY123456789';
+  const yearCode = yearCodes.charAt(Math.floor(Math.random() * yearCodes.length));
+  
+  // 11位：装配厂代码
+  const plantCodes = 'ABCDEFGHJKLMNPRSTUVWXYZ1234567890';
+  const plantCode = plantCodes.charAt(Math.floor(Math.random() * plantCodes.length));
+  
+  // 12-17位：完全随机的序列号
+  let serialNumber = '';
+  for (let i = 0; i < 6; i++) {
+    serialNumber += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  
+  // 组合17位VIN码，确保没有I、O、Q字母
+  return (manufacturerCode + vehicleDescriptor + checkDigit + yearCode + plantCode + serialNumber).replace(/[IOQ]/g, 'X');
 } 

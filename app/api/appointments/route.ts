@@ -48,6 +48,29 @@ export async function GET(request: NextRequest) {
     // 如果是客户角色，只能查看自己的预约（保护隐私）
     if (isCustomer && userId) {
       query.user = userId;
+      console.log('客户角色查询条件:', query);
+      console.log('当前用户ID:', userId);
+      
+      // 从数据库查询预约信息
+      const Appointment = getAppointmentModel();
+      // 同时获取关联的车辆、服务和技师信息，让数据更完整
+      const appointments = await Appointment.find(query)
+        .populate('vehicle')   // 填充车辆信息
+        .populate('service')   // 填充服务信息
+        .populate({ 
+          path: 'technician',  // 填充技师信息
+          strictPopulate: false 
+        })
+        .sort({ createdAt: -1 });  // 按创建时间倒序排列，最新的预约排在前面
+      
+      console.log('查询结果数量:', appointments.length);
+      if (appointments.length > 0) {
+        console.log('第一个预约的user字段:', appointments[0].user);
+        console.log('第一个预约ID:', appointments[0]._id);
+      }
+      
+      // 返回查询结果
+      return successResponse(appointments);
     }
     
     // 从数据库查询预约信息

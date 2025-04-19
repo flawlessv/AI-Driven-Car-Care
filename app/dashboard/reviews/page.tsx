@@ -24,9 +24,8 @@ const { Title } = Typography;
  * 描述评论在系统中的状态
  */
 enum ReviewStatus {
-  PENDING = 'pending',    // 待审核
-  APPROVED = 'approved',  // 已批准
-  REJECTED = 'rejected'   // 已拒绝
+  VISIBLE = 'published',    // 可见/已发布
+  HIDDEN = 'hidden'         // 已隐藏
 }
 
 /**
@@ -35,17 +34,15 @@ enum ReviewStatus {
  */
 interface Review {
   _id: string;             // 评论ID
-  maintenanceId: string;   // 关联的维修记录ID
-  technicianId: string;    // 技师ID
-  authorId: string;        // 评论作者ID（客户）
+  maintenanceId?: string;  // 关联的维修记录ID
   authorName: string;      // 评论作者姓名
-  vehicleName: string;     // 车辆名称
   rating: number;          // 评分(1-5)
-  comment: string;         // 评论内容
-  status: ReviewStatus;    // 评论状态
+  content: string;         // 评论内容
+  status: string;          // 评论状态
   createdAt: string;       // 创建时间
   updatedAt: string;       // 更新时间
-  technicianName?: string; // 技师姓名（可选）
+  targetId?: any;          // 目标ID（技师）
+  targetType?: string;     // 目标类型
   workOrder?: string;      // 工单ID
   workOrderNumber?: string; // 工单编号
   author?: {              // 作者详细信息
@@ -54,8 +51,6 @@ interface Review {
     phone?: string;
     email?: string;
   };
-  authorPhone?: string;    // 作者电话
-  authorEmail?: string;    // 作者邮箱
 }
 
 /**
@@ -63,9 +58,8 @@ interface Review {
  * 为不同状态提供统一的样式配置
  */
 const reviewStatusMap: Record<string, { text: string; color: string }> = {
-  [ReviewStatus.PENDING]: { text: '待审核', color: 'orange' },
-  [ReviewStatus.APPROVED]: { text: '已批准', color: 'green' },
-  [ReviewStatus.REJECTED]: { text: '已拒绝', color: 'red' },
+  [ReviewStatus.VISIBLE]: { text: '已启用', color: 'green' },
+  [ReviewStatus.HIDDEN]: { text: '已隐藏', color: 'gray' },
 };
 
 /**
@@ -119,10 +113,22 @@ const ReviewsPage = () => {
         throw new Error(result.message || '获取评论列表失败');
       }
       
-      if (Array.isArray(result.data)) {
-        console.log('获取到评论数据:', result.data.length);
-        setReviews(result.data);
-        setTotal(result.data.length);
+      if (result.success && result.data) {
+        // 处理分页数据结构
+        if (Array.isArray(result.data.items)) {
+          console.log('获取到评论数据:', result.data.items.length);
+          setReviews(result.data.items);
+          setTotal(result.data.total || result.data.items.length);
+        } else if (Array.isArray(result.data)) {
+          // 兼容旧版API可能直接返回数组的情况
+          console.log('获取到评论数据:', result.data.length);
+          setReviews(result.data);
+          setTotal(result.data.length);
+        } else {
+          console.error('评论列表数据格式错误:', result);
+          setReviews([]);
+          setTotal(0);
+        }
       } else {
         console.error('评论列表数据格式错误:', result);
         setReviews([]);
@@ -144,18 +150,21 @@ const ReviewsPage = () => {
    * @param reviewId 评论ID
    * @param status 新状态
    */
-  const updateReviewStatus = async (reviewId: string, status: ReviewStatus) => {
+  const updateReviewStatus = async (reviewId: string, status: string) => {
     try {
       setLoading(true);
+      
       const response = await fetch(`/api/reviews/${reviewId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ status }),
       });
 
-      if (response.ok) {
+      const result = await response.json();
+
+      if (response.ok && result.success) {
         // 更新本地状态而不是重新获取所有数据
         setReviews(prevReviews =>
           prevReviews.map(review =>
@@ -164,9 +173,9 @@ const ReviewsPage = () => {
         );
         message.success('评论状态已更新');
       } else {
-        message.error('更新评论状态失败');
+        message.error(result.message || '更新评论状态失败');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('更新评论状态出错:', error);
       message.error('更新评论状态时发生错误');
     } finally {
@@ -214,11 +223,11 @@ const ReviewsPage = () => {
     },
     {
       title: '评价内容',
-      dataIndex: 'comment',
-      key: 'comment',
+      dataIndex: 'content',
+      key: 'content',
       width: 300,
       ellipsis: true,
-      render: (text: string, record: Review) => (
+      render: (text: string) => (
         <Tooltip title={text}>
           <span>{text || '-'}</span>
         </Tooltip>
@@ -227,9 +236,9 @@ const ReviewsPage = () => {
     {
       title: '联系方式',
       key: 'contact',
-      render: (_, record: Review) => {
-        const phone = record.authorPhone || record.author?.phone || '-';
-        const email = record.authorEmail || record.author?.email || '-';
+      render: (_, record: any) => {
+        const phone = record.author?.phone || '-';
+        const email = record.author?.email || '-';
         
         return (
           <>
@@ -250,7 +259,43 @@ const ReviewsPage = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status) => {
-        return <Tag color={reviewStatusMap[status].color}>{reviewStatusMap[status].text}</Tag>;
+        const statusConfig = reviewStatusMap[status] || { text: status, color: 'default' };
+        return <Tag color={statusConfig.color}>{statusConfig.text}</Tag>;
+      },
+    },
+    {
+      title: '操作',
+      key: 'action',
+      render: (_: any, record: Review) => {
+        // 判断当前用户是否为评价作者
+        const isAuthor = user && 
+          ((typeof record.author === 'object' && record.author?._id === user._id) || 
+           (typeof record.author === 'string' && record.author === user._id));
+        
+        // 是否为管理员
+        const isAdmin = user?.role === 'admin';
+        
+        // 当前评论是否已隐藏
+        const isHidden = record.status === ReviewStatus.HIDDEN;
+        
+        // 只有管理员和作者可以隐藏/显示评论
+        if (isAdmin || isAuthor) {
+          return (
+            <Button
+              danger={!isHidden}
+              size="small"
+              onClick={() => updateReviewStatus(
+                record._id, 
+                isHidden ? ReviewStatus.VISIBLE : ReviewStatus.HIDDEN
+              )}
+            >
+              {isHidden ? '显示' : '隐藏'}
+            </Button>
+          );
+        }
+        
+        // 如果没有操作权限
+        return <span className="text-gray-500">无操作权限</span>;
       },
     },
   ];
@@ -267,55 +312,7 @@ const ReviewsPage = () => {
         <Table
           loading={loading}
           dataSource={reviews}
-          columns={[
-            ...columns,
-            {
-              title: '操作',
-              key: 'action',
-              render: (_: any, record: Review) => {
-                // 判断当前用户是否为评价作者，或是否具有管理权限
-                const isAuthor = user && 
-                  ((typeof record.author === 'object' && record.author?._id === user._id) || 
-                   (typeof record.author === 'string' && record.author === user._id));
-                
-                // 判断是否有权限操作评价：管理员拥有所有权限，客户只能操作自己的评价
-                const canManageReview = user?.role === 'admin' || 
-                  (user?.role === 'customer' && isAuthor);
-                
-                if (!canManageReview) {
-                  return <span className="text-gray-500">无操作权限</span>;
-                }
-                
-                return (
-                  <Space>
-                    <Button
-                      type="primary"
-                      size="small"
-                      onClick={() => updateReviewStatus(record._id, ReviewStatus.APPROVED)}
-                      disabled={record.status === ReviewStatus.APPROVED}
-                    >
-                      通过
-                    </Button>
-                    <Button
-                      size="small"
-                      onClick={() => updateReviewStatus(record._id, ReviewStatus.PENDING)}
-                      disabled={record.status === ReviewStatus.PENDING}
-                    >
-                      待审核
-                    </Button>
-                    <Button
-                      danger
-                      size="small"
-                      onClick={() => updateReviewStatus(record._id, ReviewStatus.REJECTED)}
-                      disabled={record.status === ReviewStatus.REJECTED}
-                    >
-                      拒绝
-                    </Button>
-                  </Space>
-                );
-              },
-            },
-          ]}
+          columns={columns}
           pagination={{
             current: currentPage,
             pageSize: pageSize,

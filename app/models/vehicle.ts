@@ -45,7 +45,7 @@ const vehicleSchema = new mongoose.Schema({
   owner: {
     type: mongoose.Schema.Types.ObjectId,  // 对象ID类型
     ref: 'User',       // 引用User模型
-    required: true,    // 必填项
+    required: false,   // 改为非必填项
   },
   // 车主姓名，冗余存储便于查询
   ownerName: {

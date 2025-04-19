@@ -336,50 +336,7 @@ export default function WorkOrdersPage() {
           </Link>
           <Dropdown
             menu={{
-              items: [
-                {
-                  key: 'pending',
-                  label: '标记为待处理',
-                  icon: <ExclamationCircleOutlined style={{ color: statusColor.pending }} />,
-                  disabled: record.status === 'pending',
-                  onClick: () => handleStatusChange(record, 'pending'),
-                },
-                {
-                  key: 'in_progress',
-                  label: '标记为进行中',
-                  icon: <SyncOutlined style={{ color: statusColor.in_progress }} />,
-                  disabled: record.status === 'in_progress',
-                  onClick: () => handleStatusChange(record, 'in_progress'),
-                },
-                {
-                  key: 'on_hold',
-                  label: '标记为暂停',
-                  icon: <ClockCircleOutlined style={{ color: statusColor.on_hold }} />,
-                  disabled: record.status === 'on_hold',
-                  onClick: () => handleStatusChange(record, 'on_hold'),
-                },
-                {
-                  key: 'completed',
-                  label: '标记为已完成',
-                  icon: <CheckCircleOutlined style={{ color: statusColor.completed }} />,
-                  disabled: record.status === 'completed',
-                  onClick: () => handleStatusChange(record, 'completed'),
-                },
-                {
-                  key: 'cancelled',
-                  label: '标记为已取消',
-                  icon: <CloseCircleOutlined style={{ color: statusColor.cancelled }} />,
-                  disabled: record.status === 'cancelled',
-                  onClick: () => handleStatusChange(record, 'cancelled'),
-                },
-                {
-                  key: 'delete',
-                  label: '删除工单',
-                  icon: <DeleteOutlined style={{ color: '#ff4d4f' }} />,
-                  danger: true,
-                  onClick: () => handleDelete(record),
-                },
-              ],
+              items: getActionMenuItems(record, user?.role || '')
             }}
           >
             <Button type="text">
@@ -390,6 +347,94 @@ export default function WorkOrdersPage() {
       ),
     },
   ];
+
+  // 根据用户角色返回不同的操作菜单项
+  const getActionMenuItems = (record: WorkOrder, userRole: string) => {
+    // 基础操作项
+    const items = [];
+    
+    // 客户只能取消或删除工单
+    if (userRole === 'customer') {
+      // 只有未完成的工单才能取消
+      if (!['completed', 'cancelled'].includes(record.status)) {
+        items.push({
+          key: 'cancelled',
+          label: '取消工单',
+          icon: <CloseCircleOutlined style={{ color: statusColor.cancelled }} />,
+          onClick: () => handleStatusChange(record, 'cancelled'),
+        });
+      }
+      
+      // 只能删除待处理或已取消的工单
+      if (['pending', 'cancelled'].includes(record.status)) {
+        items.push({
+          key: 'delete',
+          label: '删除工单',
+          icon: <DeleteOutlined style={{ color: '#ff4d4f' }} />,
+          danger: true,
+          onClick: () => handleDelete(record),
+        });
+      }
+      
+      return items;
+    }
+    
+    // 管理员和技师的操作项
+    if (['admin', 'technician'].includes(userRole)) {
+      items.push({
+        key: 'pending',
+        label: '标记为待处理',
+        icon: <ExclamationCircleOutlined style={{ color: statusColor.pending }} />,
+        disabled: record.status === 'pending',
+        onClick: () => handleStatusChange(record, 'pending'),
+      });
+      
+      items.push({
+        key: 'in_progress',
+        label: '标记为进行中',
+        icon: <SyncOutlined style={{ color: statusColor.in_progress }} />,
+        disabled: record.status === 'in_progress',
+        onClick: () => handleStatusChange(record, 'in_progress'),
+      });
+      
+      items.push({
+        key: 'on_hold',
+        label: '标记为暂停',
+        icon: <ClockCircleOutlined style={{ color: statusColor.on_hold }} />,
+        disabled: record.status === 'on_hold',
+        onClick: () => handleStatusChange(record, 'on_hold'),
+      });
+      
+      items.push({
+        key: 'completed',
+        label: '标记为已完成',
+        icon: <CheckCircleOutlined style={{ color: statusColor.completed }} />,
+        disabled: record.status === 'completed',
+        onClick: () => handleStatusChange(record, 'completed'),
+      });
+      
+      items.push({
+        key: 'cancelled',
+        label: '标记为已取消',
+        icon: <CloseCircleOutlined style={{ color: statusColor.cancelled }} />,
+        disabled: record.status === 'cancelled',
+        onClick: () => handleStatusChange(record, 'cancelled'),
+      });
+      
+      // 只有管理员可以删除工单
+      if (userRole === 'admin') {
+        items.push({
+          key: 'delete',
+          label: '删除工单',
+          icon: <DeleteOutlined style={{ color: '#ff4d4f' }} />,
+          danger: true,
+          onClick: () => handleDelete(record),
+        });
+      }
+    }
+    
+    return items;
+  };
 
   return (
     <div className="page-transition">

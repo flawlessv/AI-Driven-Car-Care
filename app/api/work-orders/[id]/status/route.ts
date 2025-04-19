@@ -39,7 +39,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await checkRole(['admin','technician'])(request);
+    // 使用authMiddleware替代checkRole，因为对于客户我们需要单独处理取消状态的权限
+    const authResult = await authMiddleware(request);
     if (!authResult.success) {
       return errorResponse(authResult.message || '未授权访问', 401);
     }
@@ -54,14 +55,36 @@ export async function PUT(
       return errorResponse('无法获取用户信息', 401);
     }
 
+    // 客户只能将工单状态修改为"已取消"
+    if (authResult.user.role === 'customer' && status !== 'cancelled') {
+      return errorResponse('客户只能取消工单', 403);
+    }
+
     // 查找工单
     const workOrder = await WorkOrder.findById(id);
     if (!workOrder) {
       return errorResponse('工单不存在', 404);
     }
 
-    // 验证状态转换
-    if (!isValidStatusTransition(workOrder.status, status, authResult.user.role)) {
+    // 如果是客户，还需要检查是否是自己的工单
+    if (authResult.user.role === 'customer') {
+      const workOrderCustomerId = workOrder.customer && typeof workOrder.customer === 'object' 
+        ? workOrder.customer._id?.toString() 
+        : workOrder.customer?.toString();
+      
+      const userId = authResult.user._id?.toString();
+      if (workOrderCustomerId !== userId) {
+        return errorResponse('您只能取消自己的工单', 403);
+      }
+
+      // 客户只能取消特定状态的工单
+      const canCancelStatuses = ['pending', 'assigned', 'in_progress'];
+      if (!canCancelStatuses.includes(workOrder.status)) {
+        return errorResponse('只能取消待处理、已分配或进行中的工单', 400);
+      }
+    } 
+    // 对于管理员和技师，使用标准的状态转换检查
+    else if (!isValidStatusTransition(workOrder.status, status, authResult.user.role)) {
       return errorResponse(`无法将工单状态从 "${workOrder.status}" 更改为 "${status}"`, 400);
     }
 
@@ -87,8 +110,8 @@ export async function PUT(
     await recordWorkOrderProgress(
       id,
       status,
-      authResult.user._id.toString(),
-      notes || `状态更新为 ${status}`
+      String(authResult.user._id),
+      notes || `状态更新为 ${statusText[status as keyof typeof statusText] || status}`
     );
 
     // 如果状态变更为已完成，更新车辆状态
