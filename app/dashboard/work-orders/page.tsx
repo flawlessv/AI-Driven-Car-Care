@@ -256,7 +256,7 @@ export default function WorkOrdersPage() {
         <div>
           <div className="font-medium flex items-center">
             <UserOutlined className="mr-1 text-blue-500" /> 
-            {customer?.name}
+            {customer?.username}
           </div>
           <div className="text-gray-500 text-sm">{customer?.phone}</div>
         </div>
@@ -289,16 +289,16 @@ export default function WorkOrdersPage() {
       dataIndex: 'technician',
       key: 'technician',
       render: (technician: any) => (
-        technician?.name ? (
+        technician?.username ? (
           <div className="flex items-center">
             <Avatar 
               size="small" 
               style={{ backgroundColor: '#1890ff' }} 
               className="mr-2"
             >
-              {technician.name.charAt(0)}
+              {technician.username.charAt(0)}
             </Avatar>
-            {technician.name}
+            {technician.username}
           </div>
         ) : '未分配'
       ),

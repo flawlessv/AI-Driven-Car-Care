@@ -32,6 +32,7 @@ export async function GET(
       .populate('customer')
       .populate('technician')
       .populate({ path: 'createdBy', strictPopulate: false })
+      .populate({ path: 'updatedBy', strictPopulate: false })
       .exec();
 
     if (!workOrder) {
@@ -71,7 +72,7 @@ export async function GET(
 
     // 单独查询工单进度记录
     const progress = await WorkOrderProgress.find({ workOrder: params.id })
-      .populate('updatedBy', 'username role')
+      .populate({ path: 'updatedBy', select: 'username role', strictPopulate: false })
       .sort({ createdAt: -1 })
       .exec();
     const evaluation = await WorkOrderEvaluation.findOne({ workOrder: params.id })
@@ -167,11 +168,12 @@ export async function PUT(
       .populate('vehicle', 'brand model licensePlate')
       .populate('customer', 'username email phone')
       .populate('technician', 'username email phone')
-      .populate({ path: 'createdBy', select: 'username', strictPopulate: false });
+      .populate({ path: 'createdBy', select: 'username', strictPopulate: false })
+      .populate({ path: 'updatedBy', select: 'username', strictPopulate: false });
 
     // 获取更新后的进度记录
     const progress = await WorkOrderProgress.find({ workOrder: params.id })
-      .populate('updatedBy', 'username')
+      .populate({ path: 'updatedBy', select: 'username', strictPopulate: false })
       .sort({ timestamp: -1 });
 
     console.log('更新后的进度记录:', progress);

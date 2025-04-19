@@ -76,7 +76,8 @@ export async function PUT(
     )
     .populate('vehicle')
     .populate('customer')
-    .populate('technician');
+    .populate('technician')
+    .populate({ path: 'updatedBy', select: 'username role', strictPopulate: false });
 
     if (!updatedWorkOrder) {
       return errorResponse('更新工单状态失败', 500);

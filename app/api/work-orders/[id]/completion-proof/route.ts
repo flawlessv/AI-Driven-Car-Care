@@ -315,9 +315,10 @@ export async function PUT(
       updateData,
       { new: true }
     )
-    .populate('vehicle')
-    .populate('customer')
-    .populate('technician');
+    .populate('vehicle', 'brand model licensePlate')
+    .populate('customer', 'username email')
+    .populate('technician', 'username email')
+    .populate({ path: 'updatedBy', select: 'username role', strictPopulate: false })
     
     if (!updatedWorkOrder) {
       return errorResponse('无法更新工单', 500);

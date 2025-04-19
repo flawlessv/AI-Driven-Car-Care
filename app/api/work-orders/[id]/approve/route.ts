@@ -57,9 +57,10 @@ export async function PUT(
       },
       { new: true }
     )
-    .populate('vehicle')
-    .populate('customer')
-    .populate('technician');
+    .populate('vehicle', 'brand model licensePlate')
+    .populate('customer', 'username')
+    .populate('technician', 'username')
+    .populate({ path: 'updatedBy', select: 'username role', strictPopulate: false });
 
     if (!updatedWorkOrder) {
       return errorResponse('更新工单状态失败', 500);
@@ -84,7 +85,7 @@ export async function PUT(
 
     // 获取最新的进度记录
     const progress = await WorkOrderProgress.find({ workOrder: workOrderId })
-      .populate('updatedBy', 'username role')
+      .populate({ path: 'updatedBy', select: 'username role', strictPopulate: false })
       .sort({ createdAt: -1 });
 
     // 返回统一的响应结构
