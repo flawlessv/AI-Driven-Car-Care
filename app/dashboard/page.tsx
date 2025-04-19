@@ -253,8 +253,13 @@ export default function DashboardPage() {
       ? dashboardData.charts.workOrderStatus.map(item => ({
           type: statusMap[item.status] || item.status,  // 转换为中文状态
           value: item.count,  // 数量
+          status: item.status // 保存原始状态用于颜色映射
         }))
-      : emptyPieData,
+      : emptyPieData.map(item => ({
+          type: item.type,
+          value: item.value,
+          status: 'none'
+        })),
     angleField: 'value',  // 数值字段
     colorField: 'type',   // 颜色字段
     radius: 0.8,          // 饼图半径
@@ -267,6 +272,15 @@ export default function DashboardPage() {
         }
       }
     },
+    meta: {
+      type: {
+        alias: '状态'
+      },
+      value: {
+        alias: '数量',
+        formatter: (v: number) => `${v} 个`
+      }
+    },
     label: {  // 标签配置
       type: 'inner',             // 内部标签
       offset: '-30%',            // 偏移量
@@ -274,11 +288,6 @@ export default function DashboardPage() {
       style: {
         textAlign: 'center',
         fontSize: 14,
-      },
-    },
-    tooltip: {
-      formatter: (datum: any) => {
-        return { name: datum.type, value: `${datum.value} 个` };
       },
     },
     interactions: [{ type: 'element-active' }],
@@ -309,8 +318,13 @@ export default function DashboardPage() {
       ? dashboardData.charts.workOrderTypes.map(item => ({
           type: typeMap[item.type] || item.type,
           value: item.count,
+          originalType: item.type  // 保存原始类型用于颜色映射
         }))
-      : emptyPieData,
+      : emptyPieData.map(item => ({
+          type: item.type,
+          value: item.value,
+          originalType: 'none'
+        })),
     angleField: 'value',
     colorField: 'type',
     radius: 0.8,
@@ -323,6 +337,15 @@ export default function DashboardPage() {
         }
       }
     },
+    meta: {
+      type: {
+        alias: '类型'
+      },
+      value: {
+        alias: '数量',
+        formatter: (v: number) => `${v} 个`
+      }
+    },
     label: {
       type: 'inner',
       offset: '-30%',
@@ -330,11 +353,6 @@ export default function DashboardPage() {
       style: {
         textAlign: 'center',
         fontSize: 14,
-      },
-    },
-    tooltip: {
-      formatter: (datum: any) => {
-        return { name: datum.type, value: `${datum.value} 个` };
       },
     },
     interactions: [{ type: 'element-active' }],
@@ -365,13 +383,27 @@ export default function DashboardPage() {
       ? dashboardData.charts.partCategories.map(item => ({
           category: partCategoryMap[item.category] || item.category,
           value: item.count,
+          originalCategory: item.category  // 保存原始类别用于颜色映射
         }))
-      : emptyPieData.map(item => ({ category: item.type, value: item.value })),
+      : emptyPieData.map(item => ({ 
+          category: item.type, 
+          value: item.value,
+          originalCategory: 'none'
+        })),
     angleField: 'value',
     colorField: 'category',
     radius: 0.8,
     legend: {
       position: 'bottom',
+    },
+    meta: {
+      category: {
+        alias: '类型'
+      },
+      value: {
+        alias: '数量',
+        formatter: (v: number) => `${v} 个`
+      }
     },
     label: {
       type: 'inner',
@@ -380,11 +412,6 @@ export default function DashboardPage() {
       style: {
         textAlign: 'center',
         fontSize: 14,
-      },
-    },
-    tooltip: {
-      formatter: (datum: any) => {
-        return { name: datum.category, value: `${datum.value} 个` };
       },
     },
     interactions: [{ type: 'element-active' }],

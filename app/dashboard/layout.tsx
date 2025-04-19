@@ -386,7 +386,7 @@ export default function DashboardLayout({
                 arrow
                 overlayClassName="user-dropdown-menu"
               >
-                <div className="flex items-center cursor-pointer hover:bg-gray-50 py-2 px-3 rounded-full transition-colors dashboard-header-avatar">
+                <div className="flex items-center cursor-pointer hover:bg-gray-50  rounded-full transition-colors dashboard-header-avatar">
                   <Avatar 
                     icon={<UserOutlined />} 
                     style={{ backgroundColor: colorPrimary }}
@@ -394,7 +394,7 @@ export default function DashboardLayout({
                     className="mr-2"
                   />
                   <span className="mr-1 font-medium max-w-[100px] truncate">
-                    {user?.name || user?.username || '用户'}
+                    { user?.username || '用户'}
                   </span>
                   <SettingOutlined style={{ fontSize: '12px', opacity: 0.7 }} />
                 </div>

@@ -46,7 +46,9 @@ export default function WorkOrderProgressTimeline({ progress }: WorkOrderProgres
   return (
     <Timeline>
       {progress.map((record) => {
-        const operator = record.updatedBy?.username || record.user?.username || '系统';
+        console.log('record', record);
+        
+        const operator = record.updatedBy?.username || record.user?.username || '系统1';
         
         return (
           <Timeline.Item 

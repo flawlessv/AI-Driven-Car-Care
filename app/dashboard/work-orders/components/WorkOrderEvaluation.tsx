@@ -78,6 +78,7 @@ export default function WorkOrderEvaluationComponent({
   };
 
   if (evaluation) {
+    
     return (
       <Card title="客户评价">
         <div className="flex items-center mb-4">
@@ -93,7 +94,7 @@ export default function WorkOrderEvaluationComponent({
         <div className="flex items-center mt-4 text-gray-500">
           <Avatar size="small" icon={<UserOutlined />} className="mr-2" />
           <Space>
-            <span>{evaluation.evaluator?.username || '客户'}</span>
+            <span>{evaluation.customer?.username || '客户'}</span>
             <span>评价时间：{new Date(evaluation.createdAt).toLocaleString()}</span>
           </Space>
         </div>

@@ -1,4 +1,114 @@
 import { getUserModel } from '@/app/lib/db/models';
+import mongoose from 'mongoose';
+import WorkOrderProgress from '@/app/models/workOrderProgress';
+import Vehicle from '@/app/models/vehicle';
+
+// 记录工单进度
+export async function recordWorkOrderProgress(
+  workOrderId: string,
+  status: string,
+  updatedById: string,
+  notes?: string
+): Promise<any> {
+  try {
+    const progressRecord = await WorkOrderProgress.create({
+      workOrder: workOrderId,
+      status,
+      notes: notes || getDefaultStatusNote(status),
+      updatedBy: updatedById,
+      timestamp: new Date()
+    });
+
+    return await WorkOrderProgress.findById(progressRecord._id)
+      .populate('updatedBy', 'username role');
+  } catch (error) {
+    console.error('记录工单进度失败:', error);
+    throw error;
+  }
+}
+
+// 获取状态变更的默认说明
+function getDefaultStatusNote(status: string): string {
+  const statusNotes: Record<string, string> = {
+    pending: '工单已创建',
+    assigned: '工单已分配',
+    in_progress: '维修开始',
+    pending_check: '等待验收',
+    completed: '维修完成',
+    cancelled: '工单已取消'
+  };
+
+  return statusNotes[status] || '状态已更新';
+}
+
+// 验证工单状态变更是否有效
+export function isValidStatusTransition(
+  currentStatus: string,
+  newStatus: string,
+  userRole: string
+): boolean {
+  // 定义不同角色允许的状态变更
+  const allowedTransitions: Record<string, Record<string, string[]>> = {
+    admin: {
+      pending: ['assigned', 'in_progress', 'cancelled'],
+      assigned: ['in_progress', 'cancelled', 'pending'],
+      in_progress: ['pending_check', 'cancelled'],
+      pending_check: ['completed', 'in_progress'],
+      completed: ['in_progress', 'pending'],
+      cancelled: ['pending']
+    },
+    technician: {
+      pending: ['assigned', 'in_progress'],
+      assigned: ['in_progress', 'pending'],
+      in_progress: ['pending_check'],
+      pending_check: ['in_progress'],
+      completed: ['in_progress']
+    },
+    customer: {
+      pending: ['cancelled']
+    }
+  };
+
+  // 获取当前用户角色允许的状态变更
+  const transitions = allowedTransitions[userRole] || {};
+  const allowed = transitions[currentStatus] || [];
+
+  return allowed.includes(newStatus);
+}
+
+// 根据工单状态更新车辆状态
+export async function updateVehicleStatusByWorkOrder(
+  vehicleId: string,
+  workOrderStatus: string
+): Promise<void> {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(vehicleId)) {
+      console.error('无效的车辆ID:', vehicleId);
+      return;
+    }
+
+    let vehicleStatus;
+    switch (workOrderStatus) {
+      case 'in_progress':
+        vehicleStatus = 'in_maintenance';
+        break;
+      case 'completed':
+        vehicleStatus = 'available';
+        break;
+      case 'cancelled':
+        vehicleStatus = 'available';
+        break;
+      default:
+        // 不需要更新车辆状态
+        return;
+    }
+
+    await Vehicle.findByIdAndUpdate(vehicleId, { status: vehicleStatus });
+  } catch (error) {
+    console.error('更新车辆状态失败:', error);
+    throw error;
+  }
+}
 
 // 更新技师统计数据
 export async function updateTechnicianStats(

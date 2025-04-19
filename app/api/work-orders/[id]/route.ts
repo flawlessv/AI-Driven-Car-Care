@@ -43,27 +43,35 @@ export async function GET(
     }
 
     // 准备返回数据
-    const workOrderData = workOrder.toObject();
+    const workOrderData = workOrder.toObject ? workOrder.toObject() : JSON.parse(JSON.stringify(workOrder));
     
     // 确保正确处理completionProof
-    if (workOrder.completionProof) {
+    if (workOrderData.completionProof) {
       // 已经有completionProof数据，确保格式正确
-      if (typeof workOrder.completionProof === 'object' && workOrder.completionProof !== null) {
+      if (typeof workOrderData.completionProof === 'object' && workOrderData.completionProof !== null) {
         // 确保proofImages是数组
-        if (!Array.isArray(workOrder.completionProof.proofImages)) {
-          workOrderData.completionProof.proofImages = [];
+        if (!Array.isArray(workOrderData.completionProof.proofImages)) {
+          workOrderData.completionProof.proofImages = workOrderData.completionProof.proofImages ? 
+            [workOrderData.completionProof.proofImages] : [];
         }
-      } else if (Array.isArray(workOrder.completionProof)) {
+      } else if (Array.isArray(workOrderData.completionProof)) {
         // 如果是数组，转换为对象格式
         workOrderData.completionProof = {
-          proofImages: workOrder.completionProof.filter((item: any) => typeof item === 'string'),
+          proofImages: workOrderData.completionProof.filter((item: any) => typeof item === 'string'),
           submittedAt: new Date(),
           approved: false
         };
-      } else if (typeof workOrder.completionProof === 'string' && workOrder.completionProof.length > 0) {
+      } else if (typeof workOrderData.completionProof === 'string' && workOrderData.completionProof.length > 0) {
         // 如果是字符串，可能是单张图片
         workOrderData.completionProof = {
-          proofImages: [workOrder.completionProof],
+          proofImages: [workOrderData.completionProof],
+          submittedAt: new Date(),
+          approved: false
+        };
+      } else {
+        // 如果格式无法识别，设置为空对象
+        workOrderData.completionProof = {
+          proofImages: [],
           submittedAt: new Date(),
           approved: false
         };
@@ -71,19 +79,58 @@ export async function GET(
     }
 
     // 单独查询工单进度记录
-    const progress = await WorkOrderProgress.find({ workOrder: params.id })
-      .populate({ path: 'updatedBy', select: 'username role', strictPopulate: false })
-      .sort({ createdAt: -1 })
-      .exec();
-    const evaluation = await WorkOrderEvaluation.findOne({ workOrder: params.id })
-      .populate('createdBy', 'username')
-      .exec();
+    let progress = [];
+    try {
+      progress = await WorkOrderProgress.find({ workOrder: params.id })
+        .populate({ path: 'updatedBy', select: 'username role', strictPopulate: false })
+        .sort({ createdAt: 1 })
+        .exec();
+        
+      // 确保进度数据是数组
+      if (!Array.isArray(progress)) {
+        progress = [];
+      }
+      
+      // 处理进度数据，确保每个记录都有username字段
+      progress = progress.map(item => {
+        const progressItem = item.toObject ? item.toObject() : JSON.parse(JSON.stringify(item));
+        
+        // 确保updatedBy字段包含username
+        if (progressItem.updatedBy) {
+          if (typeof progressItem.updatedBy === 'string') {
+            // 如果updatedBy是ID字符串，添加一个username字段
+            progressItem.username = '未知用户';
+          } else if (typeof progressItem.updatedBy === 'object') {
+            // 如果updatedBy是对象，确保有username字段
+            progressItem.username = progressItem.updatedBy.username || '未知用户';
+          }
+        } else {
+          progressItem.username = '系统';
+        }
+        
+        return progressItem;
+      });
+    } catch (progressError) {
+      console.error("获取工单进度失败:", progressError);
+      progress = [];
+    }
+    
+    // 获取评价信息
+    let evaluation = null;
+    try {
+      evaluation = await WorkOrderEvaluation.findOne({ workOrder: params.id })
+        .populate('createdBy', 'username')
+        .exec();
+    } catch (evalError) {
+      console.error("获取工单评价失败:", evalError);
+    }
+    
     return NextResponse.json({
       success: true,
       message: "获取工单成功",
       data: workOrderData,
-      progress,
-      evaluation,
+      progress: progress || [],
+      evaluation: evaluation || null,
     });
   } catch (error: any) {
     console.error("获取工单失败:", error);
@@ -134,6 +181,11 @@ export async function PUT(
     console.log('收到的更新数据:', data);
     
     if (data.status) {
+      // 检查用户是否有权限更改工单状态
+      if (!canChangeStatus(authResult.user.role, workOrder.status, data.status)) {
+        return errorResponse(`您的角色（${authResult.user.role}）没有权限将工单从 "${statusText[workOrder.status as keyof typeof statusText]}" 更改为 "${statusText[data.status as keyof typeof statusText]}"`, 403);
+      }
+      
       // 使用 handleStatusChange 函数创建进度记录
       await handleStatusChange(
         params.id,
@@ -177,11 +229,31 @@ export async function PUT(
       .sort({ timestamp: -1 });
 
     console.log('更新后的进度记录:', progress);
+    
+    // 处理进度数据，确保每个记录都有username字段
+    const formattedProgress = progress.map(item => {
+      const progressItem = item.toObject ? item.toObject() : JSON.parse(JSON.stringify(item));
+      
+      // 确保updatedBy字段包含username
+      if (progressItem.updatedBy) {
+        if (typeof progressItem.updatedBy === 'string') {
+          // 如果updatedBy是ID字符串，添加一个username字段
+          progressItem.username = '未知用户';
+        } else if (typeof progressItem.updatedBy === 'object') {
+          // 如果updatedBy是对象，确保有username字段
+          progressItem.username = progressItem.updatedBy.username || '未知用户';
+        }
+      } else {
+        progressItem.username = '系统';
+      }
+      
+      return progressItem;
+    });
 
     return successResponse({
       message: '工单更新成功',
       workOrder: updatedWorkOrder,
-      progress
+      progress: formattedProgress
     });
 
   } catch (error: any) {
@@ -267,7 +339,7 @@ const handleStatusChange = async (workOrderId: string, status: string, user: any
     console.log('创建进度记录:', {
       workOrder: workOrderId,
       status,
-      note: notes,
+      notes: notes,
       updatedBy: user._id,
       timestamp: new Date()
     });
@@ -284,10 +356,24 @@ const handleStatusChange = async (workOrderId: string, status: string, user: any
     // 获取包含用户信息的进度记录
     const populatedProgress = await WorkOrderProgress.findById(progress._id)
       .populate('updatedBy', 'username');
+      
+    // 确保返回的进度记录中有username字段
+    const progressData = populatedProgress.toObject ? populatedProgress.toObject() : JSON.parse(JSON.stringify(populatedProgress));
+    
+    // 添加username字段
+    if (progressData.updatedBy) {
+      if (typeof progressData.updatedBy === 'string') {
+        progressData.username = '未知用户';
+      } else if (typeof progressData.updatedBy === 'object') {
+        progressData.username = progressData.updatedBy.username || '未知用户';
+      }
+    } else {
+      progressData.username = user.username || '系统';
+    }
 
-    console.log('创建的进度记录:', populatedProgress);
+    console.log('创建的进度记录:', progressData);
 
-    return populatedProgress;
+    return progressData;
   } catch (error) {
     console.error('创建进度记录失败:', error);
     throw error;

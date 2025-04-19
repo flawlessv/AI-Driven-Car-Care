@@ -189,6 +189,9 @@ export default function VehicleFilesPage() {
         throw new Error(healthResult.message || '获取健康评分失败');
       }
 
+      console.log('Vehicle API 响应:', vehicleResult);
+      console.log('Health API 响应:', healthResult);
+
       // 正确获取嵌套的数据结构
       const vehicleData: VehicleFile = {
         _id: vehicleResult.data.data._id || '',
@@ -202,6 +205,9 @@ export default function VehicleFilesPage() {
         status: vehicleResult.data.data.status || 'inactive',
         createdAt: vehicleResult.data.data.createdAt || '',
         updatedAt: vehicleResult.data.data.updatedAt || '',
+        mileage: vehicleResult.data.data.mileage || 0,
+        healthScore: healthResult.data.data,
+        maintenanceRecords: vehicleResult.data.data.maintenanceRecords || [],
       };
 
       console.log('处理后的车辆数据:', vehicleData);
@@ -253,7 +259,7 @@ export default function VehicleFilesPage() {
     {
       key: 'health',
       label: '健康评分',
-      children: selectedVehicle?.healthScore && (
+      children: selectedVehicle?.healthScore ? (
         <div className="space-y-6">
           <Row gutter={[16, 16]}>
             <Col span={24}>
@@ -278,7 +284,7 @@ export default function VehicleFilesPage() {
               <Card>
                 <Statistic
                   title="车龄评分"
-                  value={selectedVehicle?.healthScore?.details?.ageScore ?? 0}
+                  value={selectedVehicle.healthScore.details?.ageScore ?? 0}
                   suffix="/20"
                 />
               </Card>
@@ -287,7 +293,7 @@ export default function VehicleFilesPage() {
               <Card>
                 <Statistic
                   title="里程评分"
-                  value={selectedVehicle?.healthScore?.details?.mileageScore ?? 0}
+                  value={selectedVehicle.healthScore.details?.mileageScore ?? 0}
                   suffix="/30"
                 />
               </Card>
@@ -296,7 +302,7 @@ export default function VehicleFilesPage() {
               <Card>
                 <Statistic
                   title="保养评分"
-                  value={selectedVehicle?.healthScore?.details?.maintenanceScore ?? 0}
+                  value={selectedVehicle.healthScore.details?.maintenanceScore ?? 0}
                   suffix="/30"
                 />
               </Card>
@@ -305,7 +311,7 @@ export default function VehicleFilesPage() {
               <Card>
                 <Statistic
                   title="状态评分"
-                  value={selectedVehicle?.healthScore?.details?.statusScore ?? 0}
+                  value={selectedVehicle.healthScore.details?.statusScore ?? 0}
                   suffix="/20"
                 />
               </Card>
@@ -313,12 +319,14 @@ export default function VehicleFilesPage() {
           </Row>
           <Card title="健康建议">
             <ul className="list-disc pl-4 space-y-2">
-              {selectedVehicle?.healthScore?.suggestions?.map((suggestion, index) => (
+              {selectedVehicle.healthScore.suggestions?.map((suggestion, index) => (
                 <li key={index} className="text-gray-600">{suggestion}</li>
               )) || <li className="text-gray-600">暂无健康建议</li>}
             </ul>
           </Card>
         </div>
+      ) : (
+        <div className="text-center text-gray-500 py-4">暂无健康评分数据</div>
       ),
     },
     {

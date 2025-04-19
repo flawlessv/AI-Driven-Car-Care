@@ -479,7 +479,7 @@ export default function MaintenancePage() {
             label="车辆"
             rules={[{ required: true, message: '请选择车辆' }]}
           >
-            <Select placeholder="请选择车辆">
+            <Select placeholder="请选择车辆" disabled={!!editingRecord}>
               {Array.isArray(vehicles) && vehicles.map(vehicle => (
                 <Select.Option key={vehicle._id} value={vehicle._id}>
                   {vehicle.brand} {vehicle.model} - {vehicle.licensePlate}

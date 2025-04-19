@@ -52,6 +52,13 @@ const priorityColor = {
   urgent: 'red',
 };
 
+// 添加工单类型文本映射
+const typeText = {
+  repair: '维修',
+  maintenance: '保养',
+  inspection: '检查',
+};
+
 const formatDisplayData = (workOrder: WorkOrder | null) => {
   if (!workOrder) return null;
 
@@ -148,7 +155,16 @@ const WorkOrderDetailPage = () => {
       // 获取工单数据
       if (result.data) {
         console.log('获取到的工单数据:', result.data);
-        setWorkOrder(result.data);
+        // 确保工单数据完整性
+        const workOrderData = {
+          ...result.data,
+          // 确保对象属性有默认值
+          vehicle: result.data.vehicle || {},
+          customer: result.data.customer || {},
+          technician: result.data.technician || null,
+          completionProof: result.data.completionProof || { proofImages: [] }
+        };
+        setWorkOrder(workOrderData);
       } else {
         console.error('工单数据格式错误:', result);
         throw new Error('工单数据格式错误');
@@ -158,10 +174,23 @@ const WorkOrderDetailPage = () => {
       if (result.progress && Array.isArray(result.progress)) {
         console.log('获取到的进度数据:', result.progress);
         
+        // 确保进度数据的完整性
+        const validProgress = result.progress
+          .filter(item => item && typeof item === 'object')
+          .map(item => ({
+            ...item,
+            updatedBy: item.updatedBy || { username: '未知用户' },
+            status: item.status || 'unknown',
+            timestamp: item.timestamp || item.createdAt || new Date(),
+            notes: item.notes || ''
+          }));
+        
         // 对进度记录按创建时间排序，确保显示正确顺序
-        const sortedProgress = [...result.progress].sort((a, b) => {
+        const sortedProgress = [...validProgress].sort((a, b) => {
           // 使用时间戳比较
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          const timeA = new Date(a.timestamp || a.createdAt).getTime();
+          const timeB = new Date(b.timestamp || b.createdAt).getTime();
+          return timeA - timeB;
         });
         
         console.log('排序后的进度数据:', sortedProgress);
@@ -178,6 +207,9 @@ const WorkOrderDetailPage = () => {
     } catch (error: any) {
       console.error('获取工单详情失败:', error);
       message.error(error.message || '获取工单详情失败');
+      // 设置空状态，避免界面崩溃
+      setWorkOrder(null);
+      setProgress([]);
     } finally {
       setLoading(false);
     }
@@ -192,10 +224,23 @@ const WorkOrderDetailPage = () => {
       if (response.ok && result.data) {
         console.log('单独获取的进度记录:', result.data);
         
+        // 确保进度数据的完整性
+        const validProgress = (Array.isArray(result.data) ? result.data : [])
+          .filter(item => item && typeof item === 'object')
+          .map(item => ({
+            ...item,
+            updatedBy: item.updatedBy || { username: '未知用户' },
+            status: item.status || 'unknown',
+            timestamp: item.timestamp || item.createdAt || new Date(),
+            notes: item.notes || ''
+          }));
+        
         // 对进度记录按创建时间排序，确保显示正确顺序
-        const sortedProgress = [...result.data].sort((a, b) => {
+        const sortedProgress = [...validProgress].sort((a, b) => {
           // 使用时间戳比较
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          const timeA = new Date(a.timestamp || a.createdAt).getTime();
+          const timeB = new Date(b.timestamp || b.createdAt).getTime();
+          return timeA - timeB;
         });
         
         console.log('排序后的进度记录:', sortedProgress);
@@ -249,8 +294,14 @@ const WorkOrderDetailPage = () => {
         const result = await response.json();
         console.log('工单完成证明响应:', result);
         
-        if (result.success && result.data && result.data.proofImages && result.data.proofImages.length > 0) {
-          setCompletionProofData(result.data);
+        if (result.success && result.data) {
+          const proofData = {
+            ...result.data,
+            proofImages: Array.isArray(result.data.proofImages) 
+              ? result.data.proofImages 
+              : (result.data.proofImages ? [result.data.proofImages] : [])
+          };
+          setCompletionProofData(proofData);
           console.log('使用完成证明API返回的数据');
         } else if (!completionProofData) {
           // 只有在之前没有从工单详情获取到数据时才更新
@@ -330,7 +381,7 @@ const WorkOrderDetailPage = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             status,
-            notes: progressNotes
+            notes: progressNotes  // 与模型字段保持一致，使用 notes
           }),
         });
         
@@ -343,10 +394,24 @@ const WorkOrderDetailPage = () => {
         // 如果接口返回了最新的进度记录，对其进行排序后使用
         if (result.progress && Array.isArray(result.progress)) {
           console.log('API返回的进度记录:', result.progress);
+          
+          // 确保进度数据的完整性
+          const validProgress = result.progress
+            .filter(item => item && typeof item === 'object')
+            .map(item => ({
+              ...item,
+              updatedBy: item.updatedBy || { username: '未知用户' },
+              status: item.status || 'unknown',
+              timestamp: item.timestamp || item.createdAt || new Date(),
+              notes: item.notes || ''
+            }));
+            
           // 对进度记录按创建时间排序，确保显示正确顺序
-          const sortedProgress = [...result.progress].sort((a, b) => {
+          const sortedProgress = [...validProgress].sort((a, b) => {
             // 使用时间戳比较
-            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            const timeA = new Date(a.timestamp || a.createdAt).getTime();
+            const timeB = new Date(b.timestamp || b.createdAt).getTime();
+            return timeA - timeB;
           });
           
           console.log('排序后的进度记录:', sortedProgress);
@@ -690,16 +755,13 @@ const WorkOrderDetailPage = () => {
                     {displayData.vehicle?.licensePlate}
                   </Descriptions.Item>
                   <Descriptions.Item label="维修类型">
-                    {workOrder.type}
+                    {typeText[workOrder.type as keyof typeof typeText] || workOrder.type}
                   </Descriptions.Item>
                   <Descriptions.Item label="客户">
                     {displayData.customer?.username || '未分配客户'}
                   </Descriptions.Item>
                   <Descriptions.Item label="技师">
                     {displayData.technician?.username || '未分配技师'}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="创建者">
-                    {workOrder.createdBy?.username || '未知'}
                   </Descriptions.Item>
                   <Descriptions.Item label="预计工时">
                     {workOrder.estimatedHours ? `${workOrder.estimatedHours}小时` : '-'}
@@ -754,15 +816,19 @@ const WorkOrderDetailPage = () => {
                   });
                 }
                 
+                // 确保updatedBy数据结构正确
+                let updatedByData = null;
+                updatedByData={
+                  _id: item._id || '',
+                  username: item.username || '未知用户1'
+                }
+                
                 return {
                   _id: item._id,
                   status: item.status,
                   note: noteText,
-                  timestamp: item.createdAt,
-                  // 处理可能的不同数据结构
-                  updatedBy: item.updatedBy || { 
-                    username: item.user?.username || '未知' 
-                  }
+                  timestamp: item.timestamp || item.createdAt,
+                  updatedBy: updatedByData
                 };
               })} 
             />
@@ -777,6 +843,7 @@ const WorkOrderDetailPage = () => {
                     feedback: workOrder.feedback,
                     createdBy: workOrder.customer?._id || user?._id || '',
                     createdAt: workOrder.updatedAt,
+                    customer: workOrder.customer,
                     _id: '',
                   } : undefined}
                   canEvaluate={canEvaluate}

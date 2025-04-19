@@ -36,8 +36,6 @@ export default function MaintenanceDetailPage({ params }: { params: { id: string
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<MaintenanceRecord | null>(null);
-  const [statusModalVisible, setStatusModalVisible] = useState(false);
-  const [form] = Form.useForm();
 
   useEffect(() => {
     fetchMaintenanceDetail();
@@ -139,10 +137,10 @@ export default function MaintenanceDetailPage({ params }: { params: { id: string
               ¥{(data.cost || 0).toLocaleString()}
             </Descriptions.Item>
             <Descriptions.Item label="客户">
-              {data.customer?.name || '未指定'} - {data.customer?.phone || 'N/A'}
+              {data.customer?.name || '未指定'} - {data.customer?.contact || 'N/A'}
             </Descriptions.Item>
             <Descriptions.Item label="技师">
-              {data.technician?.name || '未指定'} ({data.technician?.level || 'N/A'})
+              {data.technician?.username || '未指定'} ({data.technician?.level || 'N/A'})
             </Descriptions.Item>
             <Descriptions.Item label="里程数">
               {data.mileage?.toLocaleString() || 'N/A'} km

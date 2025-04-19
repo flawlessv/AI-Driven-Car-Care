@@ -33,7 +33,7 @@ export interface MaintenanceRecord {
   customer: {           // 车主信息
     _id: string;        // 车主的唯一标识符
     name: string;       // 车主姓名
-    phone: string;      // 车主电话
+    contact: string;      // 车主电话
     email: string;      // 车主邮箱
   };
   type: MaintenanceType;      // 保养类型
@@ -46,7 +46,7 @@ export interface MaintenanceRecord {
   cost: number;         // 总费用
   technician: {         // 负责技师信息
     _id: string;        // 技师唯一标识符
-    name: string;       // 技师姓名
+    username: string;       // 技师姓名
     level: string;      // 技师级别
   };
   parts: MaintenancePart[];  // 使用的配件列表
