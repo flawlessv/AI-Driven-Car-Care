@@ -31,6 +31,9 @@ import {
 } from '@ant-design/icons';
 // 导入饼图组件
 import { Pie } from '@ant-design/plots';
+// 导入Redux相关
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/app/lib/store';
 
 // 从Typography组件中解构出Title和Text组件
 const { Title, Text } = Typography;
@@ -146,6 +149,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   // 状态管理：存储仪表盘数据
   const [dashboardData, setDashboardData] = useState<DashboardDataType | null>(null);
+  // 获取当前用户信息
+  const { user } = useSelector((state: RootState) => state.auth);
 
   /**
    * 工单状态的中文映射
@@ -540,31 +545,33 @@ export default function DashboardPage() {
             </Col>
           </Row>
 
-          {/* 图表卡片 */}
-          <Row gutter={[16, 16]} className="mt-6">
-            <Col xs={24} lg={12}>
-              <Card 
-                title="工单状态分布" 
-                className="chart-card" 
-                bordered={false}
-              >
-                <div className="h-64">
-                  <Pie {...workOrderStatusConfig} />
-                </div>
-              </Card>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Card 
-                title="工单类型分布" 
-                className="chart-card" 
-                bordered={false}
-              >
-                <div className="h-64">
-                  <Pie {...workOrderTypeConfig} />
-                </div>
-              </Card>
-            </Col>
-          </Row>
+          {/* 图表卡片 - 仅管理员和技师可见 */}
+          {user?.role !== 'customer' && (
+            <Row gutter={[16, 16]} className="mt-6">
+              <Col xs={24} lg={12}>
+                <Card 
+                  title="工单状态分布" 
+                  className="chart-card" 
+                  bordered={false}
+                >
+                  <div className="h-64">
+                    <Pie {...workOrderStatusConfig} />
+                  </div>
+                </Card>
+              </Col>
+              <Col xs={24} lg={12}>
+                <Card 
+                  title="工单类型分布" 
+                  className="chart-card" 
+                  bordered={false}
+                >
+                  <div className="h-64">
+                    <Pie {...workOrderTypeConfig} />
+                  </div>
+                </Card>
+              </Col>
+            </Row>
+          )}
         </>
       )}
     </div>

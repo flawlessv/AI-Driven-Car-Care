@@ -804,14 +804,16 @@ const TechniciansPage = () => {
           >
             刷新数据
           </Button>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            onClick={() => openModal()}
-            className="admin-btn admin-btn-primary"
-          >
-            新增技师
-          </Button>
+          {user?.role !== 'customer' && (
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />} 
+              onClick={() => openModal()}
+              className="admin-btn admin-btn-primary"
+            >
+              新增技师
+            </Button>
+          )}
         </Space>
       </div>
       
