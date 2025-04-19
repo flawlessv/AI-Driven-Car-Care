@@ -111,7 +111,7 @@ export async function PUT(
         minStock,
         unit: unit || '个', // 确保有默认单位
         location,
-        status: status || 'active', // 默认状态
+        status: status || 'in_stock', // 默认状态
       },
       { new: true }
     );

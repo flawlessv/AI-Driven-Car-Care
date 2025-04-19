@@ -32,10 +32,9 @@ const priorityOptions = [
 ];
 
 const typeOptions = [
-  { label: '常规保养', value: 'regular' },
+  { label: '常规保养', value: 'maintenance' },
   { label: '故障维修', value: 'repair' },
-  { label: '事故维修', value: 'accident' },
-  { label: '其他', value: 'other' },
+  { label: '车辆检查', value: 'inspection' },
 ];
 
 export default function WorkOrderForm({

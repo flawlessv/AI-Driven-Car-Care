@@ -37,6 +37,12 @@ const UserForm: React.FC<UserFormProps> = ({
         delete values.password;
       }
 
+      // 构造API请求数据，将username映射为name
+      const apiData = {
+        ...values,
+        name: values.username
+      };
+
       const url = isEdit && initialData?._id 
         ? `/api/users/${initialData._id}` 
         : '/api/users';
@@ -48,7 +54,7 @@ const UserForm: React.FC<UserFormProps> = ({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify(apiData),
       });
 
       const result = await response.json();
@@ -142,7 +148,8 @@ const UserForm: React.FC<UserFormProps> = ({
       >
         <Select placeholder="请选择状态">
           <Select.Option value="active">正常</Select.Option>
-          <Select.Option value="disabled">禁用</Select.Option>
+          <Select.Option value="inactive">未激活</Select.Option>
+          <Select.Option value="suspended">已冻结</Select.Option>
         </Select>
       </Form.Item>
 

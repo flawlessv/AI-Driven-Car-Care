@@ -63,8 +63,8 @@ const partSchema = new mongoose.Schema({
   // 配件状态
   status: {
     type: String,          // 字符串类型
-    enum: ['active', 'inactive', 'discontinued'],  // 枚举值：激活（可用）、未激活、已停产
-    default: 'active',     // 默认值为"激活"
+    enum: ['in_stock', 'low_stock', 'out_of_stock', 'discontinued'],  // 枚举值：有库存、库存不足、无库存、已停产
+    default: 'in_stock',     // 默认值为"有库存"
   },
   // 创建时间，记录配件信息首次添加的时间
   createdAt: {

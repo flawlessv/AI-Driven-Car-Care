@@ -2,6 +2,8 @@ import { getUserModel } from '@/app/lib/db/models';
 import mongoose from 'mongoose';
 import WorkOrderProgress from '@/app/models/workOrderProgress';
 import Vehicle from '@/app/models/vehicle';
+import { User } from '@/types/user';
+import { WorkOrder } from '@/types/workOrder';
 
 // 记录工单进度
 export async function recordWorkOrderProgress(
@@ -177,8 +179,56 @@ export async function checkWorkOrderPermission(
 
 // 获取可分配的技师列表
 export async function getAvailableTechnicians(): Promise<User[]> {
+  const User = getUserModel();
   return await User.find({
     role: 'technician',
     status: 'active',
   }).select('_id username');
+}
+
+// 定义工单验证错误接口
+interface WorkOrderValidationError {
+  field: string;
+  message: string | string[];
+}
+
+// 验证工单数据
+export function validateWorkOrder(workOrderData: any): WorkOrderValidationError[] {
+  const errors: WorkOrderValidationError[] = [];
+
+  // 验证必填字段
+  if (!workOrderData.vehicle) {
+    errors.push({ field: 'vehicle', message: '请选择车辆' });
+  }
+
+  // 检查type字段（前端传递的服务类型字段名）
+  if (!workOrderData.type) {
+    errors.push({ field: 'type', message: '请选择服务类型' });
+  }
+
+  if (!workOrderData.description || workOrderData.description.trim() === '') {
+    errors.push({ field: 'description', message: '请填写问题描述' });
+  }
+
+  // 验证日期（如果有）
+  if (workOrderData.scheduledDate) {
+    const scheduledDate = new Date(workOrderData.scheduledDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (isNaN(scheduledDate.getTime())) {
+      errors.push({ field: 'scheduledDate', message: '请输入有效的日期' });
+    } else if (scheduledDate < today) {
+      errors.push({ field: 'scheduledDate', message: '预约日期不能早于今天' });
+    }
+  }
+
+  // 验证预估金额（如果有）
+  if (workOrderData.estimatedCost !== undefined && workOrderData.estimatedCost !== null) {
+    if (isNaN(Number(workOrderData.estimatedCost)) || Number(workOrderData.estimatedCost) < 0) {
+      errors.push({ field: 'estimatedCost', message: '请输入有效的预估金额' });
+    }
+  }
+
+  return errors;
 } 

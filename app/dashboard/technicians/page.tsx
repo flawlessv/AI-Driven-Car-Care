@@ -37,6 +37,7 @@ import {
   CalendarOutlined,
   TeamOutlined,
   TrophyOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { USER_ROLES, USER_STATUS } from '../../lib/constants';
 import { useRouter } from 'next/navigation';
@@ -64,6 +65,9 @@ interface TechnicianStats {
  */
 interface TechnicianWithStats extends User {
   stats?: TechnicianStats;  // 技师统计信息
+  rating?: number;          // 技师评分
+  totalOrders?: number;     // 总订单数
+  completedOrders?: number; // 已完成订单数
 }
 
 /**
@@ -510,27 +514,40 @@ const TechniciansPage = () => {
       title: '技师信息',
       key: 'info',
       render: (record: TechnicianWithStats) => (
-        <Space>
-          <Avatar icon={<UserOutlined />} />
+        <div className="flex items-center">
+          <Avatar 
+            size={40} 
+            icon={<UserOutlined />} 
+            style={{ backgroundColor: '#1677ff' }}
+            className="mr-3 shadow-sm"
+          />
           <div>
-            <div>{record.username || '未命名'}</div>
-            <div className="text-gray-500 text-sm">{getLevelColor(record.level || '初级技师').text}</div>
+            <div className="font-medium text-gray-800">{record.username || '未命名'}</div>
+            <div className="text-xs flex items-center mt-1">
+              <Tag color={getLevelColor(record.level || '初级技师').color} className="m-0 text-xs">
+                {getLevelColor(record.level || '初级技师').text}
+              </Tag>
+            </div>
           </div>
-        </Space>
+        </div>
       ),
     },
     {
       title: '联系方式',
       key: 'contact',
       render: (record: TechnicianWithStats) => (
-        <div>
-          <div className="flex items-center mb-1">
-            <PhoneOutlined className="text-green-500 mr-1" />
-            <span>{record.phone || '-'}</span>
+        <div className="space-y-2">
+          <div className="flex items-center text-sm">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-50 text-green-600 mr-2">
+              <PhoneOutlined />
+            </span>
+            <span className="text-gray-700">{record.phone || '-'}</span>
           </div>
-          <div className="flex items-center">
-            <MailOutlined className="text-blue-500 mr-1" />
-            <span>{record.email || '-'}</span>
+          <div className="flex items-center text-sm">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 text-blue-600 mr-2">
+              <MailOutlined />
+            </span>
+            <span className="text-gray-700">{record.email || '-'}</span>
           </div>
         </div>
       ),
@@ -540,11 +557,30 @@ const TechniciansPage = () => {
       dataIndex: 'specialties',
       key: 'specialties',
       render: (specialties: string[]) => (
-        <Space wrap>
-          {Array.isArray(specialties) && specialties.length > 0 ? specialties.map(specialty => (
-            <Tag key={specialty} color="blue">{specialty}</Tag>
-          )) : <span className="text-gray-400">暂无专长</span>}
-        </Space>
+        <div>
+          {Array.isArray(specialties) && specialties.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {specialties.slice(0, 2).map(specialty => (
+                <Tag 
+                  key={specialty} 
+                  color="blue" 
+                  className="px-2 py-1 text-xs rounded-md flex items-center"
+                >
+                  <ToolOutlined className="mr-1" />{specialty}
+                </Tag>
+              ))}
+              {specialties.length > 2 && (
+                <Tooltip title={specialties.slice(2).join(', ')}>
+                  <Tag color="blue" className="px-2 py-1 text-xs rounded-md">
+                    +{specialties.length - 2}
+                  </Tag>
+                </Tooltip>
+              )}
+            </div>
+          ) : (
+            <span className="text-gray-400 text-sm italic">暂无专长</span>
+          )}
+        </div>
       ),
     },
     {
@@ -552,32 +588,55 @@ const TechniciansPage = () => {
       dataIndex: 'certifications',
       key: 'certifications',
       render: (certifications: string[]) => (
-        <Space wrap>
-          {Array.isArray(certifications) && certifications.length > 0 ? certifications.map(cert => (
-            <Tag key={cert} color="green">{cert}</Tag>
-          )) : <span className="text-gray-400">暂无认证</span>}
-        </Space>
+        <div>
+          {Array.isArray(certifications) && certifications.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {certifications.slice(0, 2).map(cert => (
+                <Tag 
+                  key={cert} 
+                  color="green" 
+                  className="px-2 py-1 text-xs rounded-md flex items-center"
+                >
+                  <SafetyCertificateOutlined className="mr-1" />{cert}
+                </Tag>
+              ))}
+              {certifications.length > 2 && (
+                <Tooltip title={certifications.slice(2).join(', ')}>
+                  <Tag color="green" className="px-2 py-1 text-xs rounded-md">
+                    +{certifications.length - 2}
+                  </Tag>
+                </Tooltip>
+              )}
+            </div>
+          ) : (
+            <span className="text-gray-400 text-sm italic">暂无认证</span>
+          )}
+        </div>
       ),
     },
     {
       title: '工作年限',
       dataIndex: 'workExperience',
       key: 'workExperience',
-      render: (years: string | number) => years ? `${years}年` : '未填写',
+      render: (years: string | number) => (
+          <span className="text-gray-700 font-medium">
+            {years ? `${years} 年` : '未填写'}
+          </span>
+      ),
     },
     {
       title: '完成率',
-      key: 'completion',
+      key: 'directRatio',
       render: (record: TechnicianWithStats) => {
-        if (!record.stats?.completionRate && record.stats?.completionRate !== 0) {
-          return <span className="text-gray-400">无数据</span>;
-        }
+       console.log(record,'record123');
+       const {completedOrders,totalOrders} = record || {};
+       const percentValue = completedOrders && totalOrders ? (completedOrders / totalOrders) * 100 : 0;
         return (
-          <Tooltip title={`完成${record.stats?.completedOrders || 0}个订单，共${record.stats?.totalOrders || 0}个订单`}>
+          <Tooltip title={`完成${completedOrders}个订单，共${totalOrders}个订单`}>
             <Progress
-              percent={Number(record.stats.completionRate * 100) || 0}
+              percent={percentValue}
               size="small"
-              format={percent => percent ? `${percent.toFixed(1)}%` : '0%'}
+              format={percent => percent !== undefined ? `${percent.toFixed(1)}%` : '0%'}
             />
           </Tooltip>
         );
@@ -587,14 +646,20 @@ const TechniciansPage = () => {
       title: '评分',
       key: 'rating',
       render: (record: TechnicianWithStats) => {
-        if (!record.stats?.averageRating && record.stats?.averageRating !== 0) {
-          return <span className="text-gray-400">无评分</span>;
+        // 优先使用record.rating，如果不存在则尝试使用record.stats.averageRating
+        const rating = record.rating !== undefined ? record.rating : record.stats?.averageRating;
+        
+        if (rating === undefined || rating === null) {
+          return <span className="text-gray-400 text-sm italic">无评分</span>;
         }
+        
         return (
-          <Space>
-            <StarOutlined style={{ color: '#faad14' }} />
-            <span>{record.stats.averageRating.toFixed(1)}</span>
-          </Space>
+          <div className="flex items-center">
+            <div className="flex items-center bg-yellow-50 text-yellow-600 px-2 py-1 rounded-md">
+              <StarOutlined className="mr-1" />
+              <span className="font-medium">{typeof rating === 'number' ? rating.toFixed(1) : rating}</span>
+            </div>
+          </div>
         );
       }
     },
@@ -604,7 +669,16 @@ const TechniciansPage = () => {
       key: 'status',
       render: (status: string) => {
         const statusInfo = getStatusColor(status);
-        return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
+        return (
+          <div className="flex justify-center">
+            <Tag
+              color={statusInfo.color}
+              className="px-3 py-1 text-center rounded-full font-medium min-w-[70px]"
+            >
+              {statusInfo.text}
+            </Tag>
+          </div>
+        );
       },
     },
     {
@@ -783,8 +857,31 @@ const TechniciansPage = () => {
             <Card className="dashboard-card" bordered={false}>
               <Statistic
                 title={<div className="font-medium text-gray-600">平均评分</div>}
-                value={Object.values(technicianStats).reduce((acc, stat) => acc + stat.averageRating, 0) / 
-                      (Object.values(technicianStats).length || 1)}
+                value={(() => {
+                  // 计算有效的技师评分总和和技师数量
+                  let totalRating = 0;
+                  let ratedTechnicianCount = 0;
+                  
+                  technicians.forEach(tech => {
+                    const rating = tech.rating !== undefined && tech.rating !== null ? 
+                      parseFloat(String(tech.rating)) : 
+                      (technicianStats[tech._id]?.averageRating !== undefined ? 
+                        parseFloat(String(technicianStats[tech._id].averageRating)) : null);
+                    
+                    if (rating !== null && !isNaN(rating)) {
+                      totalRating += rating;
+                      ratedTechnicianCount++;
+                    }
+                  });
+                  
+                  console.log('平均评分计算:', {
+                    totalRating,
+                    ratedTechnicianCount,
+                    average: ratedTechnicianCount > 0 ? (totalRating / ratedTechnicianCount).toFixed(1) : '0.0'
+                  });
+                  
+                  return ratedTechnicianCount > 0 ? (totalRating / ratedTechnicianCount) : 0;
+                })()}
                 precision={1}
                 prefix={<StarOutlined className="text-purple-500 mr-1" />}
                 valueStyle={{ color: '#722ed1', fontWeight: 500 }}
@@ -841,11 +938,11 @@ const TechniciansPage = () => {
                 <div className="flex items-center">
                   <Rate 
                     disabled 
-                    value={technicianStats[selectedTechnician._id]?.averageRating || 4.5} 
+                    value={selectedTechnician.rating || technicianStats[selectedTechnician._id]?.averageRating || 0} 
                     className="text-sm"
                   />
                   <span className="ml-2 text-gray-500">
-                    {(technicianStats[selectedTechnician._id]?.averageRating || 4.5).toFixed(1)}/5
+                    {(selectedTechnician.rating || technicianStats[selectedTechnician._id]?.averageRating || 0).toFixed(1)}/5
                   </span>
                 </div>
               </div>
@@ -918,7 +1015,7 @@ const TechniciansPage = () => {
                     <Card className="dashboard-card">
                       <Statistic
                         title="已完成工单"
-                        value={technicianStats[selectedTechnician._id]?.completedOrders || 0}
+                        value={selectedTechnician.completedOrders || technicianStats[selectedTechnician._id]?.completedOrders || 0}
                         prefix={<CheckCircleOutlined className="text-green-500" />}
                       />
                     </Card>
@@ -926,7 +1023,8 @@ const TechniciansPage = () => {
                     <Card className="dashboard-card">
                       <Statistic
                         title="待处理工单"
-                        value={technicianStats[selectedTechnician._id]?.totalOrders || 0}
+                        value={(selectedTechnician.totalOrders || technicianStats[selectedTechnician._id]?.totalOrders || 0) - 
+                              (selectedTechnician.completedOrders || technicianStats[selectedTechnician._id]?.completedOrders || 0)}
                         prefix={<ClockCircleOutlined className="text-orange-500" />}
                       />
                     </Card>
@@ -936,19 +1034,69 @@ const TechniciansPage = () => {
                     <div>
                       <p className="font-medium mb-2">工作效率</p>
                       <Progress 
-                        percent={technicianStats[selectedTechnician._id]?.completionRate || 0}
+                        percent={(() => {
+                          // 获取完整的原始数据
+                          const totalOrders = parseInt(String(selectedTechnician.totalOrders || 0));
+                          const completedOrders = parseInt(String(selectedTechnician.completedOrders || 0));
+                          const statsCompletionRate = technicianStats[selectedTechnician._id]?.completionRate;
+                          
+                          // 详细调试日志
+                          console.log(`技师详情 ${selectedTechnician.username} 完成率原始数据:`, {
+                            totalOrders: selectedTechnician.totalOrders,
+                            completedOrders: selectedTechnician.completedOrders,
+                            statsCompletionRate,
+                            parsedTotal: totalOrders,
+                            parsedCompleted: completedOrders,
+                            directRatio: totalOrders > 0 ? ((completedOrders / totalOrders) * 100).toFixed(1) + '%' : '0%'
+                          });
+                          
+                          // 计算百分比，优先使用stats数据
+                          let percentValue = 0;
+                          
+                          if (statsCompletionRate !== undefined) {
+                            const rawRate = parseFloat(String(statsCompletionRate));
+                            // 如果是0-1之间的小数，转换为百分比
+                            percentValue = rawRate > 1 ? rawRate : rawRate * 100;
+                          } else if (totalOrders > 0) {
+                            // 处理异常情况：已完成订单数超过总订单数
+                            if (completedOrders > totalOrders) {
+                              console.warn(`技师详情 ${selectedTechnician.username} 数据异常: 完成订单数(${completedOrders})大于总订单数(${totalOrders})`);
+                              percentValue = 100; // 设为100%
+                            } else {
+                              // 自行计算，确保是百分比值
+                              percentValue = (completedOrders / totalOrders) * 100;
+                            }
+                          }
+                          
+                          // 确保值在有效范围内
+                          percentValue = Math.max(0, Math.min(100, percentValue));
+                          
+                          console.log(`技师详情 ${selectedTechnician.username} 最终完成率: ${percentValue.toFixed(1)}%`);
+                          
+                          return percentValue;
+                        })()}
                         status="active"
                         strokeColor={{
                           '0%': '#108ee9',
                           '100%': '#87d068',
                         }}
+                        format={percent => percent !== undefined ? `${percent.toFixed(1)}%` : '0%'}
                       />
                     </div>
                     
                     <div>
                       <p className="font-medium mb-2">客户满意度</p>
                       <Progress 
-                        percent={(technicianStats[selectedTechnician._id]?.averageRating || 0) * 20}
+                        percent={(() => {
+                          // 获取评分
+                          const rating = selectedTechnician.rating !== undefined && selectedTechnician.rating !== null ? 
+                            parseFloat(String(selectedTechnician.rating)) : 
+                            (technicianStats[selectedTechnician._id]?.averageRating !== undefined ? 
+                              parseFloat(String(technicianStats[selectedTechnician._id].averageRating)) : 0);
+                          
+                          // 将评分转换为百分比 (满分5分 -> 100%)
+                          return rating * 20;
+                        })()}
                         status="active"
                         strokeColor={{
                           '0%': '#faad14',
@@ -962,10 +1110,22 @@ const TechniciansPage = () => {
                       <div className="flex items-center">
                         <Rate 
                           disabled 
-                          value={technicianStats[selectedTechnician._id]?.averageRating || 4.5} 
+                          value={(() => {
+                            const rating = selectedTechnician.rating !== undefined && selectedTechnician.rating !== null ? 
+                              parseFloat(String(selectedTechnician.rating)) : 
+                              (technicianStats[selectedTechnician._id]?.averageRating !== undefined ? 
+                                parseFloat(String(technicianStats[selectedTechnician._id].averageRating)) : 0);
+                            return rating;
+                          })()} 
                         />
                         <span className="ml-2 text-gray-500">
-                          {(technicianStats[selectedTechnician._id]?.averageRating || 4.5).toFixed(1)}/5
+                          {(() => {
+                            const rating = selectedTechnician.rating !== undefined && selectedTechnician.rating !== null ? 
+                              parseFloat(String(selectedTechnician.rating)) : 
+                              (technicianStats[selectedTechnician._id]?.averageRating !== undefined ? 
+                                parseFloat(String(technicianStats[selectedTechnician._id].averageRating)) : 0);
+                            return rating.toFixed(1);
+                          })()}/5
                         </span>
                       </div>
                     </div>

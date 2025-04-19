@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
       minStock,                 // 最小库存量
       unit: unit || '个',        // 单位，默认为"个"
       location,                 // 存放位置
-      status: data.status || 'active'  // 状态，默认为"激活"
+      status: data.status || 'in_stock'  // 状态，默认为"有库存"
     });
 
     // 保存零件记录到数据库

@@ -66,6 +66,16 @@ const statusText = {
 };
 
 /**
+ * 服务类型中文映射到英文
+ * 将后端返回的中文服务类型映射回前端使用的英文类型
+ */
+const SERVICE_CATEGORY_CN_TO_EN = {
+  '保养': 'maintenance',
+  '维修': 'repair',
+  '检查': 'inspection'
+};
+
+/**
  * 服务项目预设选项
  * 按类别分组的预设服务列表，包含名称、时长和基础价格
  */
@@ -135,6 +145,19 @@ export default function AppointmentsPage() {
     fetchVehicles();     // 获取车辆列表
     fetchTechnicians();  // 获取技师列表
   }, []);
+  
+  /**
+   * 监听用户信息变化，更新新增预约表单的客户信息默认值
+   */
+  useEffect(() => {
+    if (user && !editingAppointment) {
+      form.setFieldsValue({
+        'customer.name': user.username || '',
+        'customer.phone': user.phone || '',
+        'customer.email': user.email || ''
+      });
+    }
+  }, [user, form, editingAppointment]);
 
   /**
    * 获取预约列表的异步函数
@@ -470,6 +493,12 @@ export default function AppointmentsPage() {
     // 设置正在编辑的预约
     setEditingAppointment(record);
     
+    // 输出服务类型详情，用于调试
+    console.log('服务类型详情:', {
+      originalCategory: record.service?.category,
+      mappedCategory: SERVICE_CATEGORY_CN_TO_EN[record.service?.category as keyof typeof SERVICE_CATEGORY_CN_TO_EN] || 'maintenance'
+    });
+    
     // 准备预约日期和时间数据
     const appointmentDate = record.date || (record.timeSlot?.date ? record.timeSlot.date : null);
     const startTime = record.startTime ? dayjs(`2022-01-01 ${record.startTime}`) : (record.timeSlot?.startTime ? dayjs(`2022-01-01 ${record.timeSlot.startTime}`) : null);
@@ -485,8 +514,8 @@ export default function AppointmentsPage() {
       // 车辆信息
       vehicleId: record.vehicle?._id || '',
       
-      // 服务信息
-      serviceType: record.service?.category || 'maintenance',
+      // 服务信息 - 将中文服务类型映射回英文
+      serviceType: SERVICE_CATEGORY_CN_TO_EN[record.service?.category as keyof typeof SERVICE_CATEGORY_CN_TO_EN] || 'maintenance',
       serviceId: record.service?.name || '',
       estimatedDuration: record.estimatedDuration || 60,
       estimatedCost: record.estimatedCost || 0,
@@ -651,51 +680,102 @@ export default function AppointmentsPage() {
         basePrice: selectedService?.basePrice || 0,
         description: values.description || ''
       };
+      console.log(editingAppointment,'editingAppointment');
       
-      // 创建API期望的精确格式
-      const formattedData = {
-        customer: editingAppointment ? {
+      // 获取客户信息，如果是编辑则使用预约中的信息，如果是新增则使用表单中的信息或当前用户信息
+      let customerInfo;
+      if (editingAppointment) {
+        // 编辑预约时，使用原预约中的客户信息
+        customerInfo = {
           name: editingAppointment.customer?.name || '',
           phone: editingAppointment.customer?.phone || '',
           email: editingAppointment.customer?.email || ''
-        } : {
+        };
+      } else if (values['customer.name'] && values['customer.phone']) {
+        // 新增预约时，如果表单中有客户信息则使用表单中的
+        customerInfo = {
           name: values['customer.name'] || '',
           phone: values['customer.phone'] || '',
           email: values['customer.email'] || ''
-        },
+        };
+      } else {
+        // 否则使用当前登录用户的信息
+        customerInfo = {
+          name: user?.username || '',
+          phone: user?.phone || '',
+          email: user?.email || ''
+        };
+      }
+      
+      // 创建预约日期对象
+      const appointmentDate = new Date(values.date.format('YYYY-MM-DD'));
+      const startTimeStr = values.time[0].format('HH:mm');
+      const endTimeStr = values.time[1] ? values.time[1].format('HH:mm') : calculateEndTime(values.time[0].format('HH:mm'), serviceData.duration || 60);
+      
+      // 创建API期望的精确格式 - 同时满足API处理逻辑和模型验证要求
+      const formattedData = {
+        // 客户信息
+        customer: customerInfo,
+        // 车辆和服务信息
         vehicle: selectedVehicle?._id,
         service: serviceData,
-        // 同时提供扁平结构和嵌套结构，确保两种格式的接口都能正常工作
-        date: values.date.format('YYYY-MM-DD'),
-        startTime: values.time[0].format('HH:mm'),
-        endTime: values.time[1] ? values.time[1].format('HH:mm') : null,
+        // 时间相关信息 - 同时提供顶级字段
+        date: appointmentDate,
+        startTime: startTimeStr,
+        endTime: endTimeStr,
         technician: values.technicianId,
-        // 保留嵌套结构，确保兼容性
+        // 同时提供timeSlot对象 - 模型验证需要
         timeSlot: {
-          date: values.date.format('YYYY-MM-DD'),
-          startTime: values.time[0].format('HH:mm'),
-          endTime: values.time[1] ? values.time[1].format('HH:mm') : null,
+          date: appointmentDate,
+          startTime: startTimeStr,
+          endTime: endTimeStr,
           technician: values.technicianId
         },
+        // 其他信息
         status: values.status || 'pending',
         estimatedDuration: serviceData.duration,
         estimatedCost: serviceData.basePrice,
-        notes: values.description || ''
+        notes: values.description || '',
+        user: user?._id
       };
       
-      console.log('正在提交特殊格式数据:', JSON.stringify(formattedData, null, 2));
+      // 检查提交的数据
+      console.log('提交的预约数据:', JSON.stringify(formattedData, null, 2));
 
       // 根据是否有编辑中的预约决定使用POST还是PUT
       const url = editingAppointment?._id 
         ? `/api/appointments/${editingAppointment._id}` 
-        : `/api/appointments`;
+        : `/api/appointments/simple`; // 使用简易预约接口
       
       const method = editingAppointment?._id ? 'PUT' : 'POST';
+      
+      // 如果是创建新预约，准备简易预约接口需要的数据
+      let requestData = formattedData;
+      
+      if (!editingAppointment) {
+        // 为简易预约接口准备数据
+        requestData = {
+          customer: customerInfo,
+          vehicleBrand: selectedVehicle?.brand || '',
+          vehicleModel: selectedVehicle?.model || '',
+          licensePlate: selectedVehicle?.licensePlate || '',
+          serviceType: values.serviceType,
+          serviceDescription: values.description || '',
+          date: values.date.format('YYYY-MM-DD'),
+          startTime: values.time[0].format('HH:mm'),
+          technician: values.technicianId,
+          user: user?._id,
+          // 添加owner字段，简易接口的Vehicle模型可能需要
+          owner: user?._id
+        };
+      }
+      
+      console.log('最终提交的预约数据:', JSON.stringify(requestData, null, 2));
       
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formattedData),
+        body: JSON.stringify(requestData),
       });
 
       const result = await response.json();
@@ -716,6 +796,18 @@ export default function AppointmentsPage() {
   const handleAdd = () => {
     setEditingAppointment(null);
     form.resetFields();
+    
+    // 如果是登录用户，自动填充用户信息到客户信息字段
+    if (user) {
+      form.setFieldsValue({
+        'customer.name': user.username || '',
+        'customer.phone': user.phone || '',
+        'customer.email': user.email || '',
+        status: 'pending',
+        serviceType: 'maintenance'
+      });
+    }
+    
     setModalVisible(true);
   };
 
@@ -768,6 +860,25 @@ export default function AppointmentsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  /**
+   * 计算结束时间的辅助函数
+   * 根据开始时间和服务时长（分钟）计算结束时间
+   * 
+   * @param {string} startTime - 开始时间，格式"HH:MM"
+   * @param {number} durationMinutes - 服务时长（分钟）
+   * @returns {string} 结束时间，格式"HH:MM"
+   */
+  const calculateEndTime = (startTime: string, durationMinutes: number): string => {
+    const [hours, minutes] = startTime.split(':').map(Number);
+    let endMinutes = minutes + durationMinutes;
+    let endHours = hours + Math.floor(endMinutes / 60);
+    endMinutes = endMinutes % 60;
+    
+    // 确保格式是两位数
+    const formattedHours = endHours % 24;
+    return `${formattedHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -834,6 +945,46 @@ export default function AppointmentsPage() {
             serviceType: 'maintenance',
           }}
         >
+          {/* 添加客户信息字段 */}
+          <div className="mb-4 font-medium text-gray-700">客户信息</div>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="customer.name"
+                label="客户姓名"
+                rules={[{ required: true, message: '请输入客户姓名' }]}
+              >
+                <Input placeholder="请输入客户姓名" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="customer.phone"
+                label="联系电话"
+                rules={[
+                  { required: true, message: '请输入联系电话' },
+                  { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码' }
+                ]}
+              >
+                <Input placeholder="请输入联系电话" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item
+                name="customer.email"
+                label="电子邮箱"
+                rules={[
+                  { type: 'email', message: '请输入有效的邮箱地址' }
+                ]}
+              >
+                <Input placeholder="请输入电子邮箱" />
+              </Form.Item>
+            </Col>
+          </Row>
+          
+          <div className="mb-4 font-medium text-gray-700">车辆信息</div>
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
@@ -919,7 +1070,12 @@ export default function AppointmentsPage() {
                         label: `${item.name} (¥${item.basePrice})`,
                       })) || []
                   }
-                  notFoundContent="请先选择服务类型"
+                  notFoundContent={
+                    <div>
+                      <div>请先选择服务类型</div>
+                      <div className="text-gray-400 text-xs">当前服务类型: {form.getFieldValue('serviceType')}</div>
+                    </div>
+                  }
                 />
               </Form.Item>
             </Col>

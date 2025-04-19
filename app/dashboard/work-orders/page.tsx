@@ -490,30 +490,6 @@ export default function WorkOrdersPage() {
                 { value: 'cancelled', label: '已取消' },
               ]}
             />
-            <Select
-              placeholder="车辆筛选"
-              style={{ width: 200 }}
-              allowClear
-              className="hover-glow"
-              onChange={(value) => setSelectedVehicle(value)}
-              options={vehicles.map((vehicle) => ({
-                value: vehicle._id,
-                label: `${vehicle.licensePlate} (${vehicle.brand} ${vehicle.model})`,
-              }))}
-            />
-            <Select
-              placeholder="优先级筛选"
-              style={{ width: 150 }}
-              allowClear
-              className="hover-glow"
-              onChange={(value) => setSelectedPriority(value)}
-              options={[
-                { value: 'low', label: '低' },
-                { value: 'medium', label: '中' },
-                { value: 'high', label: '高' },
-                { value: 'urgent', label: '紧急' },
-              ]}
-            />
             <Button
               icon={<SyncOutlined />}
               onClick={fetchWorkOrders}

@@ -147,7 +147,8 @@ export default function VehicleFilesPage() {
           inactive: { color: 'red', text: '停用' },
           maintenance: { color: 'orange', text: '维修中' },
         };
-        const currentStatus = statusMap[status as keyof typeof statusMap];
+        const safeStatus = status || 'unknown';
+        const currentStatus = statusMap[safeStatus as keyof typeof statusMap] || { color: 'gray', text: safeStatus === 'unknown' ? '未知' : safeStatus };
         return <Tag color={currentStatus.color}>{currentStatus.text}</Tag>;
       },
     },

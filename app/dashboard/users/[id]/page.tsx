@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, Descriptions, Button, Spin, message, Modal, Tag, Divider } from 'antd';
 import { EditOutlined, DeleteOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import UserForm from '../../../components/UserForm';
-import { User, ROLE_NAMES } from '../../../types/user';
+import { User, ROLE_NAMES } from '@/types/user';
 
 export default function UserDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -78,12 +78,20 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
     );
   };
 
-  const getStatusTag = (status: string) => {
-    return (
-      <Tag color={status === 'active' ? 'green' : 'red'}>
-        {status === 'active' ? '正常' : '禁用'}
-      </Tag>
-    );
+  const getStatusTag = (status: string | undefined) => {
+    if (!status) return <Tag color="default">未知</Tag>;
+    
+    if (status === 'disabled') {
+      return <Tag color="red">禁用</Tag>;
+    } else if (status === 'active') {
+      return <Tag color="green">正常</Tag>;
+    } else if (status === 'inactive') {
+      return <Tag color="orange">未激活</Tag>;
+    } else if (status === 'suspended') {
+      return <Tag color="red">已冻结</Tag>;
+    } else {
+      return <Tag color="default">{status}</Tag>;
+    }
   };
 
   if (loading) {

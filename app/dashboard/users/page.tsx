@@ -30,7 +30,7 @@ const roleOptions = [
  */
 const statusOptions = [
   { label: '正常', value: 'active' },
-  { label: '禁用', value: 'disabled' },
+  { label: '禁用', value: 'inactive' },
 ];
 
 /**

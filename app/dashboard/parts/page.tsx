@@ -8,7 +8,7 @@
  * 用户可以根据不同条件筛选配件，并进行库存管理
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Table,          // 表格组件，用于展示配件列表
   Button,         // 按钮组件
@@ -41,10 +41,36 @@ import {
   ToolOutlined,           // 工具图标
   BarChartOutlined,       // 图表图标
 } from '@ant-design/icons';  // 引入各种图标
-import type { Part } from '../types';  // 引入配件类型定义
 import { useSelector } from 'react-redux';  // 从全局状态获取数据的工具
 import type { RootState } from '@/app/lib/store';  // 全局状态类型
 import PermissionChecker from '@/app/components/PermissionChecker';  // 权限检查组件
+
+// 配件类别映射表
+const CATEGORY_MAP: { [key: string]: { color: string; text: string } } = {
+  engine: { color: 'blue', text: '发动机' },
+  transmission: { color: 'purple', text: '变速箱' },
+  brake: { color: 'red', text: '制动系统' },
+  electrical: { color: 'cyan', text: '电气系统' },
+  body: { color: 'orange', text: '车身部件' },
+};
+
+// 配件类型定义，替代缺失的../types
+interface Part {
+  _id: string;
+  name: string;
+  code: string;
+  category: string;
+  description?: string;
+  price: number;
+  stock: number;
+  minStock: number;
+  unit?: string;
+  manufacturer?: string;
+  location?: string;
+  status: 'in_stock' | 'low_stock' | 'out_of_stock' | 'discontinued';
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
 const { TextArea } = Input;  // 获取文本区域组件
 
@@ -60,6 +86,13 @@ export default function PartsPage() {
   
   // 配件数据列表，存储从服务器获取的配件信息
   const [data, setData] = useState<Part[]>([]);
+  
+  // 原始数据，用于筛选功能
+  const [originalData, setOriginalData] = useState<Part[]>([]);
+  
+  // 筛选条件状态
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [manufacturerFilter, setManufacturerFilter] = useState<string | null>(null);
   
   // 分页信息，包含当前页码、每页数量和总记录数
   const [pagination, setPagination] = useState({
@@ -125,7 +158,8 @@ export default function PartsPage() {
       const partsData = result.data?.data || [];
       console.log('Parts data:', partsData);  // 在控制台打印数据，方便调试
       
-      // 更新配件列表状态
+      // 更新原始数据和显示数据
+      setOriginalData(partsData);
       setData(partsData);
       
       // 更新分页信息，保留之前的设置，只更新总记录数
@@ -154,6 +188,54 @@ export default function PartsPage() {
       // 无论成功还是失败，最后都设置加载状态为false
       setLoading(false);
     }
+  };
+
+  /**
+   * 应用筛选条件
+   * 根据选择的类别和制造商筛选配件列表
+   */
+  const applyFilters = useCallback(() => {
+    if (!originalData.length) return;
+    
+    let filteredData = [...originalData];
+    
+    // 应用类别筛选
+    if (categoryFilter) {
+      filteredData = filteredData.filter(part => part.category === categoryFilter);
+    }
+    
+    // 应用制造商筛选
+    if (manufacturerFilter) {
+      filteredData = filteredData.filter(part => part.manufacturer === manufacturerFilter);
+    }
+    
+    // 更新显示数据
+    setData(filteredData);
+    
+    // 重置分页到第一页
+    setPagination(prev => ({
+      ...prev,
+      current: 1
+    }));
+  }, [categoryFilter, manufacturerFilter, originalData]);
+  
+  // 当筛选条件变化时，应用筛选
+  useEffect(() => {
+    applyFilters();
+  }, [categoryFilter, manufacturerFilter, applyFilters]);
+
+  /**
+   * 处理类别筛选变化
+   */
+  const handleCategoryFilterChange = (value: string | null) => {
+    setCategoryFilter(value);
+  };
+  
+  /**
+   * 处理制造商筛选变化
+   */
+  const handleManufacturerFilterChange = (value: string | null) => {
+    setManufacturerFilter(value);
   };
 
   /**
@@ -211,16 +293,9 @@ export default function PartsPage() {
       dataIndex: 'category',  // 对应数据字段名
       key: 'category',        // 列的唯一标识
       render: (category: string) => {
-        // 定义不同类别对应的颜色和文本
-        const categoryMap: { [key: string]: { color: string; text: string } } = {
-          engine: { color: 'blue', text: '发动机' },
-          transmission: { color: 'purple', text: '变速箱' },
-          brake: { color: 'red', text: '制动系统' },
-          electrical: { color: 'cyan', text: '电气系统' },
-          body: { color: 'orange', text: '车身部件' },
-        };
+        // 使用全局定义的类别映射
         // 获取当前类别的样式，如果找不到则使用原始类别名
-        const currentCategory = categoryMap[category] || { color: 'default', text: category };
+        const currentCategory = CATEGORY_MAP[category] || { color: 'default', text: category };
         return (
           <Tag color={currentCategory.color} className="px-2 py-1">
             <span className="flex items-center">
@@ -425,7 +500,6 @@ export default function PartsPage() {
     message.info('批量导入功能正在开发中');
   };
 
-
   return (
     <div className="page-transition">
       <div className="page-title">
@@ -491,16 +565,25 @@ export default function PartsPage() {
               style={{ width: 200 }}
               placeholder="选择配件类别"
               allowClear
-              options={filters.categories.map(category => ({
-                label: category,
-                value: category
-              }))}
+              value={categoryFilter}
+              onChange={handleCategoryFilterChange}
+              options={filters.categories.map(category => {
+                // 使用全局定义的类别映射
+                // 获取当前类别的中文名称，如果找不到则使用原始值
+                const currentCategory = CATEGORY_MAP[category] || { color: 'default', text: category };
+                return {
+                  label: currentCategory.text, // 显示中文名称
+                  value: category // 保留原始值用于筛选
+                };
+              })}
               className="hover-glow"
             />
             <Select 
               style={{ width: 200 }}
               placeholder="选择制造商"
               allowClear
+              value={manufacturerFilter}
+              onChange={handleManufacturerFilterChange}
               options={filters.manufacturers.map(manufacturer => ({
                 label: manufacturer,
                 value: manufacturer
@@ -517,6 +600,7 @@ export default function PartsPage() {
             >
               刷新数据
             </Button>
+            
             <PermissionChecker
               menuKey="parts"
               requiredPermission="write"
@@ -643,7 +727,11 @@ export default function PartsPage() {
                 label="库存数量"
                 rules={[{ required: true, message: '请输入库存数量' }]}
               >
-                <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
+                <InputNumber 
+                  style={{ width: '100%' }} 
+                  min={0} 
+                  placeholder="0"
+                />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -652,7 +740,11 @@ export default function PartsPage() {
                 label="最低库存"
                 tooltip="当库存低于此数量时会给出警告"
               >
-                <InputNumber style={{ width: '100%' }} min={0} placeholder="5" />
+                <InputNumber 
+                  style={{ width: '100%' }} 
+                  min={0} 
+                  placeholder="5"
+                />
               </Form.Item>
             </Col>
           </Row>
