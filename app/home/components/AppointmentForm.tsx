@@ -1,3 +1,10 @@
+/**
+ * 预约表单组件
+ * 
+ * 这个组件用于客户提交保养/维修预约申请
+ * 包含个人信息、车辆信息、服务类型和预约时间等字段
+ * 'use client' 标记表示这个组件在浏览器端运行，而不是在服务器端
+ */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -17,27 +24,51 @@ import { RootState } from '@/app/lib/store';
 const { TextArea } = Input;
 const { Option } = Select;
 
+/**
+ * 预约表单组件的属性接口
+ * 
+ * @property {Function} onSuccess - 可选的成功回调函数
+ * @property {Function} onCancel - 可选的取消回调函数
+ */
 interface AppointmentFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
+/**
+ * 服务类型选项
+ * 提供预约服务类型的下拉选项
+ */
 const serviceTypes = [
   { label: '常规保养', value: 'maintenance' },
   { label: '故障维修', value: 'repair' },
   { label: '年检服务', value: 'inspection' },
 ];
 
+/**
+ * 预约表单组件
+ * 用于客户提交车辆维修/保养预约
+ * 
+ * @param {AppointmentFormProps} props - 组件属性
+ * @returns {JSX.Element | null} 返回表单组件或null（用户未登录时）
+ */
 export default function AppointmentForm({ onSuccess, onCancel }: AppointmentFormProps) {
+  // 创建表单实例
   const [form] = Form.useForm();
+  // 提交加载状态
   const [loading, setLoading] = useState(false);
+  // 技师列表状态
   const [technicians, setTechnicians] = useState<any[]>([]);
+  // 路由实例，用于页面导航
   const router = useRouter();
   
-  // 获取当前用户登录状态
+  // 从Redux获取当前用户登录状态
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
 
-  // 如果用户未登录，显示提示信息并重定向
+  /**
+   * 检查用户登录状态
+   * 如果未登录则显示提示并重定向到登录页面
+   */
   useEffect(() => {
     if (!isAuthenticated) {
       message.warning('请先登录后再进行预约');
@@ -50,7 +81,10 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
     return null;
   }
 
-  // 获取技师列表
+  /**
+   * 获取技师列表
+   * 从API获取所有可用的技师信息
+   */
   useEffect(() => {
     const fetchTechnicians = async () => {
       try {
@@ -60,6 +94,7 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
           console.error('获取技师列表失败:', result.message);
           return;
         }
+        // 过滤出状态为"active"的技师
         const activeTechnicians = (result.data || []).filter((tech: any) => tech.status === 'active');
         console.log('获取到技师列表:', activeTechnicians.length);
         setTechnicians(activeTechnicians);
@@ -70,26 +105,36 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
     fetchTechnicians();
   }, []);
 
-  // 当用户登录状态变化时，自动填充用户信息
+  /**
+   * 当用户登录状态变化时，自动填充用户信息
+   * 使用已登录用户的用户名、电话和邮箱填充表单
+   */
   console.log('user111', user);
   useEffect(() => {
     if (user) {
       form.setFieldsValue({
-        name: user.name || user.username,
+        name: user.username,
         phone: user.phone || '',
         email: user.email || '',
       });
     }
   }, [user, form]);
 
+  /**
+   * 处理表单提交
+   * 将表单数据发送到服务器并处理响应
+   * 
+   * @param {any} values - 表单提交的值
+   */
   const handleSubmit = async (values: any) => {
     try {
       setLoading(true);
       // 确保使用用户登录信息
-      const name = user?.name || user?.username || values.name;
+      const name = user?.username || values.name;
       const phone = user?.phone || values.phone;
       const email = user?.email || values.email;
-      // 兼容新的数据结构，同时提供扁平结构和timeSlot结构
+      
+      // 构造预约数据，兼容新的数据结构，同时提供扁平结构和timeSlot结构
       const formattedData = {
         customer: {
           name,
@@ -118,23 +163,29 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
 
       console.log('正在提交预约数据:', JSON.stringify(formattedData, null, 2));
 
+      // 发送预约请求到服务器
       const response = await fetch('/api/appointments/simple', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),
       });
 
+      // 解析服务器响应
       const result = await response.json();
       if (!response.ok) throw new Error(result.message);
 
+      // 预约成功处理
       message.success('预约成功！我们会尽快与您联系确认。');
       form.resetFields();
       // 预约成功后跳转到成功页面
       router.push('/appointment-success');
+      // 如果提供了成功回调，则调用
       onSuccess?.();
     } catch (error: any) {
+      // 显示错误消息
       message.error(error.message || '预约失败，请稍后重试');
     } finally {
+      // 无论成功或失败，都结束加载状态
       setLoading(false);
     }
   };
@@ -146,6 +197,7 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
       onFinish={handleSubmit}
       className="appointment-form"
     >
+      {/* 姓名字段 */}
       <Form.Item
         name="name"
         label="姓名"
@@ -154,6 +206,7 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
         <Input placeholder="请输入姓名" disabled={!!user} />
       </Form.Item>
 
+      {/* 联系电话字段 */}
       <Form.Item
         name="phone"
         label="联系电话"
@@ -165,6 +218,7 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
         <Input placeholder="请输入手机号码" disabled={!!user} />
       </Form.Item>
 
+      {/* 电子邮箱字段 */}
       <Form.Item
         name="email"
         label="电子邮箱"
@@ -175,6 +229,7 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
         <Input placeholder="请输入电子邮箱" disabled={true} />
       </Form.Item>
 
+      {/* 车辆品牌字段 */}
       <Form.Item
         name="vehicleBrand"
         label="车辆品牌"
@@ -183,6 +238,7 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
         <Input placeholder="请输入车辆品牌" />
       </Form.Item>
 
+      {/* 车型字段 */}
       <Form.Item
         name="vehicleModel"
         label="车型"
@@ -191,6 +247,7 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
         <Input placeholder="请输入车型" />
       </Form.Item>
 
+      {/* 车牌号字段 */}
       <Form.Item
         name="licensePlate"
         label="车牌号"
@@ -199,6 +256,7 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
         <Input placeholder="请输入车牌号" />
       </Form.Item>
 
+      {/* 服务类型字段 */}
       <Form.Item
         name="serviceType"
         label="服务类型"
@@ -213,60 +271,73 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
         </Select>
       </Form.Item>
 
+      {/* 问题描述字段 */}
       <Form.Item
         name="description"
         label="问题描述"
-        rules={[{ required: true, message: '请描述车辆问题或服务需求' }]}
+        rules={[{ required: true, message: '请描述您的车辆问题' }]}
       >
-        <TextArea 
+        <TextArea
           rows={4}
-          placeholder="请简要描述您的车辆问题或服务需求"
+          placeholder="请详细描述您的车辆问题或需要的服务"
         />
       </Form.Item>
 
+      {/* 预约日期字段 */}
       <Form.Item
         name="date"
-        label="期望预约日期"
+        label="预约日期"
         rules={[{ required: true, message: '请选择预约日期' }]}
       >
-        <DatePicker style={{ width: '100%' }} />
-      </Form.Item>
-
-      <Form.Item
-        name="time"
-        label="期望预约时间"
-        rules={[{ required: true, message: '请选择预约时间' }]}
-      >
-        <TimePicker 
-          format="HH:mm"
-          minuteStep={30}
+        <DatePicker
           style={{ width: '100%' }}
+          placeholder="请选择日期"
         />
       </Form.Item>
 
+      {/* 预约时间字段 */}
+      <Form.Item
+        name="time"
+        label="预约时间"
+        rules={[{ required: true, message: '请选择预约时间' }]}
+      >
+        <TimePicker
+          style={{ width: '100%' }}
+          format="HH:mm"
+          minuteStep={30}
+          placeholder="请选择时间"
+        />
+      </Form.Item>
+
+      {/* 技师选择字段 */}
       <Form.Item
         name="technician"
-        label="选择技师"
+        label="指定技师（可选）"
       >
-        <Select placeholder="请选择技师(可选)">
+        <Select placeholder="请选择技师（可选）" allowClear>
           {technicians.map(tech => (
             <Option key={tech._id} value={tech._id}>
-              {tech.name || tech.username || '未命名技师'}
+              {tech.username} - {tech.specialties?.join(', ')}
             </Option>
           ))}
         </Select>
       </Form.Item>
 
+      {/* 提交按钮 */}
       <Form.Item>
-        <motion.button
-          type="submit"
+        <motion.div
+          className="flex justify-center"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-semibold text-lg hover:shadow-lg transition-all border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={loading}
         >
-          {loading ? '提交中...' : '提交预约'}
-        </motion.button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md w-full transition-all duration-300 disabled:bg-gray-400"
+          >
+            {loading ? '提交中...' : '提交预约'}
+          </button>
+        </motion.div>
       </Form.Item>
     </Form>
   );
