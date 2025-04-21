@@ -574,7 +574,18 @@ export default function WorkOrdersPage() {
         title="创建工单"
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
-        footer={null}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setModalVisible(false)}>取消</Button>
+            <Button 
+              type="primary" 
+              onClick={handleSubmit}
+              className="admin-btn admin-btn-primary"
+            >
+              提交
+            </Button>
+          </div>
+        }
         width={700}
         destroyOnClose
         className="enhanced-modal"
@@ -584,6 +595,7 @@ export default function WorkOrdersPage() {
           form={form}
           onFinish={handleSubmit}
           onCancel={() => setModalVisible(false)}
+          showButtons={false}
         />
       </Modal>
     </div>

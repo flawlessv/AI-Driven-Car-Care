@@ -1103,8 +1103,19 @@ const WorkOrderDetailPage = () => {
       <Modal
         title="编辑工单"
         open={editModalVisible}
-        onOk={handleEditSubmit}
         onCancel={() => setEditModalVisible(false)}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setEditModalVisible(false)}>取消</Button>
+            <Button 
+              type="primary" 
+              onClick={handleEditSubmit}
+              className="admin-btn admin-btn-primary"
+            >
+              保存
+            </Button>
+          </div>
+        }
         width={800}
       >
         <WorkOrderForm
@@ -1117,6 +1128,7 @@ const WorkOrderDetailPage = () => {
           }]}
           initialValues={workOrder}
           mode="edit"
+          showButtons={false}
         />
       </Modal>
 

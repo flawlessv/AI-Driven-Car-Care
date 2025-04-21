@@ -22,6 +22,7 @@ interface WorkOrderFormProps {
   mode?: 'create' | 'edit';
   onFinish?: (values: any) => void;
   onCancel?: () => void;
+  showButtons?: boolean;
 }
 
 const priorityOptions = [
@@ -44,6 +45,7 @@ export default function WorkOrderForm({
   mode = 'create',
   onFinish,
   onCancel,
+  showButtons = true,
 }: WorkOrderFormProps) {
   console.log('WorkOrderForm props:', { vehicles, initialValues }); // 添加日志
   
@@ -214,15 +216,16 @@ export default function WorkOrderForm({
         </>
       )}
       
-      {/* 添加表单底部的按钮组 */}
-      <Form.Item className="mb-0 mt-6">
-        <div className="flex justify-end gap-2">
-          <Button onClick={onCancel}>取消</Button>
-          <Button type="primary" onClick={handleFinish} className="admin-btn admin-btn-primary">
-            提交
-          </Button>
-        </div>
-      </Form.Item>
+      {showButtons && (
+        <Form.Item className="mb-0 mt-6">
+          <div className="flex justify-end gap-2">
+            <Button onClick={onCancel}>取消</Button>
+            <Button type="primary" onClick={handleFinish} className="admin-btn admin-btn-primary">
+              提交
+            </Button>
+          </div>
+        </Form.Item>
+      )}
     </Form>
   );
 } 
