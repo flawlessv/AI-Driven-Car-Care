@@ -547,10 +547,11 @@ export default function WorkOrdersPage() {
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={handleAdd}
             className="admin-btn admin-btn-primary hover-glow"
+            onClick={handleAdd}
+            disabled={user?.role === 'customer'}
           >
-            创建工单
+            新建工单
           </Button>
         </div>
 

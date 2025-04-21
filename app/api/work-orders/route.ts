@@ -186,8 +186,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // 检查用户权限，只有管理员和客户可以创建工单
-    const authResult = await checkRole(['admin', 'customer'])(request);
+    // 检查用户权限，只有管理员和技师可以创建工单
+    const authResult = await checkRole(['admin', 'technician'])(request);
     if (!authResult.success) {
       // 如果用户没有权限，返回未授权错误
       return errorResponse(authResult.message || '未授权访问', 401);

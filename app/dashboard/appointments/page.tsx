@@ -614,6 +614,11 @@ export default function AppointmentsPage() {
         setLoading(false);
         return;
       }
+
+      // 如果是客户角色，强制预约状态为pending
+      if (isCustomer) {
+        values.status = 'pending';
+      }
       
       // 打印关键字段的值
       console.log('日期:', values.date);
@@ -1119,15 +1124,28 @@ export default function AppointmentsPage() {
             label="预约状态"
             rules={[{ required: true, message: '请选择预约状态' }]}
           >
-            <Select
-              placeholder="选择状态"
-              options={[
-                { value: 'pending', label: '待处理' },
-                { value: 'processed', label: '已处理' },
-                { value: 'completed', label: '已完成' },
-                { value: 'cancelled', label: '已取消' },
-              ]}
-            />
+            {isCustomer ? (
+              <Select
+                disabled={true}
+                placeholder="选择状态"
+                options={[
+                  { value: 'pending', label: '待处理' },
+                  { value: 'processed', label: '已处理' },
+                  { value: 'completed', label: '已完成' },
+                  { value: 'cancelled', label: '已取消' },
+                ]}
+              />
+            ) : (
+              <Select
+                placeholder="选择状态"
+                options={[
+                  { value: 'pending', label: '待处理' },
+                  { value: 'processed', label: '已处理' },
+                  { value: 'completed', label: '已完成' },
+                  { value: 'cancelled', label: '已取消' },
+                ]}
+              />
+            )}
           </Form.Item>
           
           <div className="flex justify-end gap-2 mt-6">
