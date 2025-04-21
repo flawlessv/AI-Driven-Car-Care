@@ -30,7 +30,7 @@ import {
 // 导入表格列类型定义
 import type { ColumnsType } from 'antd/es/table';
 // 导入各种图标组件
-import { EditOutlined, DeleteOutlined, PlusOutlined, SyncOutlined, CalendarOutlined, ClockCircleOutlined, CarOutlined, UserOutlined, ToolOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, PlusOutlined, SyncOutlined, CalendarOutlined, ClockCircleOutlined, CarOutlined, UserOutlined, ToolOutlined, CloseCircleOutlined } from '@ant-design/icons';
 // 导入日期处理库
 import dayjs from 'dayjs';
 // 导入预约类型定义
@@ -471,11 +471,24 @@ export default function AppointmentsPage() {
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(record)}
             className="text-red-500 hover:text-red-600"
-            // 客户角色且非自己创建的预约不能删除
-            disabled={isCustomer && (record.user !== user?._id)}
+            // 禁止客户删除预约
+            hidden={isCustomer}
           >
             删除
           </Button>
+          
+          {/* 客户取消预约按钮 - 仅对客户自己的待处理预约显示 */}
+          {isCustomer && record.status === 'pending' && record.user === user?._id && (
+            <Button
+              type="text"
+              danger
+              icon={<CloseCircleOutlined />}
+              onClick={() => handleCancelAppointment(record)}
+              className="text-red-500 hover:text-red-600"
+            >
+              取消预约
+            </Button>
+          )}
         </Space>
       ),
     },
@@ -550,6 +563,12 @@ export default function AppointmentsPage() {
    * @param {Appointment} record - 要删除的预约记录
    */
   const handleDelete = (record: Appointment) => {
+    // 如果是客户角色，禁止删除预约
+    if (isCustomer) {
+      message.error('客户无权删除预约');
+      return;
+    }
+    
     // 显示确认对话框
     Modal.confirm({
       title: '确认删除',
@@ -884,6 +903,57 @@ export default function AppointmentsPage() {
     // 确保格式是两位数
     const formattedHours = endHours % 24;
     return `${formattedHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+  };
+
+  /**
+   * 处理客户取消预约的函数
+   * 将预约状态更改为已取消(cancelled)
+   * 
+   * @param {Appointment} record - 要取消的预约记录
+   */
+  const handleCancelAppointment = (record: Appointment) => {
+    // 显示确认对话框
+    Modal.confirm({
+      title: '确认取消预约',
+      content: '您确定要取消这个预约吗？取消后无法恢复。',
+      okText: '确认取消',
+      okType: 'danger',
+      cancelText: '返回',
+      onOk: async () => {
+        try {
+          setLoading(true);
+          
+          // 准备更新数据
+          const updateData = {
+            status: 'cancelled'
+          };
+          
+          // 发送更新预约的请求
+          const response = await fetch(`/api/appointments/${record._id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData),
+          });
+          
+          const result = await response.json();
+          
+          // 如果响应不成功，抛出错误
+          if (!response.ok) {
+            throw new Error(result.message || '取消预约失败');
+          }
+          
+          // 显示成功消息
+          message.success('预约已成功取消');
+          // 刷新预约列表
+          fetchAppointments();
+        } catch (error: any) {
+          // 显示错误消息
+          message.error(error.message || '取消预约失败');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   return (

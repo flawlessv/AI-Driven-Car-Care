@@ -2,6 +2,7 @@ import { connectDB } from '@/app/lib/mongodb';
 import { getAppointmentModel } from '@/app/models/appointment';
 import { getServiceModel } from '@/app/models/service';
 import { successResponse, errorResponse } from '@/app/lib/api-response';
+import { authMiddleware, checkRole } from '@/app/lib/auth';
 
 export async function GET(
   request: Request,
@@ -217,6 +218,13 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // 检查用户权限，客户不允许删除预约
+    const authResult = await checkRole(['admin', 'technician'])(request);
+    if (!authResult.success) {
+      console.log('删除预约失败: 用户权限不足');
+      return errorResponse('无权删除预约', 403);
+    }
+
     await connectDB();
     const appointment = await getAppointmentModel().findByIdAndDelete(params.id);
 
@@ -228,6 +236,7 @@ export async function DELETE(
       message: '删除成功'
     });
   } catch (error: any) {
+    console.error('删除预约错误:', error);
     return errorResponse(error.message);
   }
 } 

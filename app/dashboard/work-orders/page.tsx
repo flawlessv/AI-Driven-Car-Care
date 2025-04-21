@@ -398,14 +398,6 @@ export default function WorkOrdersPage() {
       });
       
       items.push({
-        key: 'on_hold',
-        label: '标记为暂停',
-        icon: <ClockCircleOutlined style={{ color: statusColor.on_hold }} />,
-        disabled: record.status === 'on_hold',
-        onClick: () => handleStatusChange(record, 'on_hold'),
-      });
-      
-      items.push({
         key: 'completed',
         label: '标记为已完成',
         icon: <CheckCircleOutlined style={{ color: statusColor.completed }} />,
