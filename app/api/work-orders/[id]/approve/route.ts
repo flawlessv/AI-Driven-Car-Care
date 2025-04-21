@@ -11,15 +11,6 @@ import {
 import { checkRole } from '@/app/lib/auth';
 import { updateVehicleStatusByWorkOrder } from '@/app/lib/work-order-utils';
 
-// 定义工单状态常量
-const WORK_ORDER_STATUS = {
-  PENDING: 'pending',
-  ASSIGNED: 'assigned',
-  IN_PROGRESS: 'in_progress',
-  PENDING_CHECK: 'pending_check',
-  COMPLETED: 'completed',
-  CANCELLED: 'cancelled'
-};
 
 // PUT 方法：管理员批准工单完成
 export async function PUT(

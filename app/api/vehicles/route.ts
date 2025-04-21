@@ -9,8 +9,6 @@ import {
   validationErrorResponse,
   unauthorizedResponse,
 } from '@/app/lib/api-response';
-import { VehicleFormData } from '../../../types/vehicle';
-import mongoose from 'mongoose';
 
 /**
  * 获取车辆列表的函数
@@ -23,12 +21,6 @@ export async function GET(request: NextRequest) {
   try {
     // 验证当前用户身份，看看是谁在查询车辆信息
     const {user} = await authMiddleware(request);
-    // 记录当前用户信息，方便调试
-    console.log('当前用户:', {
-      id: user?._id?.toString(),
-      role: user?.role,
-      username: user?.username || user?.name
-    });
     
     // 连接到数据库
     await connectDB();
@@ -47,12 +39,9 @@ export async function GET(request: NextRequest) {
     // 如果是客户，只能查看自己的车辆（保护隐私）
     if (user && user.role === 'customer') {
       const ownerId = user._id.toString();
-      console.log('客户用户查询车辆，只显示自己的车辆ID：', ownerId);
       query = { ...query, owner: ownerId };  // 添加所有者筛选条件
     }
 
-    // 记录最终的查询条件
-    console.log('最终查询条件:', JSON.stringify(query));
 
     // 进行一些调试查询，验证数据是否正确
     // 查询所有车辆（最多10条）

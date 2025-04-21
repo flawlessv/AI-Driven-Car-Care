@@ -55,15 +55,6 @@ export async function GET(request: NextRequest) {
       // 如果是客户，只能查看自己的工单
       console.log('客户查询工单，只显示自己的：', authResult.user._id);
       query.customer = authResult.user._id;
-    } else if (authResult.user.role === 'technician') {
-      // 技师可以看到所有工单
-      // 如果前端指定了技师ID，则只显示该技师负责的工单
-      if (technician) {
-        query.technician = technician;
-      }
-    } else if (customer) {
-      // 管理员如果指定了客户ID，则只查询该客户的工单
-      query.customer = customer;
     }
 
     // 添加其他筛选条件

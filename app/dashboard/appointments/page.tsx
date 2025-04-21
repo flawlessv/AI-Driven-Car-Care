@@ -13,7 +13,6 @@ import {
   Table,        // 表格组件
   Button,       // 按钮组件
   Space,        // 间距容器
-  Tag,          // 标签组件
   message,      // 消息提示
   Modal,        // 模态框
   Form,         // 表单
@@ -22,7 +21,6 @@ import {
   DatePicker,   // 日期选择器
   TimePicker,   // 时间选择器
   Card,         // 卡片容器
-  InputNumber,  // 数字输入框
   Tooltip,      // 文字提示
   Row,          // 行布局
   Col,          // 列布局
@@ -43,16 +41,6 @@ import type { RootState } from '@/app/lib/store';
 // 从Input组件中提取TextArea子组件
 const { TextArea } = Input;
 
-/**
- * 预约状态颜色映射
- * 不同状态对应不同的标签颜色
- */
-const statusColors = {
-  pending: 'orange',     // 待处理：橙色
-  processed: 'blue',     // 已处理：蓝色
-  completed: 'green',    // 已完成：绿色
-  cancelled: 'red',      // 已取消：红色
-};
 
 /**
  * 预约状态文本映射
@@ -1127,7 +1115,6 @@ export default function AppointmentsPage() {
                 />
               </Form.Item>
             </Col>
-            
             <Col span={12}>
               <Form.Item
                 name="serviceId"

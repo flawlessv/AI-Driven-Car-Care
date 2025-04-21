@@ -52,10 +52,6 @@ export async function GET(
     console.log('请求车辆健康评分. 车辆ID:', params.id);
     
     const authResult = await authMiddleware(request);
-    console.log('认证结果:', JSON.stringify({
-      success: authResult.success,
-      hasUser: !!authResult.user
-    }));
     
     if (!authResult.success) {
       return errorResponse('未授权访问', 401);
@@ -83,21 +79,8 @@ export async function GET(
     
     // 检查权限：客户只能查看自己的车辆
     if (user.role === 'customer' && vehicle.owner && vehicle.owner.toString() !== user._id.toString()) {
-      console.log('权限拒绝：客户尝试查看非自己的车辆', {
-        userId: user._id,
-        vehicleOwner: vehicle.owner
-      });
       return errorResponse('您没有权限查看该车辆', 403);
     }
-
-    console.log('获取到的车辆信息:', JSON.stringify({
-      _id: vehicle._id,
-      brand: vehicle.brand,
-      model: vehicle.model,
-      year: vehicle.year,
-      licensePlate: vehicle.licensePlate,
-      status: vehicle.status
-    }));
 
     try {
       const query = { vehicle: vehicle._id };
@@ -116,7 +99,6 @@ export async function GET(
 
       // 计算健康评分
       const healthScore = calculateHealthScore(vehicle, maintenanceRecords);
-      console.log('计算得到的健康评分:', healthScore);
 
       return successResponse({
         data: healthScore,
@@ -213,12 +195,6 @@ function calculateHealthScore(vehicle: any, maintenanceRecords: any[]): HealthSc
       suggestions.push('存在未完成的维修项目，建议及时处理');
     }
 
-    console.log('保养得分计算:', { 
-      maintenanceScore, 
-      hasRecentMaintenance, 
-      hasUnfinishedRepair,
-      maintenanceRecordsCount: safeRecords.length 
-    });
 
     // 4. 计算状态得分（基础20分）
     let statusScore = 20;

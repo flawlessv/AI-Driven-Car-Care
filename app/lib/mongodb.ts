@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-
+//获取环境变量
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
@@ -14,8 +14,8 @@ export async function connectDB() {
       console.log('已经连接到MongoDB');
       return;
     }
-
-    await mongoose.connect(MONGODB_URI);
+    //连接数据库
+    await mongoose.connect(MONGODB_URI as string);
     console.log('MongoDB连接成功');
   } catch (error) {
     console.error('MongoDB连接失败:', error);

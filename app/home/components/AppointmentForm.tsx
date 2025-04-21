@@ -56,12 +56,10 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
       try {
         const response = await fetch('/api/users?role=technician');
         const result = await response.json();
-        
         if (!response.ok) {
           console.error('获取技师列表失败:', result.message);
           return;
         }
-        
         const activeTechnicians = (result.data || []).filter((tech: any) => tech.status === 'active');
         console.log('获取到技师列表:', activeTechnicians.length);
         setTechnicians(activeTechnicians);
@@ -69,7 +67,6 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
         console.error('获取技师列表失败:', error);
       }
     };
-    
     fetchTechnicians();
   }, []);
 
@@ -88,12 +85,10 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
   const handleSubmit = async (values: any) => {
     try {
       setLoading(true);
-      
       // 确保使用用户登录信息
       const name = user?.name || user?.username || values.name;
       const phone = user?.phone || values.phone;
       const email = user?.email || values.email;
-      
       // 兼容新的数据结构，同时提供扁平结构和timeSlot结构
       const formattedData = {
         customer: {
@@ -134,10 +129,8 @@ export default function AppointmentForm({ onSuccess, onCancel }: AppointmentForm
 
       message.success('预约成功！我们会尽快与您联系确认。');
       form.resetFields();
-      
       // 预约成功后跳转到成功页面
       router.push('/appointment-success');
-      
       onSuccess?.();
     } catch (error: any) {
       message.error(error.message || '预约失败，请稍后重试');
